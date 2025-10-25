@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Fondo general */
+    --background: 0 0% 100%;           /* Blanco */
+    --foreground: 0 0% 3.9%;           /* Negro para texto */
+    
+    /* Cards */
+    --card: 0 0% 100%;                 /* Blanco */
+    --card-foreground: 0 0% 3.9%;      /* Negro */
+    
+    /* Popover/Dropdown */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    
+    /* Color primario - VERDE */
+    --primary: 142 76% 36%;            /* Verde gimnasio #16a34a */
+    --primary-foreground: 0 0% 98%;    /* Blanco para texto en verde */
+    
+    /* Color secundario */
+    --secondary: 142 50% 96%;          /* Verde muy claro */
+    --secondary-foreground: 142 76% 20%; /* Verde oscuro */
+    
+    /* Muted (elementos desactivados) */
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    
+    /* Accent (destacados) */
+    --accent: 142 50% 94%;             /* Verde claro */
+    --accent-foreground: 142 76% 30%;  /* Verde */
+    
+    /* Destructive (errores) */
+    --destructive: 0 84.2% 60.2%;      /* Rojo para errores */
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Bordes e inputs */
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 142 76% 36%;               /* Verde para focus */
+    
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Fondo oscuro */
+    --background: 142 20% 8%;          /* Verde muy oscuro casi negro */
+    --foreground: 0 0% 98%;            /* Blanco */
+    
+    --card: 142 20% 10%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 142 20% 10%;
+    --popover-foreground: 0 0% 98%;
+    
+    /* Verde brillante en dark mode */
+    --primary: 142 76% 40%;            /* Verde más brillante */
+    --primary-foreground: 0 0% 98%;
+    
+    --secondary: 142 20% 20%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 142 20% 20%;
+    --muted-foreground: 0 0% 63.9%;
+    
+    --accent: 142 20% 18%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 142 20% 25%;
+    --input: 142 20% 25%;
+    --ring: 142 76% 40%;
+  }
+}

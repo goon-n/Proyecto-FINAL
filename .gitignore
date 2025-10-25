@@ -1,0 +1,65 @@
+# ==========================
+# Logs
+# ==========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================
+# Node.js
+# ==========================
+node_modules/
+frontend/node_modules/
+
+# Build
+dist/
+dist-ssr/
+
+# ==========================
+# Variables de entorno
+# ==========================
+.env
+.env.local
+.env.*.local
+
+# ==========================
+# Config locales (Vite, Tailwind, etc.)
+# ==========================
+*.local
+
+# ==========================
+# Sistema y editores
+# ==========================
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==========================
+# Python / Django
+# ==========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.log
+*.pot
+*.mo
+*.egg-info/
+*.pytest_cache/
+*.coverage
+.coverage.*
+htmlcov/
+*.egg
+.env
