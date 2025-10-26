@@ -7,8 +7,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import Socio, Perfil, Clase
-from .serializers import SocioSerializer, ClaseSerializer, CustomUserSerializer
+from .models import Socio, Perfil, Clase, Proveedor, Accesorios
+from .serializers import SocioSerializer, ClaseSerializer, CustomUserSerializer, ProveedorSerializer, AccesoriosSerializer
 from django.utils import timezone
 
 
@@ -368,3 +368,176 @@ def dashboard_socio(request):
             'rutinas_activas': len(rutinas_data)
         }
     }, status=200)
+
+
+# ========== PROVEEDORES ==========
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def proveedores_list(request):
+    """Lista todos los proveedores o crea uno nuevo"""
+    if request.method == 'GET':
+        # Filtros opcionales
+        activo = request.GET.get('activo')
+        search = request.GET.get('search')
+        
+        proveedores = Proveedor.objects.all()
+        
+        if activo is not None:
+            proveedores = proveedores.filter(activo=activo.lower() == 'true')
+        
+        if search:
+            proveedores = proveedores.filter(nombre__icontains=search)
+        
+        serializer = ProveedorSerializer(proveedores, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        # Solo admin puede crear proveedores
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+            return Response({"error": "No tienes permisos para crear proveedores"}, status=403)
+        
+        serializer = ProveedorSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def proveedor_detail(request, pk):
+    """Obtiene, actualiza o elimina un proveedor específico"""
+    try:
+        proveedor = Proveedor.objects.get(pk=pk)
+    except Proveedor.DoesNotExist:
+        return Response({"error": "Proveedor no encontrado"}, status=404)
+    
+    if request.method == 'GET':
+        serializer = ProveedorSerializer(proveedor)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        # Solo admin puede editar proveedores
+        if not request.user.perfil.rol == 'admin':
+            return Response({"error": "No tienes permisos para editar proveedores"}, status=403)
+        
+        serializer = ProveedorSerializer(proveedor, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+    elif request.method == 'DELETE':
+        # Solo admin puede eliminar proveedores
+        if not request.user.perfil.rol == 'admin':
+            return Response({"error": "No tienes permisos para eliminar proveedores"}, status=403)
+        
+        # Soft delete - marcar como inactivo
+        proveedor.activo = False
+        proveedor.save()
+        return Response({"message": "Proveedor desactivado exitosamente"}, status=200)
+
+
+# ========== ACCESORIOS ==========
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def accesorios_list(request):
+    """Lista todos los accesorios o crea uno nuevo"""
+    if request.method == 'GET':
+        # Filtros opcionales
+        activo = request.GET.get('activo')
+        proveedor_id = request.GET.get('proveedor')
+        search = request.GET.get('search')
+        
+        accesorios = Accesorios.objects.select_related('proveedor').all()
+        
+        if activo is not None:
+            accesorios = accesorios.filter(activo=activo.lower() == 'true')
+        
+        if proveedor_id:
+            accesorios = accesorios.filter(proveedor_id=proveedor_id)
+        
+        if search:
+            accesorios = accesorios.filter(nombre__icontains=search)
+        
+        serializer = AccesoriosSerializer(accesorios, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        # Solo admin puede crear accesorios
+        if not request.user.perfil.rol == 'admin':
+            return Response({"error": "No tienes permisos para crear accesorios"}, status=403)
+        
+        serializer = AccesoriosSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def accesorio_detail(request, pk):
+    """Obtiene, actualiza o elimina un accesorio específico"""
+    try:
+        accesorio = Accesorios.objects.select_related('proveedor').get(pk=pk)
+    except Accesorios.DoesNotExist:
+        return Response({"error": "Accesorio no encontrado"}, status=404)
+    
+    if request.method == 'GET':
+        serializer = AccesoriosSerializer(accesorio)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        # Solo admin puede editar accesorios
+        if not request.user.perfil.rol == 'admin':
+            return Response({"error": "No tienes permisos para editar accesorios"}, status=403)
+        
+        serializer = AccesoriosSerializer(accesorio, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+    elif request.method == 'DELETE':
+        # Solo admin puede eliminar accesorios
+        if not request.user.perfil.rol == 'admin':
+            return Response({"error": "No tienes permisos para eliminar accesorios"}, status=403)
+        
+        # Soft delete - marcar como inactivo
+        accesorio.activo = False
+        accesorio.save()
+        return Response({"message": "Accesorio desactivado exitosamente"}, status=200)
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def actualizar_stock(request, pk):
+    """Actualiza el stock de un accesorio"""
+    # Solo admin puede actualizar stock
+    if not request.user.perfil.rol == 'admin':
+        return Response({"error": "No tienes permisos para actualizar stock"}, status=403)
+    
+    try:
+        accesorio = Accesorios.objects.get(pk=pk)
+    except Accesorios.DoesNotExist:
+        return Response({"error": "Accesorio no encontrado"}, status=404)
+    
+    nuevo_stock = request.data.get('stock')
+    if nuevo_stock is None:
+        return Response({"error": "El campo stock es requerido"}, status=400)
+    
+    try:
+        nuevo_stock = int(nuevo_stock)
+        if nuevo_stock < 0:
+            return Response({"error": "El stock no puede ser negativo"}, status=400)
+    except ValueError:
+        return Response({"error": "El stock debe ser un número entero"}, status=400)
+    
+    accesorio.stock = nuevo_stock
+    accesorio.save()
+    
+    serializer = AccesoriosSerializer(accesorio)
+    return Response(serializer.data)

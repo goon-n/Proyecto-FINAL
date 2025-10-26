@@ -23,6 +23,12 @@ from .views import (
     usuarios_desactivados,
     desactivar_usuario,
     activar_usuario,
+    # Proveedores y Accesorios
+    proveedores_list,
+    proveedor_detail,
+    accesorios_list,
+    accesorio_detail,
+    actualizar_stock,
 )
 
 router = DefaultRouter()
@@ -56,4 +62,13 @@ urlpatterns = [
     path('clases/<int:clase_id>/editar/', editar_clase, name='editar-clase'),
     path('clases/<int:clase_id>/eliminar/', eliminar_clase, name='eliminar-clase'),
     path('dashboard/socio/', dashboard_socio, name='dashboard-socio'),
+    
+    # Proveedores
+    path('proveedores/', proveedores_list, name='proveedores-list'),
+    path('proveedores/<int:pk>/', proveedor_detail, name='proveedor-detail'),
+    
+    # Accesorios
+    path('accesorios/', accesorios_list, name='accesorios-list'),
+    path('accesorios/<int:pk>/', accesorio_detail, name='accesorio-detail'),
+    path('accesorios/<int:pk>/stock/', actualizar_stock, name='actualizar-stock'),
 ]

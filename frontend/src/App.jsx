@@ -5,6 +5,8 @@ import HomeAdmin from "./pages/HomeAdmin";
 import HomeEntrenador from "./pages/HomeEntrenador";
 import HomeSocio from "./pages/HomeSocio";
 import GestionUsuarios from "./pages/GestionUsuarios";
+import Proveedores from "./pages/Proveedores";
+import Accesorios from "./pages/Accesorios";
 import { useAuth } from "./context/AuthContext";
 
 // Componente para rutas privadas según rol
@@ -52,6 +54,22 @@ export default function App() {
           element={
             <PrivateRoute rolPermitido="admin">
               <GestionUsuarios />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/proveedores"
+          element={
+            <PrivateRoute rolPermitido="admin">
+              <Proveedores />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/accesorios"
+          element={
+            <PrivateRoute rolPermitido="admin">
+              <Accesorios />
             </PrivateRoute>
           }
         />
