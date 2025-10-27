@@ -1,3 +1,4 @@
+#api/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Perfil, Socio, Clase
@@ -30,6 +31,6 @@ class ClaseSerializer(serializers.ModelSerializer):
 class ProveedorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Proveedor
-        fields = [id, nombre, telefono, email, activo]
+        fields = ['id', 'nombre', 'telefono', 'email', 'activo']
 
-        read_only_fields = ['fecha_creacion', 'fecha_actualizacoin']
+        read_only_fields = ['fecha_creacion', 'fecha_actualizacion']

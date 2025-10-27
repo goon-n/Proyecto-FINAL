@@ -1,3 +1,4 @@
+#backend/api/models.py
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -63,6 +64,7 @@ class Clase(models.Model):
 class Proveedor(models.Model):
     nombre = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20, blank=True, null=True)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         ordering = ['-activo' , 'nombre']
@@ -80,16 +82,15 @@ class Accesorios(models.Model):
         on_delete=models.CASCADE,
         related_name='accesorios',
     )
-    sotck = models.IntegerField(default=0)
+    stock = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
     fecha_compra = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-activo', 'nombre']
+        verbose_name = 'Accesorio'
+        verbose_name_plural = 'Accesorios'
 
-class Meta:
-    ordering = ['-activo' , 'nombre']
-    verbose_name = 'Accesorio'
-    verbose_name_plural = 'Accesorios'
-
-def __str__(self):
-    return f"{self.nombre} - {self.proveedor.nombre}"
+    def __str__(self):
+        return f"{self.nombre} - {self.proveedor.nombre}"
