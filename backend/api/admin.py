@@ -12,7 +12,6 @@ class PerfilInline(admin.StackedInline):
     fk_name = 'user'
 
 
-
 # ──────────── Personalización del UserAdmin ────────────
 class UserAdmin(BaseUserAdmin):
     inlines = (PerfilInline,)
