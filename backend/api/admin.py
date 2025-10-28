@@ -10,6 +10,29 @@ class PerfilAdmin(admin.ModelAdmin):
     search_fields = ['user__username', 'user__email']
 
 
+
+# ──────────── Personalización del UserAdmin ────────────
+class UserAdmin(BaseUserAdmin):
+    inlines = (PerfilInline,)
+    list_display = ('username', 'email', 'first_name', 'last_name', 'get_rol', 'is_staff', 'is_active')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'perfil__rol')
+
+    def get_rol(self, obj):
+        return obj.perfil.rol if hasattr(obj, 'perfil') else '-'
+    get_rol.short_description = 'Rol'
+
+    # Filtro rápido por rol
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('perfil')
+
+
+# Re-registramos User con nuestra configuración
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
+
+
+# ──────────── Modelos simples ────────────
 @admin.register(Socio)
 class SocioAdmin(admin.ModelAdmin):
     list_display = ['nombre', 'apellido', 'dni', 'email', 'activo', 'fecha_alta']
