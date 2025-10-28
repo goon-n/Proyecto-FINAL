@@ -1,11 +1,11 @@
-# 1. Imports (ya estaban, pero asegúrate)
+#─ admin.py ──────────────────────────────────────────────────────────────
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from .models import Perfil, Socio, Clase, Proveedor, Accesorios
 
 
-# 2. PRIMERO definimos el Inline
+# ──────────── Inline para Perfil (se muestra dentro del User) ────────────
 class PerfilInline(admin.StackedInline):
     model = Perfil
     can_delete = False
@@ -13,7 +13,7 @@ class PerfilInline(admin.StackedInline):
     fk_name = 'user'
 
 
-# 3. DESPUÉS la clase que lo usa
+# ──────────── Personalización del UserAdmin ────────────
 class UserAdmin(BaseUserAdmin):
     inlines = (PerfilInline,)
     list_display = ('username', 'email', 'first_name', 'last_name', 'get_rol', 'is_staff', 'is_active')
@@ -23,17 +23,18 @@ class UserAdmin(BaseUserAdmin):
         return obj.perfil.rol if hasattr(obj, 'perfil') else '-'
     get_rol.short_description = 'Rol'
 
+    # Filtro rápido por rol
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related('perfil')
 
 
-# 4. Registramos User con nuestro admin
+# Re-registramos User con nuestra configuración
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 
 
-# 5. El resto de modelos
+# ──────────── Modelos simples ────────────
 @admin.register(Socio)
 class SocioAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'apellido', 'dni', 'email', 'telefono', 'activo', 'fecha_alta')
@@ -46,7 +47,7 @@ class ClaseAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'dia', 'hora_inicio', 'hora_fin', 'entrenador')
     list_filter = ('dia', 'entrenador')
     search_fields = ('nombre', 'entrenador__username')
-    filter_horizontal = ('socios',)
+    filter_horizontal = ('socios',)  # Widget cómodo para ManyToMany
 
 
 @admin.register(Proveedor)
@@ -61,3 +62,4 @@ class AccesoriosAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'proveedor', 'stock', 'activo', 'fecha_compra', 'fecha_actualizacion')
     list_filter = ('activo', 'proveedor', 'fecha_compra')
     search_fields = ('nombre', 'proveedor__nombre')
+
