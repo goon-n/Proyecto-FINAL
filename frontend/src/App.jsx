@@ -5,25 +5,26 @@ import HomeAdmin from "./pages/HomeAdmin";
 import HomeEntrenador from "./pages/HomeEntrenador";
 import HomeSocio from "./pages/HomeSocio";
 import GestionUsuarios from "./pages/GestionUsuarios";
+import GestionProveedores from "./pages/GestionProveedores"; // <-- AGREGAR IMPORT
 import { useAuth } from "./context/AuthContext";
 
 // Componente para rutas privadas según rol
 function PrivateRoute({ children, rolPermitido }) {
   const { user, loading } = useAuth();
 
-  console.log("PrivateRoute - User:", user, "Loading:", loading); // <-- DEBUG
+  console.log("PrivateRoute - User:", user, "Loading:", loading);
 
   if (loading) {
     return <p className="text-white text-center mt-10">Cargando...</p>;
   }
   
   if (!user) {
-    console.log("No hay usuario, redirigiendo a login"); // <-- DEBUG
+    console.log("No hay usuario, redirigiendo a login");
     return <Navigate to="/" replace />;
   }
   
   if (rolPermitido && user.rol !== rolPermitido) {
-    console.log(`Rol incorrecto. Esperado: ${rolPermitido}, Actual: ${user.rol}`); // <-- DEBUG
+    console.log(`Rol incorrecto. Esperado: ${rolPermitido}, Actual: ${user.rol}`);
     return <Navigate to="/" replace />;
   }
   
@@ -52,6 +53,15 @@ export default function App() {
           element={
             <PrivateRoute rolPermitido="admin">
               <GestionUsuarios />
+            </PrivateRoute>
+          }
+        />
+        
+        <Route
+          path="/admin/proveedores"
+          element={
+            <PrivateRoute rolPermitido="admin">
+              <GestionProveedores />
             </PrivateRoute>
           }
         />

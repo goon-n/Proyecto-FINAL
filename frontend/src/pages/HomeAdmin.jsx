@@ -128,10 +128,16 @@ const HomeAdmin = () => {
                 Asignar Rutinas
               </Button>
               
-              <Button variant="outline" size="lg" className="justify-start">
-                <Truck className="mr-2 h-4 w-4" />
-                Proveedores
-              </Button>
+              <Button 
+                  onClick={() => navigate("/admin/proveedores")}
+                  variant="outline" 
+                  size="lg" 
+                  className="justify-start"
+                >
+                  <Truck className="mr-2 h-4 w-4" />
+                  Proveedores
+                </Button>
+              
             </div>
           </CardContent>
         </Card>
