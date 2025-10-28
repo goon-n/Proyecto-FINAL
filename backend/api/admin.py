@@ -1,17 +1,19 @@
-#─ admin.py ──────────────────────────────────────────────────────────────
+# 1. Imports (ya estaban, pero asegúrate)
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 from .models import Perfil, Socio, Clase, Proveedor, Accesorios
 
 
-@admin.register(Perfil)
-class PerfilAdmin(admin.ModelAdmin):
-    list_display = ['user', 'rol', 'is_active', 'deactivate_at']
-    list_filter = ['rol', 'is_active']
-    search_fields = ['user__username', 'user__email']
+# 2. PRIMERO definimos el Inline
+class PerfilInline(admin.StackedInline):
+    model = Perfil
+    can_delete = False
+    verbose_name_plural = 'Perfil'
+    fk_name = 'user'
 
 
-
-# ──────────── Personalización del UserAdmin ────────────
+# 3. DESPUÉS la clase que lo usa
 class UserAdmin(BaseUserAdmin):
     inlines = (PerfilInline,)
     list_display = ('username', 'email', 'first_name', 'last_name', 'get_rol', 'is_staff', 'is_active')
@@ -21,46 +23,41 @@ class UserAdmin(BaseUserAdmin):
         return obj.perfil.rol if hasattr(obj, 'perfil') else '-'
     get_rol.short_description = 'Rol'
 
-    # Filtro rápido por rol
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related('perfil')
 
 
-# Re-registramos User con nuestra configuración
+# 4. Registramos User con nuestro admin
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 
 
-# ──────────── Modelos simples ────────────
+# 5. El resto de modelos
 @admin.register(Socio)
 class SocioAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'apellido', 'dni', 'email', 'activo', 'fecha_alta']
-    list_filter = ['activo', 'fecha_alta']
-    search_fields = ['nombre', 'apellido', 'dni', 'email']
-    readonly_fields = ['fecha_alta']
+    list_display = ('nombre', 'apellido', 'dni', 'email', 'telefono', 'activo', 'fecha_alta')
+    list_filter = ('activo', 'fecha_alta')
+    search_fields = ('nombre', 'apellido', 'dni', 'email')
 
 
 @admin.register(Clase)
 class ClaseAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'dia', 'hora_inicio', 'hora_fin', 'entrenador']
-    list_filter = ['dia', 'entrenador']
-    search_fields = ['nombre', 'entrenador__username']
-    filter_horizontal = ['socios']
+    list_display = ('nombre', 'dia', 'hora_inicio', 'hora_fin', 'entrenador')
+    list_filter = ('dia', 'entrenador')
+    search_fields = ('nombre', 'entrenador__username')
+    filter_horizontal = ('socios',)
 
 
 @admin.register(Proveedor)
 class ProveedorAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'telefono', 'email', 'activo', 'fecha_creacion']
-    list_filter = ['activo', 'fecha_creacion']
-    search_fields = ['nombre', 'email']
-    readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+    list_display = ('nombre', 'telefono', 'activo')
+    list_filter = ('activo',)
+    search_fields = ('nombre',)
 
 
 @admin.register(Accesorios)
 class AccesoriosAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'proveedor', 'stock', 'activo', 'fecha_compra']
-    list_filter = ['activo', 'proveedor', 'fecha_compra']
-    search_fields = ['nombre', 'proveedor__nombre']
-    readonly_fields = ['fecha_compra', 'fecha_actualizacion']
-    list_editable = ['stock']
+    list_display = ('nombre', 'proveedor', 'stock', 'activo', 'fecha_compra', 'fecha_actualizacion')
+    list_filter = ('activo', 'proveedor', 'fecha_compra')
+    search_fields = ('nombre', 'proveedor__nombre')
