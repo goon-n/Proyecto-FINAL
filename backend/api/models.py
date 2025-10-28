@@ -64,10 +64,13 @@ class Clase(models.Model):
 class Proveedor(models.Model):
     nombre = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
     activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-activo' , 'nombre']
+        ordering = ['-activo', 'nombre']
         verbose_name = 'Proveedor'
         verbose_name_plural = 'Proveedores'   
 
