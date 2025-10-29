@@ -7,6 +7,7 @@ import HomeSocio from "./pages/HomeSocio";
 import GestionUsuarios from "./pages/GestionUsuarios";
 import GestionProveedores from "./pages/GestionProveedores"; // <-- AGREGAR IMPORT
 import CajaPage from "./pages/CajaPage";
+import GestionCompras from "./pages/GestionCompras";
 import { useAuth } from "./context/AuthContext";
 
 // Componente para rutas privadas según rol
@@ -76,6 +77,14 @@ export default function App() {
           }
         />
 
+         <Route
+          path="/admin/compras"
+          element={
+            <PrivateRoute rolPermitido="admin">
+              <GestionCompras />
+            </PrivateRoute>
+          }
+        />
         
         {/* Ruta del Entrenador */}
         <Route

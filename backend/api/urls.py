@@ -4,7 +4,9 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     SocioViewSet,
     ClaseViewSet,
-    ProveedorViewSet,  # Nueva vista para Proveedor
+    ProveedorViewSet,   # Nueva vista para Proveedor
+    AccesoriosViewSet,  # Nueva vista para Accesorios
+    CompraViewSet,      # Nueva vista para Compra
     proveedores_activos,
     proveedores_desactivados,
     # crear_usuario,  # <-- Comentar si no existe
@@ -32,18 +34,20 @@ from .views import (
 router = DefaultRouter()
 router.register(r'clases', ClaseViewSet)
 router.register(r'socios', SocioViewSet)
-
+router.register(r'proveedores', ProveedorViewSet)
+router.register(r'accesorios', AccesoriosViewSet)
+router.register(r'compras', CompraViewSet)
 
 urlpatterns = [
-    # Router (clases y socios)
+    # Router (clases, socios, proveedores, accesorios, compras)
     path('', include(router.urls)),
-    
+
     # Autenticación
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('register/', register_user, name='register'),
     path('user/', obtener_usuario_actual, name='user'),
-    
+
     # Gestión de usuarios (admin)
     # path('crear-usuario/', crear_usuario, name='crear-usuario'),  # <-- Comentar si no existe
     path('usuarios/', listar_usuarios, name='listar-usuarios'),
@@ -51,12 +55,12 @@ urlpatterns = [
     path('usuarios/<int:user_id>/desactivar/', desactivar_usuario, name='desactivar-usuario'),
     path('usuarios/<int:user_id>/activar/', activar_usuario, name='activar-usuario'),
     path('usuarios/<int:user_id>/rol/', editar_rol_usuario, name='editar-rol-usuario'),
-    
-    #Gestión de proveedores
-    path('proveedores/', proveedores_activos, name='proveedores-activos'),
+
+    # Gestión de proveedores (adicionales)
+    path('proveedores/activos/', proveedores_activos, name='proveedores-activos'),
     path('proveedores/desactivados/', proveedores_desactivados, name='proveedores-desactivados'),
 
-    # Clases y socios
+    # Clases y socios (extras)
     path('clases/<int:clase_id>/socios/disponibles/', socios_disponibles, name='socios-disponibles'),
     path('clases/<int:clase_id>/socios/', asignar_socio, name='asignar-socio'),
     path('clases/<int:clase_id>/socios/<int:socio_id>/', quitar_socio, name='quitar-socio'),

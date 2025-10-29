@@ -140,6 +140,15 @@ const HomeAdmin = () => {
                   <Truck className="mr-2 h-4 w-4" />
                   Proveedores
                 </Button>
+               <Button 
+                  onClick={() => navigate("/admin/compras")}
+                  variant="outline"
+                  size="lg"
+                  className="justify-start"
+                >
+                  <DollarSign className="mr-2 h-4 w-4 text-lime-600" />
+                  Compras
+                </Button>
             </div>
           </CardContent>
         </Card>

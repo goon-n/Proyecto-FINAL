@@ -5,11 +5,14 @@ import CajaEdit from "../components/caja/CajaEdit";
 import MovimientoCajaHistorial from "../components/caja/MovimientoCajaHistorial";
 import { Toaster } from "react-hot-toast";
 import { FaCashRegister, FaCreditCard, FaExchangeAlt, FaSearch, FaCubes } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+
 
 export default function CajaPage() {
   const [reload, setReload] = useState(false);
   const [vista, setVista] = useState({ modo: "list" });
   const [buscar, setBuscar] = useState("");
+  const navigate = useNavigate();
 
   // Handlers para navegación interna
   const mostrarListado = () => setVista({ modo: "list" });
@@ -22,6 +25,12 @@ export default function CajaPage() {
         <h1 className="text-3xl text-blue-900 font-extrabold flex items-center gap-2">
           <FaCubes className="text-blue-700" /> Gestión de Caja
         </h1>
+        <button
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-800 transition shadow ml-4"
+          onClick={() => navigate("/admin")}
+        >
+          Volver al Panel
+        </button>
         <Toaster position="top-right" />
       </div>
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8">
