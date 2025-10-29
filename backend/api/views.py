@@ -8,9 +8,10 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import Socio, Perfil, Clase
-from .serializers import SocioSerializer, ClaseSerializer, CustomUserSerializer
+from .models import Socio, Perfil, Clase, Proveedor, Accesorios
+from .serializers import SocioSerializer, ClaseSerializer, CustomUserSerializer, ProveedorSerializer
 from django.utils import timezone
+from django.db.models import Q
 
 
 
@@ -368,4 +369,128 @@ def dashboard_socio(request):
             'clases_reservadas': total_clases,
             'rutinas_activas': len(rutinas_data)
         }
+    }, status=200)
+
+
+# ========== PROVEEDORES ==========
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listar_proveedores(request):
+  
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response({'error': 'Solo los administradores pueden ver proveedores'}, status=403)
+    
+    # Filtro por query params
+    mostrar_todos = request.GET.get('todos', 'false').lower() == 'true'
+    busqueda = request.GET.get('busqueda', '').strip()
+    
+    if mostrar_todos:
+        proveedores = Proveedor.objects.all()
+    else:
+        proveedores = Proveedor.objects.filter(activo=True)
+    
+ 
+    if busqueda:
+        proveedores = proveedores.filter(
+            Q(nombre__icontains=busqueda) |
+            Q(email__icontains=busqueda) |
+            Q(telefono__icontains=busqueda)
+        )
+    
+    serializer = ProveedorSerializer(proveedores, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def proveedores_desactivados(request):
+    """Lista solo proveedores desactivados"""
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response({'error': 'Solo los administradores pueden ver proveedores'}, status=403)
+    
+    proveedores = Proveedor.objects.filter(activo=False)
+    serializer = ProveedorSerializer(proveedores, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def crear_proveedor(request):
+    """Crea un nuevo proveedor"""
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response({'error': 'Solo los administradores pueden crear proveedores'}, status=403)
+    
+    serializer = ProveedorSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def detalle_proveedor(request, proveedor_id):
+    """Obtiene el detalle de un proveedor"""
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response({'error': 'Solo los administradores pueden ver proveedores'}, status=403)
+    
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    serializer = ProveedorSerializer(proveedor)
+    return Response(serializer.data)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def editar_proveedor(request, proveedor_id):
+    """Edita un proveedor existente"""
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response({'error': 'Solo los administradores pueden editar proveedores'}, status=403)
+    
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    serializer = ProveedorSerializer(proveedor, data=request.data, partial=True)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=400)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def desactivar_proveedor(request, proveedor_id):
+    """Desactiva un proveedor (soft delete)"""
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response({'error': 'Solo los administradores pueden desactivar proveedores'}, status=403)
+    
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    
+    # Verificar si tiene accesorios activos
+    accesorios_activos = proveedor.accesorios.filter(activo=True).count()
+    if accesorios_activos > 0:
+        return Response({
+            'error': f'No se puede desactivar. Tiene {accesorios_activos} accesorio(s) activo(s)'
+        }, status=400)
+    
+    proveedor.activo = False
+    proveedor.save()
+    
+    return Response({
+        'detail': f'Proveedor {proveedor.nombre} desactivado correctamente'
+    }, status=200)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def activar_proveedor(request, proveedor_id):
+    """Reactiva un proveedor desactivado"""
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response({'error': 'Solo los administradores pueden activar proveedores'}, status=403)
+    
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    proveedor.activo = True
+    proveedor.save()
+    
+    return Response({
+        'detail': f'Proveedor {proveedor.nombre} activado correctamente'
     }, status=200)

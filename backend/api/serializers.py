@@ -29,8 +29,13 @@ class ClaseSerializer(serializers.ModelSerializer):
 
 
 class ProveedorSerializer(serializers.ModelSerializer):
+    accesorios_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = Proveedor
-        fields = ['id', 'nombre', 'telefono', 'email', 'activo']
-
+        fields = ['id', 'nombre', 'telefono', 'email', 'activo', 
+                  'fecha_creacion', 'fecha_actualizacion', 'accesorios_count']
         read_only_fields = ['fecha_creacion', 'fecha_actualizacion']
+    
+    def get_accesorios_count(self, obj):
+        return obj.accesorios.filter(activo=True).count()

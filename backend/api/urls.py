@@ -1,11 +1,10 @@
+# backend/api/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     SocioViewSet,
     ClaseViewSet,
-    # crear_usuario,  # <-- Comentar si no existe
     listar_usuarios,
-    # eliminar_usuario,  # <-- Ya no se usa
     editar_rol_usuario,
     socios_disponibles,
     asignar_socio,
@@ -19,10 +18,17 @@ from .views import (
     logout_view,
     obtener_usuario_actual,
     dashboard_socio,
-    # Nuevas funciones para soft delete
     usuarios_desactivados,
     desactivar_usuario,
     activar_usuario,
+    # Proveedores
+    listar_proveedores,
+    proveedores_desactivados,
+    crear_proveedor,
+    detalle_proveedor,
+    editar_proveedor,
+    desactivar_proveedor,
+    activar_proveedor,
 )
 
 router = DefaultRouter()
@@ -40,7 +46,6 @@ urlpatterns = [
     path('user/', obtener_usuario_actual, name='user'),
     
     # Gestión de usuarios (admin)
-    # path('crear-usuario/', crear_usuario, name='crear-usuario'),  # <-- Comentar si no existe
     path('usuarios/', listar_usuarios, name='listar-usuarios'),
     path('usuarios/desactivados/', usuarios_desactivados, name='usuarios-desactivados'),
     path('usuarios/<int:user_id>/desactivar/', desactivar_usuario, name='desactivar-usuario'),
@@ -56,4 +61,13 @@ urlpatterns = [
     path('clases/<int:clase_id>/editar/', editar_clase, name='editar-clase'),
     path('clases/<int:clase_id>/eliminar/', eliminar_clase, name='eliminar-clase'),
     path('dashboard/socio/', dashboard_socio, name='dashboard-socio'),
+    
+    # Proveedores
+    path('proveedores/', listar_proveedores, name='listar-proveedores'),
+    path('proveedores/desactivados/', proveedores_desactivados, name='proveedores-desactivados'),
+    path('proveedores/crear/', crear_proveedor, name='crear-proveedor'),
+    path('proveedores/<int:proveedor_id>/', detalle_proveedor, name='detalle-proveedor'),
+    path('proveedores/<int:proveedor_id>/editar/', editar_proveedor, name='editar-proveedor'),
+    path('proveedores/<int:proveedor_id>/desactivar/', desactivar_proveedor, name='desactivar-proveedor'),
+    path('proveedores/<int:proveedor_id>/activar/', activar_proveedor, name='activar-proveedor'),
 ]

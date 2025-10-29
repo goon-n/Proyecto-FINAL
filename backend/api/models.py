@@ -25,10 +25,9 @@ class Perfil(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='socio')
 
-    #Softdelete
-
+    # Softdelete
     is_active = models.BooleanField(default=True)
-    deactivate_at = models.DateTimeField(null=True, blank=True)
+    deactivated_at = models.DateTimeField(null=True, blank=True)  # ✅ Corregido el typo
 
     def __str__(self):
         return f"{self.user.username} ({self.rol})"
@@ -64,15 +63,19 @@ class Clase(models.Model):
 class Proveedor(models.Model):
     nombre = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
     activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True) 
+    fecha_actualizacion = models.DateTimeField(auto_now=True)  
 
     class Meta:
-        ordering = ['-activo' , 'nombre']
+        ordering = ['-activo', 'nombre']
         verbose_name = 'Proveedor'
         verbose_name_plural = 'Proveedores'   
 
     def __str__(self):
         return self.nombre
+
     
 class Accesorios(models.Model):
     nombre = models.CharField(max_length=100)
