@@ -6,30 +6,25 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from .models import Socio, Perfil, Clase, Proveedor, Accesorios
-from .serializers import SocioSerializer, ClaseSerializer, CustomUserSerializer, ProveedorSerializer
+from .models import Socio, Perfil, Clase, Proveedor, Accesorios, Compra, ItemCompra
+from .serializers import (
+    CompraSerializer, ItemCompraSerializer, SocioSerializer,
+    ClaseSerializer, CustomUserSerializer, ProveedorSerializer, AccesoriosSerializer,
+)
 from django.utils import timezone
 from django.db.models import Q
-
-
 
 # ========== AUTENTICACIÓN ==========
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    """Login de usuario - devuelve datos del usuario"""
     username = request.data.get('username')
     password = request.data.get('password')
-    
     if not username or not password:
         return Response({"error": "Username y password requeridos"}, status=400)
-    
     user = authenticate(request, username=username, password=password)
-    
-    if user is not None:
+    if user:
         login(request, user)
         rol = user.perfil.rol if hasattr(user, "perfil") else "socio"
         data = {
@@ -39,25 +34,19 @@ def login_view(request):
             "email": user.email,
         }
         return Response(data, status=200)
-    
     return Response({"error": "Usuario o contraseña incorrecta"}, status=401)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
-    """Logout de usuario"""
     logout(request)
     return Response({"detail": "Logout exitoso"}, status=200)
-
 
 @api_view(['GET'])
 @permission_classes([])
 def obtener_usuario_actual(request):
-    """Obtiene el usuario actual logueado"""
     if not request.user.is_authenticated:
         return Response({'detail': 'Not authenticated'}, status=401)
-
     user = request.user
     data = {
         "id": user.id,
@@ -67,35 +56,42 @@ def obtener_usuario_actual(request):
     }
     return Response(data)
 
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
     username = request.data.get('username')
     password = request.data.get('password')
     email = request.data.get('email')
-    
-    # SIEMPRE se registra como socio desde el frontend público
-    rol = 'socio'  # <-- Forzamos que sea socio
-
+    rol = 'socio'
     if not username or not password:
         return Response({'error': 'Faltan datos'}, status=400)
-
     if User.objects.filter(username=username).exists():
         return Response({'error': 'El usuario ya existe'}, status=400)
-
     user = User.objects.create_user(username=username, password=password, email=email)
     Perfil.objects.create(user=user, rol=rol)
-
     return Response({'message': 'Usuario registrado correctamente'}, status=201)
 
-
-# ========== VIEWSETS ==========
+# ========== VIEWSETS CRUD ==========
 
 class SocioViewSet(viewsets.ModelViewSet):
     queryset = Socio.objects.all()
     serializer_class = SocioSerializer
 
+class ProveedorViewSet(viewsets.ModelViewSet):
+    queryset = Proveedor.objects.all()
+    serializer_class = ProveedorSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ['activo', 'nombre']
+
+class AccesoriosViewSet(viewsets.ModelViewSet):
+    queryset = Accesorios.objects.all()
+    serializer_class = AccesoriosSerializer
+    permission_classes = [IsAuthenticated]
+
+class CompraViewSet(viewsets.ModelViewSet):
+    queryset = Compra.objects.all()
+    serializer_class = CompraSerializer
+    permission_classes = [IsAuthenticated]
 
 class ClaseViewSet(viewsets.ModelViewSet):
     queryset = Clase.objects.all()
@@ -114,114 +110,90 @@ class ClaseViewSet(viewsets.ModelViewSet):
                 return user.clases_socio.all()
         return super().get_queryset()
 
-
-# ========== USUARIOS (ADMIN) ==========
+# ========== ENDPOINTS DE USUARIO/ADMIN Y FUNCIONES ADICIONALES ==========
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def listar_usuarios(request):
-    """Lista solo usuarios activos"""
     if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
         return Response({'error': 'No tienes permisos'}, status=403)
-    
-    # Filtrar solo usuarios con perfil activo
     usuarios = User.objects.filter(perfil__is_active=True).values(
         'id', 'username', 'email', 'date_joined', 'perfil__rol'
     )
     return Response(list(usuarios))
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def usuarios_desactivados(request):
-    """Lista solo usuarios desactivados"""
     if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
         return Response({'error': 'No tienes permisos'}, status=403)
-    
-    try:
-        # Obtener usuarios desactivados usando select_related
-        usuarios_query = User.objects.filter(perfil__is_active=False).select_related('perfil')
-        
-        data = []
-        for usuario in usuarios_query:
-            data.append({
-                'id': usuario.id,
-                'username': usuario.username,
-                'email': usuario.email,
-                'date_joined': usuario.date_joined,
-                'perfil__rol': usuario.perfil.rol,
-                'perfil__deactivated_at': usuario.perfil.deactivated_at if hasattr(usuario.perfil, 'deactivated_at') else None,
-            })
-        
-        return Response(data)
-    except Exception as e:
-        # Si hay error, devolver lista vacía
-        print(f"Error en usuarios_desactivados: {str(e)}")
-        return Response([])
-
+    usuarios_query = User.objects.filter(perfil__is_active=False).select_related('perfil')
+    data = []
+    for usuario in usuarios_query:
+        data.append({
+            'id': usuario.id,
+            'username': usuario.username,
+            'email': usuario.email,
+            'date_joined': usuario.date_joined,
+            'perfil__rol': usuario.perfil.rol,
+            'perfil__deactivated_at': getattr(usuario.perfil, 'deactivated_at', None),
+        })
+    return Response(data)
 
 @api_view(['DELETE'])
 @permission_classes([IsAdminUser])
 def desactivar_usuario(request, user_id):
-    """Desactiva un usuario (soft delete) en lugar de eliminarlo"""
-    # No permitir desactivarse a sí mismo
     if request.user.id == user_id:
         return Response({'error': 'No podés desactivar tu propio usuario'}, status=400)
-    
     user = get_object_or_404(User, id=user_id)
-    
-    # Realizar el soft delete
     perfil = user.perfil
     perfil.is_active = False
     perfil.deactivated_at = timezone.now()
     perfil.save()
-    
-    # También marcar el usuario de Django como inactivo para que no pueda hacer login
     user.is_active = False
     user.save()
-    
     return Response({'detail': f'Usuario {user.username} desactivado correctamente'}, status=200)
-
 
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def activar_usuario(request, user_id):
-    """Reactiva un usuario desactivado"""
     user = get_object_or_404(User, id=user_id)
-    
-    # Reactivar el perfil
     perfil = user.perfil
     perfil.is_active = True
     perfil.deactivated_at = None
     perfil.save()
-    
-    # También reactivar el usuario de Django
     user.is_active = True
     user.save()
-    
     return Response({'detail': f'Usuario {user.username} activado correctamente'}, status=200)
-
 
 @api_view(['PATCH'])
 @permission_classes([IsAdminUser])
 def editar_rol_usuario(request, user_id):
-    """Cambia el rol de un usuario"""
     if request.user.id == user_id:
         return Response({'error': 'No podés editar tu propio rol'}, status=400)
-    
     user = get_object_or_404(User, id=user_id)
     nuevo_rol = request.data.get('rol')
-    
     if nuevo_rol not in ['admin', 'entrenador', 'socio']:
         return Response({'error': 'Rol no válido'}, status=400)
-    
     user.perfil.rol = nuevo_rol
     user.perfil.save()
-    
     return Response({'detail': f'Rol de {user.username} actualizado a {nuevo_rol}'}, status=200)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def proveedores_activos(request):
+    activos = Proveedor.objects.filter(activo=True)
+    serializer = ProveedorSerializer(activos, many=True)
+    return Response(serializer.data)
 
-# ========== CLASES Y SOCIOS ==========
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def proveedores_desactivados(request):
+    desactivados = Proveedor.objects.filter(activo=False)
+    serializer = ProveedorSerializer(desactivados, many=True)
+    return Response(serializer.data)
+
+# ========== CLASES Y SOCIOS / DASHBOARD ==========
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -231,7 +203,6 @@ def socios_disponibles(request, clase_id):
     disponibles = User.objects.filter(perfil__rol='socio').exclude(id__in=ya_anotados)
     data = [{'id': u.id, 'username': u.username} for u in disponibles]
     return Response(data)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -244,7 +215,6 @@ def asignar_socio(request, clase_id):
     clase.socios.add(socio)
     return Response({'detail': 'Socio añadido'})
 
-
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def quitar_socio(request, clase_id, socio_id):
@@ -254,7 +224,6 @@ def quitar_socio(request, clase_id, socio_id):
     socio = get_object_or_404(User, id=socio_id, perfil__rol='socio')
     clase.socios.remove(socio)
     return Response({'detail': 'Socio removido'})
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -268,7 +237,6 @@ def anotarse_clase(request, clase_id):
     clase.socios.add(socio)
     return Response({'detail': 'Te has anotado correctamente'}, status=200)
 
-
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def desuscribirse_clase(request, clase_id):
@@ -280,7 +248,6 @@ def desuscribirse_clase(request, clase_id):
         return Response({'error': 'No estás anotado a esta clase'}, status=400)
     clase.socios.remove(socio)
     return Response({'detail': 'Te has dado de baja correctamente'}, status=200)
-
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
@@ -297,7 +264,6 @@ def editar_clase(request, clase_id):
     clase.save()
     return Response({'detail': 'Clase actualizada'}, status=200)
 
-
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def eliminar_clase(request, clase_id):
@@ -310,51 +276,33 @@ def eliminar_clase(request, clase_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_socio(request):
-    """Dashboard con toda la info del socio"""
     user = request.user
-    
-    # Verificar que sea socio
     if not hasattr(user, 'perfil') or user.perfil.rol != 'socio':
         return Response({'error': 'Solo los socios pueden acceder'}, status=403)
-    
-    # Obtener las clases del socio
     clases = user.clases_socio.all()
     clases_data = []
-    
     for clase in clases:
         clases_data.append({
             'id': clase.id,
             'nombre': clase.nombre,
-            'dia': clase.dia.strftime('%A'),  # Nombre del día
+            'dia': clase.dia.strftime('%A'),
             'fecha': clase.dia.strftime('%d/%m/%Y'),
             'hora': clase.hora_inicio.strftime('%H:%M'),
             'hora_fin': clase.hora_fin.strftime('%H:%M'),
             'instructor': clase.entrenador.username if clase.entrenador else 'Sin asignar',
             'descripcion': clase.descripcion
         })
-    
-    # Por ahora simulamos rutinas y membresía
-
     rutinas_data = [
-        {
-            'id': 1,
-            'nombre': 'Rutina de tonificación muscular',
-            'descripcion': 'Enfoque en piernas y glúteos',
-            'duracion': '45 min'
-        }
+        {'id': 1, 'nombre': 'Rutina de tonificación muscular', 'descripcion': 'Enfoque en piernas y glúteos', 'duracion': '45 min'}
     ]
-    
     membresia_data = {
         'tipo': 'Premium',
         'estado': 'Activa',
         'fechaVencimiento': '31/12/2025',
         'diasRestantes': 68
     }
-    
-    # Estadísticas
     total_clases = clases.count()
-    asistencias_mes = 12  # Esto lo calcularías desde un modelo de Asistencias
-    
+    asistencias_mes = 12
     return Response({
         'user': {
             'username': user.username,
@@ -369,128 +317,4 @@ def dashboard_socio(request):
             'clases_reservadas': total_clases,
             'rutinas_activas': len(rutinas_data)
         }
-    }, status=200)
-
-
-# ========== PROVEEDORES ==========
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def listar_proveedores(request):
-  
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'Solo los administradores pueden ver proveedores'}, status=403)
-    
-    # Filtro por query params
-    mostrar_todos = request.GET.get('todos', 'false').lower() == 'true'
-    busqueda = request.GET.get('busqueda', '').strip()
-    
-    if mostrar_todos:
-        proveedores = Proveedor.objects.all()
-    else:
-        proveedores = Proveedor.objects.filter(activo=True)
-    
- 
-    if busqueda:
-        proveedores = proveedores.filter(
-            Q(nombre__icontains=busqueda) |
-            Q(email__icontains=busqueda) |
-            Q(telefono__icontains=busqueda)
-        )
-    
-    serializer = ProveedorSerializer(proveedores, many=True)
-    return Response(serializer.data)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def proveedores_desactivados(request):
-    """Lista solo proveedores desactivados"""
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'Solo los administradores pueden ver proveedores'}, status=403)
-    
-    proveedores = Proveedor.objects.filter(activo=False)
-    serializer = ProveedorSerializer(proveedores, many=True)
-    return Response(serializer.data)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def crear_proveedor(request):
-    """Crea un nuevo proveedor"""
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'Solo los administradores pueden crear proveedores'}, status=403)
-    
-    serializer = ProveedorSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
-    return Response(serializer.errors, status=400)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def detalle_proveedor(request, proveedor_id):
-    """Obtiene el detalle de un proveedor"""
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'Solo los administradores pueden ver proveedores'}, status=403)
-    
-    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
-    serializer = ProveedorSerializer(proveedor)
-    return Response(serializer.data)
-
-
-@api_view(['PUT', 'PATCH'])
-@permission_classes([IsAuthenticated])
-def editar_proveedor(request, proveedor_id):
-    """Edita un proveedor existente"""
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'Solo los administradores pueden editar proveedores'}, status=403)
-    
-    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
-    serializer = ProveedorSerializer(proveedor, data=request.data, partial=True)
-    
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=400)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def desactivar_proveedor(request, proveedor_id):
-    """Desactiva un proveedor (soft delete)"""
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'Solo los administradores pueden desactivar proveedores'}, status=403)
-    
-    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
-    
-    # Verificar si tiene accesorios activos
-    accesorios_activos = proveedor.accesorios.filter(activo=True).count()
-    if accesorios_activos > 0:
-        return Response({
-            'error': f'No se puede desactivar. Tiene {accesorios_activos} accesorio(s) activo(s)'
-        }, status=400)
-    
-    proveedor.activo = False
-    proveedor.save()
-    
-    return Response({
-        'detail': f'Proveedor {proveedor.nombre} desactivado correctamente'
-    }, status=200)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def activar_proveedor(request, proveedor_id):
-    """Reactiva un proveedor desactivado"""
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'Solo los administradores pueden activar proveedores'}, status=403)
-    
-    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
-    proveedor.activo = True
-    proveedor.save()
-    
-    return Response({
-        'detail': f'Proveedor {proveedor.nombre} activado correctamente'
     }, status=200)

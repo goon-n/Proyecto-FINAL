@@ -14,7 +14,8 @@ import {
   Package, 
   FileText, 
   Truck, 
-  Settings 
+  Settings,
+  Box // <-- Importamos ícono para caja
 } from "lucide-react";
 
 const HomeAdmin = () => {
@@ -54,7 +55,6 @@ const HomeAdmin = () => {
 
       {/* Grid de secciones */}
       <div className="max-w-7xl mx-auto space-y-6">
-        
         {/* Gestión de Turnos */}
         <Card>
           <CardHeader>
@@ -102,32 +102,35 @@ const HomeAdmin = () => {
                 <Users className="mr-2 h-4 w-4" />
                 Gestión de Usuarios
               </Button>
-              
+              <Button 
+                onClick={() => navigate("/admin/caja")}
+                variant="outline" 
+                size="lg"
+                className="justify-start"
+              >
+                <Box className="mr-2 h-4 w-4 text-green-600" />
+                Gestión de Caja
+              </Button>
               <Button variant="outline" size="lg" className="justify-start">
                 <DollarSign className="mr-2 h-4 w-4" />
                 Planes y Precios
               </Button>
-              
               <Button variant="outline" size="lg" className="justify-start">
                 <CreditCard className="mr-2 h-4 w-4" />
                 Membresías
               </Button>
-              
               <Button variant="outline" size="lg" className="justify-start">
                 <Dumbbell className="mr-2 h-4 w-4" />
                 Clases
               </Button>
-              
               <Button variant="outline" size="lg" className="justify-start">
                 <Package className="mr-2 h-4 w-4" />
                 Accesorios
               </Button>
-              
               <Button variant="outline" size="lg" className="justify-start">
                 <FileText className="mr-2 h-4 w-4" />
                 Asignar Rutinas
               </Button>
-              
               <Button 
                   onClick={() => navigate("/admin/proveedores")}
                   variant="outline" 
@@ -137,7 +140,15 @@ const HomeAdmin = () => {
                   <Truck className="mr-2 h-4 w-4" />
                   Proveedores
                 </Button>
-              
+               <Button 
+                  onClick={() => navigate("/admin/compras")}
+                  variant="outline"
+                  size="lg"
+                  className="justify-start"
+                >
+                  <DollarSign className="mr-2 h-4 w-4 text-lime-600" />
+                  Compras
+                </Button>
             </div>
           </CardContent>
         </Card>
@@ -160,7 +171,6 @@ const HomeAdmin = () => {
             </Button>
           </CardContent>
         </Card>
-
       </div>
     </div>
   );

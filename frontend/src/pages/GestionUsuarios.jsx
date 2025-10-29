@@ -1,9 +1,9 @@
 // src/pages/GestionUsuarios.jsx
 
+import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "../components/ui/card"; // corregido: ruta relativa
 import { Users } from "lucide-react";
 
 // Custom hooks
@@ -24,11 +24,11 @@ const GestionUsuarios = () => {
   const navigate = useNavigate();
   const { getCSRFToken } = useCSRF();
   const { usuariosActivos, usuariosDesactivados, loading, error, refetch } = useUsuarios();
-  
+
   const [rolesEditados, setRolesEditados] = useState({});
   const [guardando, setGuardando] = useState(null);
   const [procesando, setProcesando] = useState(null);
-  const [vistaActual, setVistaActual] = useState('activos');
+  const [vistaActual, setVistaActual] = useState("activos");
 
   // ========== HANDLERS ==========
 
@@ -61,7 +61,7 @@ const GestionUsuarios = () => {
         const errorData = await response.json();
         alert(errorData.error || "Error al actualizar rol");
       }
-    } catch (err) {
+    } catch {
       alert("Error de conexión");
     } finally {
       setGuardando(null);
@@ -79,12 +79,12 @@ const GestionUsuarios = () => {
 
       if (response.ok) {
         await refetch();
-        setVistaActual('activos');
+        setVistaActual("activos");
       } else {
         const errorData = await response.json();
         alert(errorData.error || "Error al desactivar usuario");
       }
-    } catch (err) {
+    } catch {
       alert("Error de conexión");
     } finally {
       setProcesando(null);
@@ -102,12 +102,12 @@ const GestionUsuarios = () => {
 
       if (response.ok) {
         await refetch();
-        setVistaActual('desactivados');
+        setVistaActual("desactivados");
       } else {
         const errorData = await response.json();
         alert(errorData.error || "Error al activar usuario");
       }
-    } catch (err) {
+    } catch  {
       alert("Error de conexión");
     } finally {
       setProcesando(null);
@@ -122,27 +122,26 @@ const GestionUsuarios = () => {
 
   if (error) {
     return (
-      <ErrorCard 
-        mensaje={error} 
-        onVolver={() => navigate("/admin")} 
-        textoBoton="Volver al Panel" 
+      <ErrorCard
+        mensaje={error}
+        onVolver={() => navigate("/admin")}
+        textoBoton="Volver al Panel"
       />
     );
   }
 
   // ========== RENDER ==========
 
-  const usuariosAMostrar = vistaActual === 'activos' ? usuariosActivos : usuariosDesactivados;
-  const esDesactivados = vistaActual === 'desactivados';
+  const usuariosAMostrar = vistaActual === "activos" ? usuariosActivos : usuariosDesactivados;
+  const esDesactivados = vistaActual === "desactivados";
 
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        
         <PageHeader
           icon={Users}
           titulo="Gestión de Usuarios"
-          descripcion={`${usuariosActivos.length} activo${usuariosActivos.length !== 1 ? 's' : ''} • ${usuariosDesactivados.length} desactivado${usuariosDesactivados.length !== 1 ? 's' : ''}`}
+          descripcion={`${usuariosActivos.length} activo${usuariosActivos.length !== 1 ? "s" : ""} • ${usuariosDesactivados.length} desactivado${usuariosDesactivados.length !== 1 ? "s" : ""}`}
           onVolver={() => navigate("/admin")}
           textoBoton="Volver al Panel"
         />
@@ -170,7 +169,6 @@ const GestionUsuarios = () => {
             />
           </CardContent>
         </Card>
-
       </div>
     </div>
   );
