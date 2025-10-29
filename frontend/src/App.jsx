@@ -6,6 +6,7 @@ import HomeEntrenador from "./pages/HomeEntrenador";
 import HomeSocio from "./pages/HomeSocio";
 import GestionUsuarios from "./pages/GestionUsuarios";
 import GestionProveedores from "./pages/GestionProveedores"; // <-- AGREGAR IMPORT
+import GestionAccesorios from "./pages/GestionAccesorios";
 import CajaPage from "./pages/CajaPage";
 import GestionCompras from "./pages/GestionCompras";
 import { useAuth } from "./context/AuthContext";
@@ -82,6 +83,15 @@ export default function App() {
           element={
             <PrivateRoute rolPermitido="admin">
               <GestionCompras />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/accesorios"
+          element={
+            <PrivateRoute rolPermitido="admin">
+              <GestionAccesorios />
             </PrivateRoute>
           }
         />

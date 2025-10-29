@@ -92,6 +92,31 @@ class CompraViewSet(viewsets.ModelViewSet):
     queryset = Compra.objects.all()
     serializer_class = CompraSerializer
     permission_classes = [IsAuthenticated]
+    
+    def create(self, request, *args, **kwargs):
+        # Debug: imprimir información de autenticación
+        print(f"Usuario autenticado: {request.user.is_authenticated}")
+        print(f"Usuario: {request.user}")
+        print(f"Datos recibidos: {request.data}")
+        
+        return super().create(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        queryset = Compra.objects.all().select_related('proveedor').prefetch_related('items__accesorio')
+        
+        # Filtros opcionales
+        proveedor_id = self.request.query_params.get('proveedor', None)
+        fecha_desde = self.request.query_params.get('fecha_desde', None)
+        fecha_hasta = self.request.query_params.get('fecha_hasta', None)
+        
+        if proveedor_id:
+            queryset = queryset.filter(proveedor_id=proveedor_id)
+        if fecha_desde:
+            queryset = queryset.filter(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fecha__lte=fecha_hasta)
+            
+        return queryset.order_by('-fecha')
 
 class ClaseViewSet(viewsets.ModelViewSet):
     queryset = Clase.objects.all()
@@ -359,3 +384,82 @@ def dashboard_socio(request):
             'rutinas_activas': len(rutinas_data)
         }
     }, status=200)
+
+# ========== ENDPOINTS ESPECÍFICOS DE COMPRAS ==========
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def estadisticas_compras(request):
+    """Obtener estadísticas de compras"""
+    from django.db.models import Sum, Count, Avg
+    from datetime import datetime, timedelta
+    
+    # Estadísticas generales
+    total_compras = Compra.objects.count()
+    monto_total = Compra.objects.aggregate(Sum('total'))['total__sum'] or 0
+    promedio_compra = Compra.objects.aggregate(Avg('total'))['total__avg'] or 0
+    
+    # Compras del mes actual
+    hoy = datetime.now()
+    inicio_mes = hoy.replace(day=1)
+    compras_mes = Compra.objects.filter(fecha__gte=inicio_mes).count()
+    monto_mes = Compra.objects.filter(fecha__gte=inicio_mes).aggregate(Sum('total'))['total__sum'] or 0
+    
+    # Top proveedores
+    top_proveedores = Compra.objects.values('proveedor__nombre').annotate(
+        total_compras=Count('id'),
+        monto_total=Sum('total')
+    ).order_by('-monto_total')[:5]
+    
+    # Compras recientes
+    compras_recientes = Compra.objects.select_related('proveedor').order_by('-fecha')[:5]
+    compras_recientes_data = []
+    for compra in compras_recientes:
+        compras_recientes_data.append({
+            'id': compra.id,
+            'proveedor': compra.proveedor.nombre,
+            'fecha': compra.fecha,
+            'total': compra.total
+        })
+    
+    return Response({
+        'estadisticas_generales': {
+            'total_compras': total_compras,
+            'monto_total': float(monto_total),
+            'promedio_compra': float(promedio_compra),
+            'compras_mes': compras_mes,
+            'monto_mes': float(monto_mes)
+        },
+        'top_proveedores': list(top_proveedores),
+        'compras_recientes': compras_recientes_data
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def compras_por_proveedor(request, proveedor_id):
+    """Obtener todas las compras de un proveedor específico"""
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    compras = Compra.objects.filter(proveedor=proveedor).order_by('-fecha')
+    serializer = CompraSerializer(compras, many=True)
+    
+    return Response({
+        'proveedor': ProveedorSerializer(proveedor).data,
+        'compras': serializer.data
+    })
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def eliminar_compra_con_stock(request, compra_id):
+    """Eliminar compra y revertir el stock de accesorios"""
+    compra = get_object_or_404(Compra, id=compra_id)
+    
+    # Revertir stock antes de eliminar
+    for item in compra.items.all():
+        accesorio = item.accesorio
+        accesorio.stock -= item.cantidad
+        if accesorio.stock < 0:
+            accesorio.stock = 0  # Evitar stock negativo
+        accesorio.save()
+    
+    compra.delete()
+    return Response({'detail': 'Compra eliminada y stock actualizado'}, status=200)

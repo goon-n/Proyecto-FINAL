@@ -30,6 +30,9 @@ from .views import (
     editar_proveedor,
     desactivar_proveedor,
     activar_proveedor,
+    estadisticas_compras,
+    compras_por_proveedor,
+    eliminar_compra_con_stock,
 )
 
 router = DefaultRouter()
@@ -60,6 +63,11 @@ urlpatterns = [
     path('proveedores/<int:proveedor_id>/editar/', editar_proveedor, name='editar-proveedor'),
     path('proveedores/<int:proveedor_id>/desactivar/', desactivar_proveedor, name='desactivar-proveedor'),
     path('proveedores/<int:proveedor_id>/activar/', activar_proveedor, name='activar-proveedor'),
+
+    # Gestión de compras (extras)
+    path('compras/estadisticas/', estadisticas_compras, name='estadisticas-compras'),
+    path('compras/proveedor/<int:proveedor_id>/', compras_por_proveedor, name='compras-por-proveedor'),
+    path('compras/<int:compra_id>/eliminar-con-stock/', eliminar_compra_con_stock, name='eliminar-compra-con-stock'),
 
     # Clases y socios (extras)
     path('clases/<int:clase_id>/socios/disponibles/', socios_disponibles, name='socios-disponibles'),

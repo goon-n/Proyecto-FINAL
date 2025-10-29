@@ -123,7 +123,12 @@ const HomeAdmin = () => {
                 <Dumbbell className="mr-2 h-4 w-4" />
                 Clases
               </Button>
-              <Button variant="outline" size="lg" className="justify-start">
+              <Button 
+                onClick={() => navigate("/admin/accesorios")}
+                variant="outline" 
+                size="lg" 
+                className="justify-start"
+              >
                 <Package className="mr-2 h-4 w-4" />
                 Accesorios
               </Button>

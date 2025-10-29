@@ -79,9 +79,21 @@ class ProveedorSerializer(serializers.ModelSerializer):
 
 class AccesoriosSerializer(serializers.ModelSerializer):
     proveedor = serializers.PrimaryKeyRelatedField(queryset=Proveedor.objects.all())
+    proveedor_nombre = serializers.CharField(source='proveedor.nombre', read_only=True)
+    
     class Meta:
         model = Accesorios
         fields = '__all__'
+    
+    def validate_nombre(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("El nombre es requerido")
+        return value.strip()
+    
+    def validate_stock(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El stock no puede ser negativo")
+        return value
 
 class ItemCompraSerializer(serializers.ModelSerializer):
     accesorio = serializers.PrimaryKeyRelatedField(queryset=Accesorios.objects.all())
@@ -90,24 +102,71 @@ class ItemCompraSerializer(serializers.ModelSerializer):
         fields = ['id', 'accesorio', 'cantidad', 'precio_unitario']
 
 class CompraSerializer(serializers.ModelSerializer):
-    proveedor = serializers.PrimaryKeyRelatedField(queryset=Proveedor.objects.all())
+    proveedor = serializers.PrimaryKeyRelatedField(queryset=Proveedor.objects.filter(activo=True))
+    proveedor_nombre = serializers.CharField(source='proveedor.nombre', read_only=True)
     items = ItemCompraSerializer(many=True)
 
     class Meta:
         model = Compra
-        fields = ['id', 'proveedor', 'fecha', 'total', 'notas', 'items']
+        fields = ['id', 'proveedor', 'proveedor_nombre', 'fecha', 'total', 'notas', 'items']
+
+    def validate_items(self, value):
+        """Validar que hay al menos un item y que todos los datos son válidos"""
+        if not value:
+            raise serializers.ValidationError("Debe incluir al menos un ítem en la compra")
+        
+        for item in value:
+            if item.get('cantidad', 0) <= 0:
+                raise serializers.ValidationError("La cantidad debe ser mayor a 0")
+            if item.get('precio_unitario', 0) <= 0:
+                raise serializers.ValidationError("El precio unitario debe ser mayor a 0")
+                
+        return value
+
+    def validate_total(self, value):
+        """Validar que el total sea positivo"""
+        if value <= 0:
+            raise serializers.ValidationError("El total debe ser mayor a 0")
+        return value
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         compra = Compra.objects.create(**validated_data)
+        
         for item_data in items_data:
-            ItemCompra.objects.create(compra=compra, **item_data)
+            item = ItemCompra.objects.create(compra=compra, **item_data)
+            # Actualizar stock automáticamente
+            accesorio = item.accesorio
+            accesorio.stock += item.cantidad
+            accesorio.save()
+        
         return compra
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', None)
+        
+        # Actualizar campos básicos
         instance.proveedor = validated_data.get('proveedor', instance.proveedor)
         instance.total = validated_data.get('total', instance.total)
         instance.notas = validated_data.get('notas', instance.notas)
         instance.save()
+        
+        # Si se proporcionan nuevos items, reemplazar completamente
+        if items_data is not None:
+            # Revertir stock de items anteriores
+            for item in instance.items.all():
+                accesorio = item.accesorio
+                accesorio.stock -= item.cantidad
+                accesorio.save()
+            
+            # Eliminar items anteriores
+            instance.items.all().delete()
+            
+            # Crear nuevos items y actualizar stock
+            for item_data in items_data:
+                item = ItemCompra.objects.create(compra=instance, **item_data)
+                accesorio = item.accesorio
+                accesorio.stock += item.cantidad
+                accesorio.save()
+        
         return instance

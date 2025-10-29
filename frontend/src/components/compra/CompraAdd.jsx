@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { createCompra, getProveedores, getAccesorios } from "../../services/compra.service";
 import toast from "react-hot-toast";
+import axios from "axios";
+import { getCSRFToken } from "../../utils/csrf";
 
 export default function CompraAdd({ onAdd }) {
   const [proveedores, setProveedores] = useState([]);
@@ -9,10 +11,45 @@ export default function CompraAdd({ onAdd }) {
   const [proveedor, setProveedor] = useState("");
   const [items, setItems] = useState([]);
   const [notas, setNotas] = useState("");
+  const [usuarioAutenticado, setUsuarioAutenticado] = useState(null);
 
   useEffect(() => {
-    getProveedores().then(res => setProveedores(res.data));
-    getAccesorios().then(res => setAccesorios(res.data));
+    const cargarDatos = async () => {
+      try {
+        console.log("Cargando datos y verificando autenticación...");
+        
+        // Obtener CSRF token primero
+        await axios.get("http://localhost:8000/api/user/", { withCredentials: true });
+        const csrfToken = getCSRFToken();
+        console.log("CSRF Token obtenido:", csrfToken);
+        
+        // Verificar autenticación
+        const usuarioRes = await axios.get("http://localhost:8000/api/user/", { withCredentials: true });
+        console.log("Usuario autenticado:", usuarioRes.data);
+        setUsuarioAutenticado(usuarioRes.data);
+        
+        const [proveedoresRes, accesoriosRes] = await Promise.all([
+          getProveedores(),
+          getAccesorios()
+        ]);
+        
+        console.log("Proveedores cargados:", proveedoresRes.data);
+        console.log("Accesorios cargados:", accesoriosRes.data);
+        
+        setProveedores(proveedoresRes.data);
+        setAccesorios(accesoriosRes.data);
+      } catch (error) {
+        console.error("Error al cargar datos:", error);
+        if (error.response?.status === 401) {
+          toast.error("⚠️ No estás autenticado. Inicia sesión primero.");
+          setUsuarioAutenticado(null);
+        } else {
+          toast.error("Error al cargar datos");
+        }
+      }
+    };
+    
+    cargarDatos();
   }, []);
 
   const addItem = () => setItems([...items, { accesorio: "", cantidad: 1, precio_unitario: 0 }]);
@@ -27,26 +64,118 @@ export default function CompraAdd({ onAdd }) {
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (items.some(i => !i.accesorio || !i.cantidad || !i.precio_unitario)) {
-      toast.error("Falta completar los accesorios");
+    
+    if (!proveedor) {
+      toast.error("Debe seleccionar un proveedor");
       return;
     }
-    await createCompra({ proveedor, notas, total, items });
-    setProveedor(""); setItems([]); setNotas("");
-    toast.success("Compra registrada");
-    if (onAdd) onAdd();
+    
+    if (items.length === 0) {
+      toast.error("Debe agregar al menos un ítem");
+      return;
+    }
+    
+    if (items.some(i => !i.accesorio || !i.cantidad || !i.precio_unitario)) {
+      toast.error("Falta completar todos los campos de los ítems");
+      return;
+    }
+    
+    try {
+      const csrfToken = getCSRFToken();
+      console.log("CSRF Token antes de enviar:", csrfToken);
+      
+      const compraData = { 
+        proveedor: parseInt(proveedor), 
+        notas, 
+        total: parseFloat(total), 
+        items: items.map(item => ({
+          accesorio: parseInt(item.accesorio),
+          cantidad: parseInt(item.cantidad),
+          precio_unitario: parseFloat(item.precio_unitario)
+        }))
+      };
+      
+      console.log("Enviando compra:", compraData);
+      
+      await createCompra(compraData);
+      
+      setProveedor(""); 
+      setItems([]); 
+      setNotas("");
+      toast.success("Compra registrada correctamente");
+      if (onAdd) onAdd();
+    } catch (error) {
+      console.error("Error al crear compra:", error);
+      
+      if (error.response?.status === 403) {
+        toast.error("Error 403: No tienes permisos para crear compras. ¿Estás logueado?");
+      } else if (error.response?.status === 401) {
+        toast.error("Error 401: Debes iniciar sesión primero");
+      } else {
+        toast.error("Error al registrar la compra: " + (error.response?.data?.detail || error.message));
+      }
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="p-4 mb-8 bg-white rounded shadow space-y-4">
+      {/* Indicador de autenticación */}
+      <div className="mb-4 p-3 rounded-lg border-l-4 bg-gray-50">
+        {usuarioAutenticado ? (
+          <div className="border-l-green-500 bg-green-50">
+            <p className="text-green-700">
+              ✅ Autenticado como: <strong>{usuarioAutenticado.username}</strong> ({usuarioAutenticado.rol})
+            </p>
+          </div>
+        ) : (
+          <div className="border-l-red-500 bg-red-50">
+            <p className="text-red-700">
+              ❌ No autenticado. <a href="/login" className="underline">Iniciar sesión</a>
+            </p>
+          </div>
+        )}
+      </div>
       <div>
         <label className="block mb-1 font-bold">Proveedor:</label>
         <select required value={proveedor} onChange={e=>setProveedor(e.target.value)} className="border px-2 py-1 rounded w-full">
           <option value="">Seleccione proveedor...</option>
-          {proveedores.map(p => (
-            <option key={p.id} value={p.id}>{p.nombre}</option>
-          ))}
+          {proveedores.length === 0 ? (
+            <option value="" disabled>No hay proveedores disponibles</option>
+          ) : (
+            proveedores.map(p => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
+            ))
+          )}
         </select>
+        {proveedores.length === 0 && (
+          <p className="text-red-500 text-sm mt-1">
+            ⚠️ No se pudieron cargar los proveedores. Verifique la consola del navegador.
+          </p>
+        )}
+        <div className="flex justify-between items-center mt-1">
+          <p className="text-gray-500 text-xs">
+            Proveedores cargados: {proveedores.length}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              console.log("Recargando datos manualmente...");
+              getProveedores()
+                .then(res => {
+                  console.log("Datos recargados:", res.data);
+                  setProveedores(res.data);
+                  toast.success("Proveedores recargados");
+                })
+                .catch(err => {
+                  console.error("Error al recargar:", err);
+                  toast.error("Error al recargar proveedores");
+                });
+            }}
+            className="text-blue-600 hover:text-blue-800 text-xs underline"
+          >
+            🔄 Recargar
+          </button>
+        </div>
       </div>
       <div>
         <label className="block mb-1 font-bold">Descripción:</label>
