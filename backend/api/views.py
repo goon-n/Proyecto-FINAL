@@ -193,6 +193,47 @@ def proveedores_desactivados(request):
     serializer = ProveedorSerializer(desactivados, many=True)
     return Response(serializer.data)
 
+# ========== GESTIÓN DE PROVEEDORES (CRUD COMPLETO) ==========
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def crear_proveedor(request):
+    """Crear un nuevo proveedor"""
+    serializer = ProveedorSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def editar_proveedor(request, proveedor_id):
+    """Editar un proveedor existente"""
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    serializer = ProveedorSerializer(proveedor, data=request.data, partial=(request.method == 'PATCH'))
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def desactivar_proveedor(request, proveedor_id):
+    """Desactivar (soft delete) un proveedor"""
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    proveedor.activo = False
+    proveedor.save()
+    return Response({'detail': f'Proveedor {proveedor.nombre} desactivado correctamente'}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def activar_proveedor(request, proveedor_id):
+    """Activar un proveedor desactivado"""
+    proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+    proveedor.activo = True
+    proveedor.save()
+    return Response({'detail': f'Proveedor {proveedor.nombre} activado correctamente'}, status=status.HTTP_200_OK)
+
 # ========== CLASES Y SOCIOS / DASHBOARD ==========
 
 @api_view(['GET'])

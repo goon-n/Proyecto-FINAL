@@ -4,12 +4,11 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     SocioViewSet,
     ClaseViewSet,
-    ProveedorViewSet,   # Nueva vista para Proveedor
-    AccesoriosViewSet,  # Nueva vista para Accesorios
-    CompraViewSet,      # Nueva vista para Compra
+    ProveedorViewSet,
+    AccesoriosViewSet,
+    CompraViewSet,
     proveedores_activos,
     proveedores_desactivados,
-    # crear_usuario,  # <-- Comentar si no existe
     listar_usuarios,
     editar_rol_usuario,
     socios_disponibles,
@@ -27,11 +26,7 @@ from .views import (
     usuarios_desactivados,
     desactivar_usuario,
     activar_usuario,
-    # Proveedores
-    listar_proveedores,
-    proveedores_desactivados,
     crear_proveedor,
-    detalle_proveedor,
     editar_proveedor,
     desactivar_proveedor,
     activar_proveedor,
@@ -40,15 +35,12 @@ from .views import (
 router = DefaultRouter()
 router.register(r'clases', ClaseViewSet)
 router.register(r'socios', SocioViewSet)
-router.register(r'proveedores', ProveedorViewSet)
 router.register(r'accesorios', AccesoriosViewSet)
 router.register(r'compras', CompraViewSet)
+# NO registramos ProveedorViewSet aquí para evitar conflictos
 
 urlpatterns = [
-    # Router (clases, socios, proveedores, accesorios, compras)
-    path('', include(router.urls)),
-
-    # Autenticación
+    # Autenticación (PRIMERO)
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('register/', register_user, name='register'),
@@ -61,9 +53,13 @@ urlpatterns = [
     path('usuarios/<int:user_id>/activar/', activar_usuario, name='activar-usuario'),
     path('usuarios/<int:user_id>/rol/', editar_rol_usuario, name='editar-rol-usuario'),
 
-    # Gestión de proveedores (adicionales)
+    # Gestión de proveedores (ANTES del router)
     path('proveedores/activos/', proveedores_activos, name='proveedores-activos'),
     path('proveedores/desactivados/', proveedores_desactivados, name='proveedores-desactivados'),
+    path('proveedores/crear/', crear_proveedor, name='crear-proveedor'),
+    path('proveedores/<int:proveedor_id>/editar/', editar_proveedor, name='editar-proveedor'),
+    path('proveedores/<int:proveedor_id>/desactivar/', desactivar_proveedor, name='desactivar-proveedor'),
+    path('proveedores/<int:proveedor_id>/activar/', activar_proveedor, name='activar-proveedor'),
 
     # Clases y socios (extras)
     path('clases/<int:clase_id>/socios/disponibles/', socios_disponibles, name='socios-disponibles'),
@@ -74,4 +70,7 @@ urlpatterns = [
     path('clases/<int:clase_id>/editar/', editar_clase, name='editar-clase'),
     path('clases/<int:clase_id>/eliminar/', eliminar_clase, name='eliminar-clase'),
     path('dashboard/socio/', dashboard_socio, name='dashboard-socio'),
+
+    # Router AL FINAL (clases, socios, accesorios, compras)
+    path('', include(router.urls)),
 ]
