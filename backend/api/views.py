@@ -8,8 +8,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import Socio, Perfil, Clase
-from .serializers import SocioSerializer, ClaseSerializer, CustomUserSerializer
+from .models import Socio, Perfil, Clase, Proveedor
+from .serializers import SocioSerializer, ClaseSerializer, CustomUserSerializer, ProveedorSerializer
 from django.utils import timezone
 
 
@@ -95,6 +95,11 @@ class SocioViewSet(viewsets.ModelViewSet):
     queryset = Socio.objects.all()
     serializer_class = SocioSerializer
 
+class ProveedorViewSet(viewsets.ModelViewSet):
+    queryset = Proveedor.objects.all()
+    serializer_class = ProveedorSerializer
+    permission_classes = [IsAuthenticated]  # login requerido
+    filterset_fields = ['activo', 'nombre']  # filtros rápidos
 
 class ClaseViewSet(viewsets.ModelViewSet):
     queryset = Clase.objects.all()
@@ -218,6 +223,22 @@ def editar_rol_usuario(request, user_id):
     user.perfil.save()
     
     return Response({'detail': f'Rol de {user.username} actualizado a {nuevo_rol}'}, status=200)
+
+# ---------- PROVEEDORES ACTIVOS ----------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])   # login requerido
+def proveedores_activos(request):
+    activos = Proveedor.objects.filter(activo=True)
+    serializer = ProveedorSerializer(activos, many=True)
+    return Response(serializer.data)
+
+# ---------- PROVEEDORES DESACTIVADOS ----------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def proveedores_desactivados(request):
+    desactivados = Proveedor.objects.filter(activo=False)
+    serializer = ProveedorSerializer(desactivados, many=True)
+    return Response(serializer.data)
 
 
 # ========== CLASES Y SOCIOS ==========

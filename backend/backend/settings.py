@@ -16,6 +16,7 @@ INSTALLED_APPS = [
     'corsheaders',  # necesario para CORS
     'rest_framework',
     'api',
+    'movimiento_caja',
 ]
 
 MIDDLEWARE = [
@@ -33,6 +34,7 @@ MIDDLEWARE = [
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # URL de tu frontend Vite
+    "http://127.0.0.1:5173",
 ]
 
 # Para REST Framework y autenticación de sesión
@@ -68,15 +70,16 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #        'NAME': BASE_DIR / 'db.sqlite3',
 #    }
 #}
+import os
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'core',
-        'USER': 'root',               # o tu usuario
-        'PASSWORD': 'root',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'NAME': os.getenv('DB_NAME', 'core'),
+        'USER': os.getenv('DB_USER', 'root'),
+        'PASSWORD': os.getenv('DB_PASS', 'root'),
+        'HOST': os.getenv('DB_HOST', '127.0.0.1'),
+        'PORT': os.getenv('DB_PORT', '3306'),
     }
 }
 

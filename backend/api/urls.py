@@ -4,6 +4,9 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     SocioViewSet,
     ClaseViewSet,
+    ProveedorViewSet,  # Nueva vista para Proveedor
+    proveedores_activos,
+    proveedores_desactivados,
     # crear_usuario,  # <-- Comentar si no existe
     listar_usuarios,
     # eliminar_usuario,  # <-- Ya no se usa
@@ -30,6 +33,7 @@ router = DefaultRouter()
 router.register(r'clases', ClaseViewSet)
 router.register(r'socios', SocioViewSet)
 
+
 urlpatterns = [
     # Router (clases y socios)
     path('', include(router.urls)),
@@ -48,6 +52,10 @@ urlpatterns = [
     path('usuarios/<int:user_id>/activar/', activar_usuario, name='activar-usuario'),
     path('usuarios/<int:user_id>/rol/', editar_rol_usuario, name='editar-rol-usuario'),
     
+    #Gestión de proveedores
+    path('proveedores/', proveedores_activos, name='proveedores-activos'),
+    path('proveedores/desactivados/', proveedores_desactivados, name='proveedores-desactivados'),
+
     # Clases y socios
     path('clases/<int:clase_id>/socios/disponibles/', socios_disponibles, name='socios-disponibles'),
     path('clases/<int:clase_id>/socios/', asignar_socio, name='asignar-socio'),
