@@ -6,7 +6,7 @@ export const useProveedores = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const ACTIVOS_URL = "http://localhost:8000/api/proveedores/";
+  const ACTIVOS_URL = "http://localhost:8000/api/proveedores/activos/";  // ✅ CORREGIDO
   const DESACTIVADOS_URL = "http://localhost:8000/api/proveedores/desactivados/";
 
   const fetchProveedores = async () => {

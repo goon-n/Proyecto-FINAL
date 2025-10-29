@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { getCajas, deleteCaja } from "../../services/caja.service";
+import { getCajas } from "../../services/caja.service";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function CajaList({ reload, onEditar, onHistorial }) {
   const [cajas, setCajas] = useState([]);
@@ -7,7 +18,8 @@ export default function CajaList({ reload, onEditar, onHistorial }) {
   const [error, setError] = useState("");
 
   const fetchCajas = async () => {
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
     try {
       const res = await getCajas();
       setCajas(res.data);
@@ -18,54 +30,88 @@ export default function CajaList({ reload, onEditar, onHistorial }) {
     }
   };
 
-  useEffect(() => { fetchCajas(); }, [reload]);
+  useEffect(() => {
+    fetchCajas();
+  }, [reload]);
 
-  const handleDelete = async id => {
-    if (window.confirm("¿Estás seguro de eliminar la caja?")) {
-      try {
-        await deleteCaja(id);
-        setCajas(cajas.filter(c => c.id !== id));
-      } catch {
-        setError("Error al eliminar la caja.");
-      }
-    }
-  };
-
-  if (loading) return <div className="p-4 text-center">Cargando cajas...</div>;
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-center text-muted-foreground">Cargando cajas...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="bg-white rounded shadow p-4">
-      <h2 className="font-bold text-xl mb-2">Cajas</h2>
-      {error && <div className="bg-red-100 text-red-700 border border-red-200 rounded p-2 mb-3">{error}</div>}
-      <table className="w-full text-left border-collapse">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="p-2">ID</th>
-            <th className="p-2">Estado</th>
-            <th className="p-2">Fecha Apertura</th>
-            <th className="p-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {cajas.length === 0 && (
-            <tr>
-              <td colSpan={4} className="py-4 text-center text-gray-400">No hay cajas registradas.</td>
-            </tr>
-          )}
-          {cajas.map(caja => (
-            <tr key={caja.id} className="odd:bg-white even:bg-gray-50">
-              <td className="p-2">{caja.id}</td>
-              <td className="p-2">{caja.estado}</td>
-              <td className="p-2">{caja.fecha_apertura}</td>
-              <td className="p-2 flex gap-2">
-                <button onClick={() => handleDelete(caja.id)} className="bg-red-500 text-white px-3 py-1 rounded">Eliminar</button>
-                <button onClick={() => onEditar(caja.id)} className="bg-yellow-500 text-white px-3 py-1 rounded">Cerrar/Editar</button>
-                <button onClick={() => onHistorial(caja.id)} className="bg-blue-500 text-white px-3 py-1 rounded">Historial</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Historial de Cajas</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
+        {cajas.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            No hay cajas registradas.
+          </p>
+        ) : (
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha Apertura</TableHead>
+                  <TableHead>Monto Inicial</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cajas.map(caja => (
+                  <TableRow key={caja.id}>
+                    <TableCell className="font-medium">#{caja.id}</TableCell>
+                    <TableCell>
+                      <Badge variant={caja.estado === 'ABIERTA' ? 'default' : 'secondary'}>
+                        {caja.estado}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(caja.fecha_apertura).toLocaleString('es-AR')}
+                    </TableCell>
+                    <TableCell>${caja.monto_inicial}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      {caja.estado === 'ABIERTA' && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => onEditar(caja.id)}
+                        >
+                          Gestionar
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onHistorial(caja.id)}
+                      >
+                        Ver Historial
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
+
+    

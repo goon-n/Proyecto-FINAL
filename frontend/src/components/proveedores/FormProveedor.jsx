@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
-
 const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guardando }) => {
   const [formData, setFormData] = useState({
     nombre: '',
@@ -42,10 +41,28 @@ const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guarda
   const validarFormulario = () => {
     const nuevosErrores = {};
 
+    // Validar nombre (obligatorio, solo letras y espacios)
     if (!formData.nombre.trim()) {
       nuevosErrores.nombre = 'El nombre es requerido';
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.nombre)) {
+      nuevosErrores.nombre = 'El nombre solo puede contener letras y espacios';
     }
 
+    // Validar teléfono (opcional, pero si tiene valor debe ser válido)
+    if (formData.telefono) {
+      if (!/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
+        nuevosErrores.telefono = 'El teléfono solo puede contener números, espacios, guiones, paréntesis y +';
+      } else {
+        const digitos = formData.telefono.replace(/\D/g, '');
+        if (digitos.length < 8) {
+          nuevosErrores.telefono = 'El teléfono debe tener al menos 8 dígitos';
+        } else if (digitos.length > 15) {
+          nuevosErrores.telefono = 'El teléfono no puede tener más de 15 dígitos';
+        }
+      }
+    }
+
+    // Validar email (opcional, pero si tiene valor debe ser válido)
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       nuevosErrores.email = 'Email inválido';
     }
@@ -62,7 +79,19 @@ const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guarda
   };
 
   const handleChange = (campo, valor) => {
+    // Filtrado en tiempo real para el nombre (solo letras y espacios)
+    if (campo === 'nombre') {
+      valor = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+    }
+    
+    // Filtrado en tiempo real para el teléfono (solo números y símbolos válidos)
+    if (campo === 'telefono') {
+      valor = valor.replace(/[^\d\s\-\+\(\)]/g, '');
+    }
+
     setFormData(prev => ({ ...prev, [campo]: valor }));
+    
+    // Limpiar error del campo al escribir
     if (errores[campo]) {
       setErrores(prev => ({ ...prev, [campo]: '' }));
     }
@@ -84,6 +113,7 @@ const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guarda
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {/* NOMBRE */}
             <div className="grid gap-2">
               <Label htmlFor="nombre">
                 Nombre <span className="text-destructive">*</span>
@@ -94,22 +124,34 @@ const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guarda
                 onChange={(e) => handleChange('nombre', e.target.value)}
                 placeholder="Ej: Proveedor XYZ"
                 className={errores.nombre ? 'border-destructive' : ''}
+                maxLength={100}
               />
               {errores.nombre && (
                 <p className="text-sm text-destructive">{errores.nombre}</p>
               )}
             </div>
 
+            {/* TELÉFONO */}
             <div className="grid gap-2">
               <Label htmlFor="telefono">Teléfono</Label>
               <Input
                 id="telefono"
+                type="tel"
                 value={formData.telefono}
                 onChange={(e) => handleChange('telefono', e.target.value)}
-                placeholder="Ej: +54 9 387 123-4567"
+                placeholder="Ej: +54 387 123-4567"
+                className={errores.telefono ? 'border-destructive' : ''}
+                maxLength={20}
               />
+              {errores.telefono && (
+                <p className="text-sm text-destructive">{errores.telefono}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Mínimo 8 dígitos, máximo 15 dígitos
+              </p>
             </div>
 
+            {/* EMAIL */}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input

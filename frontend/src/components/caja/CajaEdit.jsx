@@ -1,17 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { getCaja, updateCaja } from "../../services/caja.service";
-import MovimientoCajaAdd from "./MovimientoCajaAdd";
 import { getMovimientos } from "../../services/movimientoCaja.service";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import toast from "react-hot-toast";
+
+// Nuevos componentes separados
+import CajaHeader from "./CajaHeader";
+import CajaResumenTab from "./CajaResumenTab";
+import CajaControlTab from "./CajaControlTab";
+import MovimientoCajaAdd from "./MovimientoCajaAdd";
 import GraficoIngresosEgresos from "./GraficoIngresosEgresos";
 import MovimientoCajaHistorial from "./MovimientoCajaHistorial";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function CajaEdit({ id, onGuardado }) {
   const [caja, setCaja] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState("");
+  const [guardando, setGuardando] = useState(false);
   const [recargarMovs, setRecargarMovs] = useState(0);
   const [movs, setMovs] = useState([]);
-  const [filtroPago, setFiltroPago] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -24,132 +31,163 @@ export default function CajaEdit({ id, onGuardado }) {
     });
   }, [id, recargarMovs]);
 
-  const movimientosFiltrados = filtroPago
-    ? movs.filter(m => m.tipo_pago === filtroPago)
-    : movs;
-
-  const totalx = (tipo, pago) => movs
-    .filter(m => m.tipo === tipo && (!pago || m.tipo_pago === pago))
-    .reduce((a, b) => a + Number(b.monto), 0);
-
   const handleChange = e => {
-    const { name, value, type } = e.target;
-    setCaja(prev => ({
-      ...prev,
-      [name]: (type === "number" && value !== "") ? Number(value) : value
-    }));
+    const { name, value } = e.target;
+    setCaja(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
-    await updateCaja(id, caja);
-    setMsg("Caja actualizada correctamente");
-    if (onGuardado) setTimeout(onGuardado, 1200);
+    
+    if (caja.estado === 'CERRADA' && !caja.closing_counted_amount) {
+      toast.error("Debes ingresar el monto contado al cerrar la caja");
+      return;
+    }
+
+    if (caja.estado === 'CERRADA') {
+      const efectivo = Number(caja.efectivo_esperado || 0);
+      const transferencia = Number(caja.transferencia_esperada || 0);
+      const montoSistema = Number(caja.closing_system_amount);
+      const montoContado = Number(caja.closing_counted_amount);
+      const diferencia = montoSistema - montoContado;
+      
+      const confirmar = window.confirm(
+        `RESUMEN DE CIERRE DE CAJA\n\n` +
+        `💵 Efectivo esperado: $${efectivo.toFixed(2)}\n` +
+        `🏦 Transferencias: $${transferencia.toFixed(2)}\n\n` +
+        `💰 TOTALES:\n` +
+        `Monto sistema: $${montoSistema.toFixed(2)}\n` +
+        `Monto contado: $${montoContado.toFixed(2)}\n` +
+        `Diferencia: $${diferencia.toFixed(2)}\n\n` +
+        `${Math.abs(diferencia) > 0.01 ? '⚠️ HAY DIFERENCIA - ' : '✅ TODO OK - '}¿Confirmar cierre?`
+      );
+      
+      if (!confirmar) {
+        setCaja(prev => ({ ...prev, estado: 'ABIERTA' }));
+        toast.info("Cierre de caja cancelado");
+        return;
+      }
+    }
+
+    setGuardando(true);
+    try {
+      await updateCaja(id, {
+        estado: caja.estado,
+        monto_inicial: Number(caja.monto_inicial),
+        closing_counted_amount: caja.closing_counted_amount ? Number(caja.closing_counted_amount) : null,
+        notas: caja.notas
+      });
+      
+      const cajaActualizada = await getCaja(id);
+      setCaja(cajaActualizada.data);
+      
+      toast.success(caja.estado === 'CERRADA' ? "Caja cerrada correctamente" : "Caja actualizada correctamente");
+      
+      if (caja.estado === 'CERRADA' && onGuardado) {
+        setTimeout(onGuardado, 1500);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Error al guardar la caja");
+    } finally {
+      setGuardando(false);
+    }
   };
 
-  if (loading || !caja) return <div className="text-center mt-10">Cargando...</div>;
+  if (loading || !caja) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-center text-muted-foreground">Cargando...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalIngresos = movs.filter(m => m.tipo === 'ingreso').reduce((acc, m) => acc + Number(m.monto), 0);
+  const totalEgresos = movs.filter(m => m.tipo === 'egreso').reduce((acc, m) => acc + Number(m.monto), 0);
 
   return (
-    <div className="max-w-4xl mx-auto my-8 bg-white rounded-lg p-6 shadow-lg space-y-6">
-      {/* Advertencia de diferencia */}
-      {caja.difference_amount !== null && Math.abs(Number(caja.difference_amount)) > 0.01 && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-900 px-4 py-3 rounded mb-4 font-semibold shadow">
-          <span className="mr-2">⚠️ Atención:</span> Hay una diferencia de cierre: <b>${caja.difference_amount}</b>
-        </div>
-      )}
+    <div className="space-y-6">
+      {/* Header separado */}
+      <CajaHeader caja={caja} />
 
-      {/* Panel resumen con cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 text-center">
-        <div className="bg-blue-50 rounded shadow p-4">
-          <p className="font-semibold text-gray-700">Monto inicial</p>
-          <p className="text-2xl text-blue-700 font-bold">${caja.monto_inicial}</p>
-        </div>
-        <div className="bg-green-50 rounded shadow p-4">
-          <p className="font-semibold text-gray-700">Total Caja</p>
-          <p className="text-2xl text-green-700 font-bold">${caja.closing_system_amount}</p>
-        </div>
-        <div className="bg-gray-50 rounded shadow p-4">
-          <p className="font-semibold text-gray-700">Contado cierre</p>
-          <p className="text-2xl text-gray-700 font-bold">
-            {caja.closing_counted_amount !== null && caja.closing_counted_amount !== undefined
-              ? `$${caja.closing_counted_amount}` : <span className="text-gray-400">No ingresado</span>}
-          </p>
-        </div>
-        <div className="bg-purple-50 rounded shadow p-4">
-          <p className="font-semibold text-gray-700">Diferencia</p>
-          <p className="text-2xl text-purple-700 font-bold">
-            {caja.difference_amount !== null && caja.difference_amount !== undefined
-              ? `$${caja.difference_amount}` : <span>-</span>}
-          </p>
-        </div>
-      </div>
+      {/* Tabs */}
+      <Tabs defaultValue="resumen" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="resumen">📊 Resumen</TabsTrigger>
+          <TabsTrigger value="control">⚙️ Control de caja</TabsTrigger>
+          <TabsTrigger value="movimientos">📝 Movimientos</TabsTrigger>
+          <TabsTrigger value="graficos">📈 Gráficos</TabsTrigger>
+        </TabsList>
 
-      {/* Formulario de edición/cierre como card */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-        <div>
-          <label className="block font-semibold mb-1">Monto Inicial</label>
-          <input type="number" name="monto_inicial" value={caja.monto_inicial} onChange={handleChange}
-                 className="border px-3 py-2 rounded w-full" />
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Estado</label>
-          <select name="estado" value={caja.estado} onChange={handleChange}
-                  className="border px-3 py-2 rounded w-full">
-            <option value="ABIERTA">Abierta</option>
-            <option value="CERRADA">Cerrada</option>
-          </select>
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Contado cierre</label>
-          <input type="number" name="closing_counted_amount"
-                 value={caja.closing_counted_amount || ""}
-                 onChange={handleChange} placeholder="Monto contado al cerrar"
-                 className="border px-3 py-2 rounded w-full" />
-        </div>
-        <div>
-          <label className="block font-semibold mb-1">Descripción</label>
-          <input name="notas" value={caja.notas || ""} onChange={handleChange}
-                 className="border px-3 py-2 rounded w-full" />
-        </div>
-        <div className="col-span-2 text-right">
-          <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition" type="submit">
-            Guardar
-          </button>
-          {msg && <span className="text-green-600 ml-4">{msg}</span>}
-        </div>
-      </form>
+        <TabsContent value="resumen">
+          <CajaResumenTab 
+            caja={caja} 
+            totalIngresos={totalIngresos} 
+            totalEgresos={totalEgresos} 
+          />
+        </TabsContent>
 
-      {/* Formulario para agregar movimiento */}
-      <section className="bg-white rounded-lg shadow p-6">
-        <MovimientoCajaAdd cajaId={caja.id} onAdd={() => setRecargarMovs(m => m + 1)} />
-      </section>
+        <TabsContent value="control">
+          <CajaControlTab
+            caja={caja}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            guardando={guardando}
+            onAddMovimiento={() => setRecargarMovs(m => m + 1)}
+          />
+        </TabsContent>
 
-      {/* Filtros y totales destacados */}
-      <div className="bg-gray-50 rounded-lg shadow p-4 flex flex-wrap gap-8 items-end justify-between">
-        <div>
-          <label className="font-semibold mr-2">Filtrar movimientos por tipo de pago:</label>
-          <select value={filtroPago} onChange={e=>setFiltroPago(e.target.value)}
-                  className="border rounded px-2 py-1">
-            <option value="">Todos</option>
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia</option>
-          </select>
-        </div>
-        <div className="flex gap-6 flex-wrap">
-          <span className="text-blue-700 font-bold">Efectivo: ${totalx("ingreso","efectivo")}</span>
-          <span className="text-green-700 font-bold">Transferencia: ${totalx("ingreso","transferencia")}</span>
-        </div>
-      </div>
+        <TabsContent value="movimientos" className="space-y-4">
+          {/* Agregar movimiento - Solo si la caja está abierta */}
+          {caja.estado === 'ABIERTA' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Registrar Nuevo Movimiento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MovimientoCajaAdd cajaId={caja.id} onAdd={() => setRecargarMovs(m => m + 1)} />
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Barra gráfica moderna */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <GraficoIngresosEgresos cajaId={caja.id} />
-      </div>
+          {/* Historial de movimientos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Historial de Movimientos ({movs.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MovimientoCajaHistorial cajaId={caja.id} movimientos={movs} />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Historial como tabla grande */}
-      <section className="bg-white rounded-lg shadow p-6">
-        <MovimientoCajaHistorial cajaId={caja.id} movimientos={movimientosFiltrados} />
-      </section>
+        <TabsContent value="graficos" className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-sm text-muted-foreground">Total Ingresos</p>
+                <p className="text-3xl font-bold text-green-600 mt-2">${totalIngresos.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-sm text-muted-foreground">Total Egresos</p>
+                <p className="text-3xl font-bold text-red-600 mt-2">${totalEgresos.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Gráfico de Movimientos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GraficoIngresosEgresos cajaId={caja.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

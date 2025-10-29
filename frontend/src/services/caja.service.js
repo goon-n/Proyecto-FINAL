@@ -18,7 +18,7 @@ export const createCaja = (data) =>
   });
 
 export const updateCaja = (id, data) =>
-  axios.put(`${API_URL}${id}/`, data, {
+  axios.patch(`${API_URL}${id}/`, data, {  
     withCredentials: true,
     headers: {
       "X-CSRFToken": getCSRFToken(),
