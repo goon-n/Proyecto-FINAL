@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { getCompra } from "../../services/compra.service";
 import toast from "react-hot-toast";
+import { X, Package, Calendar, DollarSign } from "lucide-react";
 
-export default function CompraDetail({ compraId, onClose, onEdit }) {
+export default function CompraDetail({ compraId, onClose }) {
   const [compra, setCompra] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,36 +67,32 @@ export default function CompraDetail({ compraId, onClose, onEdit }) {
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       {/* Header */}
-      <div className="bg-blue-600 text-white p-4">
-        <div className="flex justify-between items-center">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+        <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-2xl font-bold">Compra #{compra.id}</h2>
-            <p className="text-blue-100">Fecha: {formatFecha(compra.fecha)}</p>
+            <h2 className="text-3xl font-bold mb-2">Compra #{compra.id}</h2>
+            <div className="flex items-center gap-2 text-blue-100">
+              <Calendar className="h-4 w-4" />
+              <span>{formatFecha(compra.fecha)}</span>
+            </div>
           </div>
-          <div className="flex space-x-2">
-            {onEdit && (
-              <button 
-                onClick={() => onEdit(compra.id)}
-                className="bg-white text-blue-600 px-4 py-2 rounded font-semibold hover:bg-blue-50 transition-colors"
-              >
-                Editar
-              </button>
-            )}
-            <button 
-              onClick={onClose}
-              className="bg-blue-500 text-white px-4 py-2 rounded font-semibold hover:bg-blue-400 transition-colors"
-            >
-              Cerrar
-            </button>
-          </div>
+          <button 
+            onClick={onClose}
+            className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-lg transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       </div>
 
       <div className="p-6">
         {/* Información del Proveedor */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-2 text-gray-800">Información del Proveedor</h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3 text-gray-800 flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Información del Proveedor
+          </h3>
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <p className="text-xl font-medium text-gray-900">
               {compra.proveedor_nombre || `Proveedor ID: ${compra.proveedor}`}
             </p>
@@ -104,19 +101,22 @@ export default function CompraDetail({ compraId, onClose, onEdit }) {
 
         {/* Resumen de la Compra */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-2 text-gray-800">Resumen</h3>
+          <h3 className="text-lg font-semibold mb-3 text-gray-800 flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Resumen
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <p className="text-green-600 text-sm font-medium">Total de la Compra</p>
-              <p className="text-2xl font-bold text-green-700">${compra.total}</p>
+              <p className="text-3xl font-bold text-green-700">${compra.total}</p>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <p className="text-blue-600 text-sm font-medium">Total de Ítems</p>
-              <p className="text-2xl font-bold text-blue-700">{totalItems}</p>
+              <p className="text-blue-600 text-sm font-medium">Total de Unidades</p>
+              <p className="text-3xl font-bold text-blue-700">{totalItems}</p>
             </div>
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <p className="text-purple-600 text-sm font-medium">Tipos de Productos</p>
-              <p className="text-2xl font-bold text-purple-700">{compra.items?.length || 0}</p>
+              <p className="text-3xl font-bold text-purple-700">{compra.items?.length || 0}</p>
             </div>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function CompraDetail({ compraId, onClose, onEdit }) {
         {/* Notas */}
         {compra.notas && (
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">Notas</h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-800">Notas</h3>
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
               <p className="text-gray-700">{compra.notas}</p>
             </div>
@@ -160,25 +160,25 @@ export default function CompraDetail({ compraId, onClose, onEdit }) {
                         <span className="font-medium">{item.accesorio || `Accesorio ID: ${item.accesorio}`}</span>
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-center">
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
                           {item.cantidad}
                         </span>
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-right font-medium">
                         ${parseFloat(item.precio_unitario).toFixed(2)}
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-right font-bold">
+                      <td className="border border-gray-300 px-4 py-3 text-right font-bold text-green-600">
                         ${(item.cantidad * parseFloat(item.precio_unitario)).toFixed(2)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-gray-100">
+                <tfoot className="bg-gradient-to-r from-gray-100 to-gray-50">
                   <tr>
-                    <td colSpan="3" className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-700">
+                    <td colSpan="3" className="border border-gray-300 px-4 py-4 text-right font-bold text-gray-700 text-lg">
                       TOTAL:
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-right font-bold text-lg text-green-600">
+                    <td className="border border-gray-300 px-4 py-4 text-right font-bold text-2xl text-green-600">
                       ${parseFloat(compra.total).toFixed(2)}
                     </td>
                   </tr>
@@ -186,7 +186,8 @@ export default function CompraDetail({ compraId, onClose, onEdit }) {
               </table>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+              <Package className="h-12 w-12 mx-auto mb-2 text-gray-400" />
               <p>No hay ítems en esta compra</p>
             </div>
           )}

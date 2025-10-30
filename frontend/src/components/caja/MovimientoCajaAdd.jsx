@@ -59,7 +59,6 @@ export default function MovimientoCajaAdd({ cajaId, onAdd }) {
           >
             <option value="ingreso">Ingreso</option>
             <option value="egreso">Egreso</option>
-            <option value="deposito">Depósito</option>
           </select>
         </div>
 

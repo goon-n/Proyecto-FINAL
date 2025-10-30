@@ -1,28 +1,50 @@
 // src/pages/GestionCompras.jsx
 import React, { useState, useEffect } from "react";
-import CompraAdd from "../components/compra/CompraAdd";
-import CompraList from "../components/compra/CompraList";
-import CompraEdit from "../components/compra/CompraEdit";
-import CompraDetail from "../components/compra/CompraDetail";
-import { getEstadisticasCompras } from "../services/compra.service";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { 
+  ShoppingCart, 
+  Plus, 
+  ArrowLeft, 
+  DollarSign,
+  Package
+} from "lucide-react";
 import toast from "react-hot-toast";
 
+// Components
+import CompraAdd from "../components/compra/CompraAdd";
+import CompraList from "../components/compra/CompraList";
+import CompraDetail from "../components/compra/CompraDetail";
+
+// Shared components
+import { PageHeader } from "../components/shared/PageHeader";
+
+// Services
+import { getEstadisticasCompras } from "../services/compra.service";
+
 export default function GestionCompras() {
+  const navigate = useNavigate();
   const [reload, setReload] = useState(false);
-  const [vistaActual, setVistaActual] = useState('lista'); // 'lista', 'agregar', 'editar', 'detalle'
+  const [vistaActual, setVistaActual] = useState('lista'); // 'lista', 'agregar', 'detalle'
   const [compraSeleccionada, setCompraSeleccionada] = useState(null);
   const [estadisticas, setEstadisticas] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     cargarEstadisticas();
   }, [reload]);
 
   const cargarEstadisticas = async () => {
+    setLoadingStats(true);
     try {
       const response = await getEstadisticasCompras();
       setEstadisticas(response.data);
     } catch (error) {
       console.error("Error al cargar estadísticas:", error);
+      toast.error("Error al cargar estadísticas");
+    } finally {
+      setLoadingStats(false);
     }
   };
 
@@ -36,118 +58,122 @@ export default function GestionCompras() {
     setVistaActual('detalle');
   };
 
-  const editarCompra = (compraId) => {
-    setCompraSeleccionada(compraId);
-    setVistaActual('editar');
-  };
-
   const volverALista = () => {
     setVistaActual('lista');
     setCompraSeleccionada(null);
     handleReload();
   };
 
+  const irACrearAccesorio = () => {
+    navigate('/admin/accesorios', { state: { accion: 'agregar' } });
+  };
+
+  // ========== ESTADÍSTICAS (Solo 2 cards) ==========
   const renderEstadisticas = () => {
     if (!estadisticas) return null;
 
-    const { estadisticas_generales, top_proveedores, compras_recientes } = estadisticas;
+    const { estadisticas_generales } = estadisticas;
 
     return (
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h3 className="text-blue-600 text-sm font-medium">Total Compras</h3>
-          <p className="text-2xl font-bold text-blue-700">{estadisticas_generales.total_compras}</p>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h3 className="text-green-600 text-sm font-medium">Monto Total</h3>
-          <p className="text-2xl font-bold text-green-700">${estadisticas_generales.monto_total.toFixed(2)}</p>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-          <h3 className="text-purple-600 text-sm font-medium">Promedio por Compra</h3>
-          <p className="text-2xl font-bold text-purple-700">${estadisticas_generales.promedio_compra.toFixed(2)}</p>
-        </div>
-        
-        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-          <h3 className="text-orange-600 text-sm font-medium">Compras este Mes</h3>
-          <p className="text-2xl font-bold text-orange-700">{estadisticas_generales.compras_mes}</p>
-          <p className="text-sm text-orange-600">${estadisticas_generales.monto_mes.toFixed(2)}</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Compras</p>
+                <p className="text-3xl font-bold">
+                  {loadingStats ? "..." : estadisticas_generales.total_compras}
+                </p>
+              </div>
+              <ShoppingCart className="h-10 w-10 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Monto Total</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {loadingStats ? "..." : `$${estadisticas_generales.monto_total.toFixed(2)}`}
+                </p>
+              </div>
+              <DollarSign className="h-10 w-10 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   };
 
-  const renderNavegacion = () => (
-    <div className="mb-6">
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setVistaActual('lista')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            vistaActual === 'lista'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          📋 Lista de Compras
-        </button>
-        
-        <button
-          onClick={() => setVistaActual('agregar')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            vistaActual === 'agregar'
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          ➕ Nueva Compra
-        </button>
+  // ========== CONFIGURACIÓN DE TÍTULO ==========
+  const getTitleConfig = () => {
+    switch (vistaActual) {
+      case 'agregar':
+        return {
+          title: "Nueva Compra",
+          subtitle: "Registra una nueva compra al sistema",
+          icon: Plus
+        };
+      case 'detalle':
+        return {
+          title: "Detalle de Compra",
+          subtitle: "Información completa de la compra",
+          icon: ShoppingCart
+        };
+      default:
+        return {
+          title: "Gestión de Compras",
+          subtitle: "Administra las compras del gimnasio",
+          icon: ShoppingCart
+        };
+    }
+  };
 
-        {vistaActual === 'editar' && (
-          <button
-            onClick={volverALista}
-            className="px-4 py-2 rounded-lg font-medium bg-gray-500 text-white hover:bg-gray-600 transition-colors"
-          >
-            ← Volver a Lista
-          </button>
-        )}
+  const { title, subtitle, icon: TitleIcon } = getTitleConfig();
 
-        {vistaActual === 'detalle' && (
-          <button
-            onClick={volverALista}
-            className="px-4 py-2 rounded-lg font-medium bg-gray-500 text-white hover:bg-gray-600 transition-colors"
-          >
-            ← Volver a Lista
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
+  // ========== RENDER CONTENIDO ==========
   const renderContenido = () => {
     switch (vistaActual) {
       case 'agregar':
         return (
-          <CompraAdd 
-            onAdd={() => {
-              handleReload();
-              setVistaActual('lista');
-              toast.success('Compra agregada correctamente');
-            }} 
-          />
-        );
+          <div className="space-y-4">
+            {/* Botón para crear accesorios */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Package className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium text-blue-900">
+                        ¿No encuentras el accesorio?
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        Crea uno nuevo antes de registrar la compra
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={irACrearAccesorio}
+                    variant="default"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Package className="h-4 w-4 mr-2" />
+                    Ir a Accesorios
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-      case 'editar':
-        return (
-          <CompraEdit
-            compraId={compraSeleccionada}
-            onUpdate={() => {
-              handleReload();
-              setVistaActual('lista');
-              toast.success('Compra actualizada correctamente');
-            }}
-            onCancel={volverALista}
-          />
+            <CompraAdd 
+              onAdd={() => {
+                handleReload();
+                setVistaActual('lista');
+                toast.success('¡Compra agregada exitosamente!');
+              }} 
+            />
+          </div>
         );
 
       case 'detalle':
@@ -155,7 +181,6 @@ export default function GestionCompras() {
           <CompraDetail
             compraId={compraSeleccionada}
             onClose={volverALista}
-            onEdit={editarCompra}
           />
         );
 
@@ -165,34 +190,67 @@ export default function GestionCompras() {
           <CompraList
             reload={reload}
             onView={verDetalle}
-            onEdit={editarCompra}
           />
         );
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          🛒 Gestión de Compras
-        </h1>
-        <p className="text-gray-600">
-          Administre las compras, proveedores y controle el inventario de su gimnasio
-        </p>
-      </div>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header con botones de acción */}
+      <PageHeader
+        titulo={title}
+        descripcion={subtitle}
+        icon={TitleIcon}
+      >
+        <div className="flex gap-3">
+          {vistaActual !== 'lista' && (
+            <Button 
+              variant="outline" 
+              onClick={volverALista}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver a la lista
+            </Button>
+          )}
+          
+          {vistaActual === 'lista' && (
+            <Button 
+              onClick={() => setVistaActual('agregar')}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Nueva Compra
+            </Button>
+          )}
+        </div>
+      </PageHeader>
 
-      {/* Estadísticas */}
+      {/* Breadcrumb */}
+      <nav className="text-sm text-muted-foreground">
+        <span 
+          className="cursor-pointer hover:text-primary" 
+          onClick={() => navigate("/admin")}
+        >
+          Panel Admin
+        </span>
+        {" / "}
+        <span 
+          className={vistaActual === 'lista' ? "text-foreground" : "cursor-pointer hover:text-primary"}
+          onClick={volverALista}
+        >
+          Compras
+        </span>
+        {vistaActual === 'agregar' && " / Nueva Compra"}
+        {vistaActual === 'detalle' && " / Detalle"}
+      </nav>
+
+      {/* Estadísticas - Solo 2 cards */}
       {vistaActual === 'lista' && renderEstadisticas()}
 
-      {/* Navegación */}
-      {renderNavegacion()}
-
       {/* Contenido Principal */}
-      <div className="bg-gray-50 min-h-screen -mx-6 -mb-6 px-6 pb-6">
-        {renderContenido()}
-      </div>
+      {renderContenido()}
     </div>
   );
 }

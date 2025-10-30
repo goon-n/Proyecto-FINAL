@@ -43,7 +43,6 @@ export default function MovimientoCajaHistorial({ movimientos: movimientosProp, 
     const config = {
       ingreso: { variant: "default", label: "Ingreso", color: "bg-green-100 text-green-800" },
       egreso: { variant: "destructive", label: "Egreso", color: "bg-red-100 text-red-800" },
-      deposito: { variant: "secondary", label: "Depósito", color: "bg-blue-100 text-blue-800" },
     };
     return config[tipo] || { variant: "outline", label: tipo };
   };
@@ -67,7 +66,7 @@ export default function MovimientoCajaHistorial({ movimientos: movimientosProp, 
         </TableHeader>
         <TableBody>
           {movimientos.map((mov) => (
-            <TableRow key={mov.id}>
+            <TableRow key={mov.id} className={mov.compra_info ? 'bg-amber-50' : ''}>
               <TableCell className="text-sm">
                 {new Date(mov.fecha).toLocaleString('es-AR', {
                   day: '2-digit',
@@ -81,8 +80,16 @@ export default function MovimientoCajaHistorial({ movimientos: movimientosProp, 
                   {getTipoBadge(mov.tipo).label}
                 </Badge>
               </TableCell>
-              <TableCell className="max-w-xs truncate">
-                {mov.descripcion || '-'}
+              <TableCell className="max-w-xs">
+                <div className="truncate">
+                  {mov.descripcion || '-'}
+                </div>
+                {/* ⭐ NUEVO: Mostrar info de compra si existe */}
+                {mov.compra_info && (
+                  <div className="text-xs text-amber-700 mt-1 flex items-center gap-1">
+                   
+                  </div>
+                )}
               </TableCell>
               <TableCell>
                 <span className="text-sm">

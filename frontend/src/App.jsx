@@ -5,29 +5,25 @@ import HomeAdmin from "./pages/HomeAdmin";
 import HomeEntrenador from "./pages/HomeEntrenador";
 import HomeSocio from "./pages/HomeSocio";
 import GestionUsuarios from "./pages/GestionUsuarios";
-import GestionProveedores from "./pages/GestionProveedores"; // <-- AGREGAR IMPORT
+import GestionProveedores from "./pages/GestionProveedores";
 import GestionAccesorios from "./pages/GestionAccesorios";
 import CajaPage from "./pages/CajaPage";
 import GestionCompras from "./pages/GestionCompras";
+import AdminLayout from "./components/layout/AdminLayout";
 import { useAuth } from "./context/AuthContext";
 
-// Componente para rutas privadas según rol
-function PrivateRoute({ children, rolPermitido }) {
+function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
-
-  console.log("PrivateRoute - User:", user, "Loading:", loading);
 
   if (loading) {
     return <p className="text-white text-center mt-10">Cargando...</p>;
   }
   
   if (!user) {
-    console.log("No hay usuario, redirigiendo a login");
     return <Navigate to="/" replace />;
   }
   
-  if (rolPermitido && user.rol !== rolPermitido) {
-    console.log(`Rol incorrecto. Esperado: ${rolPermitido}, Actual: ${user.rol}`);
+  if (rolesPermitidos && !rolesPermitidos.includes(user.rol)) {
     return <Navigate to="/" replace />;
   }
   
@@ -44,64 +40,36 @@ export default function App() {
         
         {/* Rutas del Admin */}
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
-            <PrivateRoute rolPermitido="admin">
-              <HomeAdmin />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/admin/usuarios"
-          element={
-            <PrivateRoute rolPermitido="admin">
-              <GestionUsuarios />
-            </PrivateRoute>
-          }
-        />
-        
-        <Route
-          path="/admin/proveedores"
-          element={
-            <PrivateRoute rolPermitido="admin">
-              <GestionProveedores />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/admin/caja"
-          element={
-            <PrivateRoute rolPermitido="admin">
-              <CajaPage />
-            </PrivateRoute>
-          }
-        />
-
-         <Route
-          path="/admin/compras"
-          element={
-            <PrivateRoute rolPermitido="admin">
-              <GestionCompras />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/admin/accesorios"
-          element={
-            <PrivateRoute rolPermitido="admin">
-              <GestionAccesorios />
+            <PrivateRoute rolesPermitidos={["admin"]}>
+              <AdminLayout>
+                <Routes>
+                  <Route index element={<HomeAdmin />} />
+                  <Route path="usuarios" element={<GestionUsuarios />} />
+                  <Route path="proveedores" element={<GestionProveedores />} />
+                  <Route path="accesorios" element={<GestionAccesorios />} />
+                  <Route path="compras" element={<GestionCompras />} />
+                  <Route path="caja" element={<CajaPage />} />
+                </Routes>
+              </AdminLayout>
             </PrivateRoute>
           }
         />
         
-        {/* Ruta del Entrenador */}
+        {/* Rutas del Entrenador - USA EL MISMO LAYOUT */}
         <Route
-          path="/entrenador"
+          path="/entrenador/*"
           element={
-            <PrivateRoute rolPermitido="entrenador">
-              <HomeEntrenador />
+            <PrivateRoute rolesPermitidos={["entrenador"]}>
+              <AdminLayout>
+                <Routes>
+                  <Route index element={<HomeEntrenador />} />
+                  <Route path="usuarios" element={<GestionUsuarios />} />
+                  <Route path="accesorios" element={<GestionAccesorios />} />
+                  <Route path="caja" element={<CajaPage />} />
+                </Routes>
+              </AdminLayout>
             </PrivateRoute>
           }
         />
@@ -110,13 +78,12 @@ export default function App() {
         <Route
           path="/socio"
           element={
-            <PrivateRoute rolPermitido="socio">
+            <PrivateRoute rolesPermitidos={["socio"]}>
               <HomeSocio />
             </PrivateRoute>
           }
         />
         
-        {/* Ruta por defecto - cualquier ruta no encontrada */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

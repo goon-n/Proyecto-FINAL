@@ -1,6 +1,6 @@
 // src/pages/GestionAccesorios.jsx
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react"; // 🆕 Agregamos useEffect
+import { useNavigate, useLocation } from "react-router-dom"; // 🆕 Agregamos useLocation
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Package, Plus, ArrowLeft } from "lucide-react";
@@ -19,12 +19,23 @@ import { useAccesorios } from "../hooks/useAccesorios";
 
 const GestionAccesorios = () => {
   const navigate = useNavigate();
-  const [vistaActual, setVistaActual] = useState("lista"); // "lista", "agregar", "editar"
+  const location = useLocation(); // 🆕 NUEVO - para detectar navegación desde compras
+  
+  const [vistaActual, setVistaActual] = useState("lista");
   const [accesorioEditar, setAccesorioEditar] = useState(null);
   const [reload, setReload] = useState(0);
 
   // Hook para obtener datos de accesorios
   const { accesorios, accesoriosActivos, loading: loadingStats, refetch } = useAccesorios();
+
+  // 🆕 NUEVO - Detectar si viene desde compras para ir directo a "agregar"
+  useEffect(() => {
+    if (location.state?.accion === 'agregar') {
+      setVistaActual('agregar');
+      // Limpiar el state para que no se quede guardado en el historial
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   // ========== HANDLERS ==========
 

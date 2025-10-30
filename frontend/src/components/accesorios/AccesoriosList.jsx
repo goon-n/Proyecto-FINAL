@@ -1,6 +1,6 @@
 // src/components/accesorios/AccesoriosList.jsx
 import React, { useEffect, useState } from "react";
-import { getAccesorios, deleteAccesorio } from "../../services/accesorios.service";
+import { getAccesorios, toggleAccesorioActivo } from "../../services/accesorios.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Edit, Trash2, Package } from "lucide-react";
+import { Search, Edit, Package } from "lucide-react";
+import { DialogDesactivar } from "./DialogDesactivar";
 import toast from "react-hot-toast";
 
 export default function AccesoriosList({ reload, onEditar }) {
@@ -22,6 +23,7 @@ export default function AccesoriosList({ reload, onEditar }) {
   const [error, setError] = useState("");
   const [filtro, setFiltro] = useState("");
   const [vistaActual, setVistaActual] = useState("todos");
+  const [procesando, setProcesando] = useState(null); // ID del accesorio que se está procesando
 
   const fetchAccesorios = async () => {
     setLoading(true);
@@ -41,15 +43,25 @@ export default function AccesoriosList({ reload, onEditar }) {
     fetchAccesorios();
   }, [reload]);
 
-  const handleDelete = async (id, nombre) => {
-    if (window.confirm(`¿Estás seguro de eliminar el accesorio "${nombre}"?`)) {
-      try {
-        await deleteAccesorio(id);
-        toast.success("Accesorio eliminado correctamente");
-        setAccesorios(prev => prev.filter(acc => acc.id !== id));
-      } catch (error) {
-        toast.error("Error al eliminar accesorio");
-      }
+  const handleToggleActivo = async (accesorio) => {
+    setProcesando(accesorio.id);
+    try {
+      await toggleAccesorioActivo(accesorio.id, accesorio.activo);
+      
+      const accion = accesorio.activo ? "desactivado" : "activado";
+      toast.success(`Accesorio ${accion} correctamente`);
+      
+      // Actualizar el estado local
+      setAccesorios(prev => prev.map(acc => 
+        acc.id === accesorio.id 
+          ? { ...acc, activo: !acc.activo }
+          : acc
+      ));
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || "Error al cambiar estado del accesorio";
+      toast.error(errorMsg);
+    } finally {
+      setProcesando(null);
     }
   };
 
@@ -149,7 +161,10 @@ export default function AccesoriosList({ reload, onEditar }) {
                 </TableRow>
               ) : (
                 accesoriosFiltrados.map((accesorio) => (
-                  <TableRow key={accesorio.id}>
+                  <TableRow 
+                    key={accesorio.id}
+                    className={!accesorio.activo ? "opacity-60 bg-gray-50" : ""}
+                  >
                     <TableCell className="font-medium">{accesorio.nombre}</TableCell>
                     <TableCell>
                       <div className="max-w-xs truncate" title={accesorio.descripcion}>
@@ -179,14 +194,12 @@ export default function AccesoriosList({ reload, onEditar }) {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(accesorio.id, accesorio.nombre)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        
+                        <DialogDesactivar
+                          accesorio={accesorio}
+                          onConfirmar={() => handleToggleActivo(accesorio)}
+                          procesando={procesando === accesorio.id}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>

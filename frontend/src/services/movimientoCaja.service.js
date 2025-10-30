@@ -1,7 +1,9 @@
+// services/movimientoCaja.service.js
+
 import axios from "axios";
 import { getCSRFToken } from "../utils/csrf";
 
-const API_URL = "http://localhost:8000/api/movimientos-caja/";
+const API_URL = 'http://localhost:8000/api/movimiento-caja/'; 
 
 export const getMovimientos = () =>
   axios.get(API_URL, { withCredentials: true });

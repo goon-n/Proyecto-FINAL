@@ -1,9 +1,10 @@
 // src/components/compra/CompraList.jsx
 import React, { useEffect, useState } from "react";
-import { getCompras, eliminarCompraConStock, getProveedores } from "../../services/compra.service";
+import { getCompras, getProveedores } from "../../services/compra.service";
 import toast from "react-hot-toast";
+import { Eye } from "lucide-react";
 
-export default function CompraList({ reload, onView, onEdit }) {
+export default function CompraList({ reload, onView }) {
   const [compras, setCompras] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +15,7 @@ export default function CompraList({ reload, onView, onEdit }) {
   });
   const [comprasFiltradas, setComprasFiltradas] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 6;
 
   useEffect(() => {
     cargarDatos();
@@ -31,7 +32,10 @@ export default function CompraList({ reload, onView, onEdit }) {
         getCompras(),
         getProveedores()
       ]);
-      setCompras(comprasRes.data);
+      
+      // 🔧 CAMBIO 2: Ordenar por ID descendente (más reciente primero)
+      const comprasOrdenadas = comprasRes.data.sort((a, b) => b.id - a.id);
+      setCompras(comprasOrdenadas);
       setProveedores(proveedoresRes.data);
     } catch (error) {
       toast.error("Error al cargar las compras");
@@ -44,29 +48,29 @@ export default function CompraList({ reload, onView, onEdit }) {
   const aplicarFiltros = () => {
     let resultado = [...compras];
 
-    // Filtro por proveedor
     if (filtros.proveedor) {
       resultado = resultado.filter(compra => 
         compra.proveedor.toString() === filtros.proveedor
       );
     }
 
-    // Filtro por fecha desde
     if (filtros.fecha_desde) {
       resultado = resultado.filter(compra => 
         new Date(compra.fecha) >= new Date(filtros.fecha_desde)
       );
     }
 
-    // Filtro por fecha hasta
     if (filtros.fecha_hasta) {
       resultado = resultado.filter(compra => 
         new Date(compra.fecha) <= new Date(filtros.fecha_hasta)
       );
     }
 
+    // 🔧 CAMBIO 3: Asegurar orden descendente después de filtrar
+    resultado.sort((a, b) => b.id - a.id);
+    
     setComprasFiltradas(resultado);
-    setCurrentPage(1); // Resetear a la primera página al filtrar
+    setCurrentPage(1);
   };
 
   const handleFiltroChange = (campo, valor) => {
@@ -82,19 +86,6 @@ export default function CompraList({ reload, onView, onEdit }) {
       fecha_desde: '',
       fecha_hasta: ''
     });
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm("¿Está seguro de eliminar esta compra? Se revertirá el stock automáticamente.")) {
-      try {
-        await eliminarCompraConStock(id);
-        toast.success("Compra eliminada y stock actualizado");
-        setCompras(c => c.filter(x => x.id !== id));
-      } catch (error) {
-        toast.error("Error al eliminar la compra");
-        console.error(error);
-      }
-    }
   };
 
   const formatFecha = (fecha) => {
@@ -114,6 +105,8 @@ export default function CompraList({ reload, onView, onEdit }) {
 
   const cambiarPagina = (nuevaPagina) => {
     setCurrentPage(nuevaPagina);
+    // Scroll suave al inicio de la tabla
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (loading) {
@@ -132,7 +125,9 @@ export default function CompraList({ reload, onView, onEdit }) {
       {/* Header */}
       <div className="p-4 border-b">
         <h3 className="text-xl font-bold text-gray-800">Compras Registradas</h3>
-        <p className="text-gray-600">Total: {comprasFiltradas.length} compras</p>
+        <p className="text-gray-600">
+          Total: {comprasFiltradas.length} compras •
+        </p>
       </div>
 
       {/* Filtros */}
@@ -183,7 +178,7 @@ export default function CompraList({ reload, onView, onEdit }) {
           <div className="flex items-end">
             <button
               onClick={limpiarFiltros}
-              className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors"
+              className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors w-full"
             >
               Limpiar filtros
             </button>
@@ -231,26 +226,13 @@ export default function CompraList({ reload, onView, onEdit }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-center">
-                    <div className="flex justify-center space-x-2">
-                      <button
-                        onClick={() => onView && onView(compra.id)}
-                        className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                      >
-                        Ver
-                      </button>
-                      <button
-                        onClick={() => onEdit && onEdit(compra.id)}
-                        className="text-yellow-600 hover:text-yellow-800 font-medium transition-colors"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(compra.id)}
-                        className="text-red-600 hover:text-red-800 font-medium transition-colors"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onView && onView(compra.id)}
+                      className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 font-medium transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Ver Detalle
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -270,31 +252,44 @@ export default function CompraList({ reload, onView, onEdit }) {
               <button
                 onClick={() => cambiarPagina(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Anterior
+                ← Anterior
               </button>
               
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => cambiarPagina(page)}
-                  className={`px-3 py-1 border border-gray-300 rounded-md text-sm font-medium transition-colors ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'text-gray-700 bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => cambiarPagina(pageNum)}
+                    className={`px-3 py-1 border border-gray-300 rounded-md text-sm font-medium transition-colors ${
+                      currentPage === pageNum
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'text-gray-700 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
               
               <button
                 onClick={() => cambiarPagina(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Siguiente
+                Siguiente →
               </button>
             </div>
           </div>

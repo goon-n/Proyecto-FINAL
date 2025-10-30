@@ -4,7 +4,7 @@ import { getCSRFToken } from "../utils/csrf";
 
 const API_URL = "http://localhost:8000/api/accesorios/";
 const PROV_ACTIVOS_URL = "http://localhost:8000/api/proveedores/activos/";
-const PROV_TODOS_URL = "http://localhost:8000/api/proveedores/activos/"; // Para formularios, solo activos
+const PROV_TODOS_URL = "http://localhost:8000/api/proveedores/activos/";
 
 // Operaciones CRUD para accesorios
 export const getAccesorios = () => axios.get(API_URL, { withCredentials: true });
@@ -31,6 +31,29 @@ export const deleteAccesorio = (id) => axios.delete(`${API_URL}${id}/`, {
     "X-CSRFToken": getCSRFToken(),
   }
 });
+
+// 🆕 NUEVO - Toggle activo/inactivo
+export const toggleAccesorioActivo = async (id, activo) => {
+  try {
+    // Primero obtener los datos actuales del accesorio
+    const accesorioActual = await getAccesorio(id);
+    
+    // Actualizar solo el campo activo
+    const response = await axios.patch(
+      `${API_URL}${id}/`, 
+      { activo: !activo }, // Toggle: si está activo lo desactiva y viceversa
+      {
+        withCredentials: true,
+        headers: {
+          "X-CSRFToken": getCSRFToken(),
+        }
+      }
+    );
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 
 // Obtener proveedores para el formulario (solo activos)
 export const getProveedores = () => axios.get(PROV_ACTIVOS_URL, { withCredentials: true });

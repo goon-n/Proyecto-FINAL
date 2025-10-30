@@ -28,6 +28,7 @@ export default function CajaControlTab({
                 value={caja.monto_inicial}
                 onChange={handleChange}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                disabled
               />
             </div>
 
