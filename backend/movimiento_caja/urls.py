@@ -1,8 +1,13 @@
-from rest_framework import routers
+# movimiento_caja/urls.py
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import CajaViewSet, MovimientoDeCajaViewSet
 
-router = routers.DefaultRouter()
-router.register(r'cajas', CajaViewSet)   # <--- asegurate que esté como 'cajas'
-router.register(r'movimientos-caja', MovimientoDeCajaViewSet)
+router = DefaultRouter()
+router.register(r'caja', CajaViewSet, basename='caja')
+router.register(r'movimiento-caja', MovimientoDeCajaViewSet, basename='movimiento-caja')
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', include(router.urls)),
+]

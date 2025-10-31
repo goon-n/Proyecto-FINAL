@@ -17,6 +17,7 @@ class Proveedor(models.Model):
     def __str__(self):
         return self.nombre
     
+    
 class Accesorios(models.Model):
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)

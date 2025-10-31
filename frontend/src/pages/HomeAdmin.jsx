@@ -1,3 +1,4 @@
+// frontend/src/pages/HomeAdmin.jsx
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";

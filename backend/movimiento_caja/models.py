@@ -1,3 +1,4 @@
+# caja/models.py - AGREGAR campo compra_relacionada
 from django.db import models
 from api.models import Perfil
 
@@ -29,6 +30,29 @@ class Caja(models.Model):
     estado = models.CharField(max_length=10, choices=ESTADOS, default='ABIERTA')
     closing_counted_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     notas = models.TextField(blank=True, null=True)
+
+    # Propiedades calculadas para efectivo y transferencias
+    @property
+    def efectivo_esperado(self):
+        """Calcula el efectivo esperado en caja"""
+        total = self.monto_inicial
+        for mov in self.movimientos.filter(tipo_pago='efectivo'):
+            if mov.tipo == "ingreso":
+                total += mov.monto
+            elif mov.tipo == "egreso":
+                total -= mov.monto
+        return total
+
+    @property
+    def transferencia_esperada(self):
+        """Calcula el total de transferencias"""
+        total = 0
+        for mov in self.movimientos.filter(tipo_pago='transferencia'):
+            if mov.tipo == "ingreso":
+                total += mov.monto
+            elif mov.tipo == "egreso":
+                total -= mov.monto
+        return total
 
     def __str__(self):
         return f"Caja {self.id} ({self.estado})"
@@ -66,6 +90,15 @@ class MovimientoDeCaja(models.Model):
     creado_por = models.ForeignKey(
         Perfil, on_delete=models.PROTECT,
         null=True, blank=True, verbose_name="Usuario"
+    )
+    ## Relación con compra
+    compra = models.ForeignKey(
+        'api.Compra',  # Referencia al modelo Compra
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimientos_caja',
+        verbose_name="Compra relacionada"
     )
 
     def __str__(self):
