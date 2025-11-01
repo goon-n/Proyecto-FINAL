@@ -1,14 +1,26 @@
+# movimiento_caja/views.py
+
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from .models import Caja, MovimientoDeCaja
 from .serializers import CajaSerializer, MovimientoDeCajaSerializer
+from rest_framework.pagination import PageNumberPagination
+
+
+
+class CajaPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class CajaViewSet(viewsets.ModelViewSet):
     queryset = Caja.objects.all().order_by('-fecha_apertura')
     serializer_class = CajaSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = CajaPagination  # ⭐ AGREGAR ESTA LÍNEA
     http_method_names = ['get', 'post', 'patch', 'head', 'options']
     
     @action(detail=False, methods=['get'])
@@ -26,7 +38,6 @@ class CajaViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import ValidationError
             raise ValidationError('Ya existe una caja abierta. Ciérrala antes de abrir una nueva.')
         
-        # Guardar el usuario que abre la caja
         serializer.save(empleado_apertura=self.request.user.perfil)
     
     def perform_update(self, serializer):
@@ -45,7 +56,6 @@ class MovimientoDeCajaViewSet(viewsets.ModelViewSet):
     serializer_class = MovimientoDeCajaSerializer
     filterset_fields = ['caja']
     permission_classes = [permissions.IsAuthenticated]
-    # ❌ ELIMINAR la opción de DELETE (no se puede borrar movimientos)
     http_method_names = ['get', 'post', 'head', 'options']
     
     def perform_create(self, serializer):

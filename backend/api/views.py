@@ -13,6 +13,7 @@ from .serializers import (
 )
 from django.utils import timezone
 from django.db.models import Q
+from rest_framework.decorators import action, api_view, permission_classes
 
 # ========== AUTENTICACIÓN ==========
 
@@ -83,24 +84,78 @@ class ProveedorViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ['activo', 'nombre']
 
+
 class AccesoriosViewSet(viewsets.ModelViewSet):
     queryset = Accesorios.objects.all()
     serializer_class = AccesoriosSerializer
     permission_classes = [IsAuthenticated]
 
+
 class CompraViewSet(viewsets.ModelViewSet):
     queryset = Compra.objects.all()
     serializer_class = CompraSerializer
-    permission_classes = [IsAuthenticated]
+
     
     def create(self, request, *args, **kwargs):
-        # Debug: imprimir información de autenticación
-        print(f"Usuario autenticado: {request.user.is_authenticated}")
-        print(f"Usuario: {request.user}")
-        print(f"Datos recibidos: {request.data}")
+        """Crear compra y registrar movimiento en caja automáticamente"""
+        from movimiento_caja.models import Caja, MovimientoDeCaja
         
-        return super().create(request, *args, **kwargs)
+        # ⭐ VALIDACIÓN: Verificar que haya caja abierta
+        caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
+        
+        if not caja_abierta:
+            return Response(
+                {
+                    'error': 'No hay caja abierta',
+                    'detail': 'Debe abrir una caja antes de registrar compras.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Continuar con la creación de la compra
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Guardar la compra
+        compra = serializer.save()
+        
+        # Obtener tipo de pago del request
+        tipo_pago = request.data.get('tipo_pago', 'efectivo')
+        
+        # Registrar movimiento en caja abierta
+        try:
+            MovimientoDeCaja.objects.create(
+                caja=caja_abierta,
+                tipo='egreso',
+                monto=compra.total,
+                tipo_pago=tipo_pago,
+                descripcion=f"Compra #{compra.id} - {compra.proveedor.nombre}",
+                creado_por=request.user.perfil,
+                compra=compra
+            )
+            print(f"✅ Movimiento de caja creado para compra #{compra.id}")
+        except Exception as e:
+            print(f"❌ Error al crear movimiento de caja: {e}")
+            # Opcional: podrías eliminar la compra si falla el movimiento
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
+    def get_queryset(self):
+        queryset = Compra.objects.all().select_related('proveedor').prefetch_related('items__accesorio')
+        
+        proveedor_id = self.request.query_params.get('proveedor', None)
+        fecha_desde = self.request.query_params.get('fecha_desde', None)
+        fecha_hasta = self.request.query_params.get('fecha_hasta', None)
+        
+        if proveedor_id:
+            queryset = queryset.filter(proveedor_id=proveedor_id)
+        if fecha_desde:
+            queryset = queryset.filter(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fecha__lte=fecha_hasta)
+            
+        return queryset.order_by('-fecha')
     def get_queryset(self):
         queryset = Compra.objects.all().select_related('proveedor').prefetch_related('items__accesorio')
         
@@ -117,6 +172,24 @@ class CompraViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(fecha__lte=fecha_hasta)
             
         return queryset.order_by('-fecha')
+    
+    def get_queryset(self):
+        queryset = Compra.objects.all().select_related('proveedor').prefetch_related('items__accesorio')
+        
+        # Filtros
+        proveedor_id = self.request.query_params.get('proveedor', None)
+        fecha_desde = self.request.query_params.get('fecha_desde', None)
+        fecha_hasta = self.request.query_params.get('fecha_hasta', None)
+        
+        if proveedor_id:
+            queryset = queryset.filter(proveedor_id=proveedor_id)
+        if fecha_desde:
+            queryset = queryset.filter(fecha__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fecha__lte=fecha_hasta)
+            
+        return queryset.order_by('-fecha')
+
 
 class ClaseViewSet(viewsets.ModelViewSet):
     queryset = Clase.objects.all()

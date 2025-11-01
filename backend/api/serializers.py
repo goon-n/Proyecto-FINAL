@@ -3,6 +3,8 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Perfil, Socio, Clase, Proveedor, Accesorios, Compra, ItemCompra
 import re
+from rest_framework import serializers
+
 
 class CustomUserSerializer(serializers.ModelSerializer):
     rol = serializers.CharField(source='perfil.rol', read_only=True)
@@ -170,3 +172,4 @@ class CompraSerializer(serializers.ModelSerializer):
                 accesorio.save()
         
         return instance
+    

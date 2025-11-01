@@ -1,78 +1,75 @@
+# movimiento_caja/serializers.py
+
 from rest_framework import serializers
 from .models import Caja, MovimientoDeCaja
 
 class MovimientoDeCajaSerializer(serializers.ModelSerializer):
-    creado_por_nombre = serializers.SerializerMethodField()
+    creado_por_nombre = serializers.CharField(source='creado_por.user.username', read_only=True)
+    
+    # ⭐ NUEVO: Mostrar info de la compra si existe
+    compra_info = serializers.SerializerMethodField()
     
     class Meta:
         model = MovimientoDeCaja
-        fields = '__all__'
+        fields = [
+            'id', 'caja', 'tipo', 'monto', 'tipo_pago', 
+            'descripcion', 'fecha', 'creado_por', 'creado_por_nombre',
+            'compra', 'compra_info'  # ⭐ Agregar estos campos
+        ]
+        read_only_fields = ['creado_por', 'fecha']
     
-    def get_creado_por_nombre(self, obj):
-        if obj.creado_por:
-            return f"{obj.creado_por.user.first_name} {obj.creado_por.user.last_name}".strip() or obj.creado_por.user.username
-        return "Sistema"
+    def get_compra_info(self, obj):
+        """Devolver información de la compra relacionada"""
+        if obj.compra:
+            return {
+                'id': obj.compra.id,
+                'proveedor': obj.compra.proveedor.nombre,
+                'total': float(obj.compra.total),
+                'fecha': obj.compra.fecha
+            }
+        return None
+
 
 class CajaSerializer(serializers.ModelSerializer):
+    empleado_apertura_nombre = serializers.CharField(
+        source='empleado_apertura.user.username', 
+        read_only=True
+    )
+    empleado_cierre_nombre = serializers.CharField(
+        source='empleado_cierre.user.username', 
+        read_only=True
+    )
     closing_system_amount = serializers.DecimalField(
-        read_only=True, max_digits=10, decimal_places=2
+        max_digits=10, 
+        decimal_places=2, 
+        read_only=True
     )
     difference_amount = serializers.DecimalField(
-        read_only=True, max_digits=10, decimal_places=2
+        max_digits=10, 
+        decimal_places=2, 
+        read_only=True
     )
-    efectivo_esperado = serializers.SerializerMethodField()
-    transferencia_esperada = serializers.SerializerMethodField()
     
-    # 🔥 AGREGAR campos para mostrar nombres
-    empleado_apertura_nombre = serializers.SerializerMethodField()
-    empleado_cierre_nombre = serializers.SerializerMethodField()
+    # ⭐ NUEVO: Propiedades calculadas
+    efectivo_esperado = serializers.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        read_only=True
+    )
+    transferencia_esperada = serializers.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        read_only=True
+    )
     
-    movimientos = MovimientoDeCajaSerializer(many=True, read_only=True)
-
     class Meta:
         model = Caja
         fields = [
-            'id', 'empleado_apertura', 'fecha_apertura', 'monto_inicial',
-            'empleado_cierre', 'fecha_cierre', 'estado',
-            'closing_counted_amount', 'closing_system_amount', 'difference_amount',
-            'notas', 'movimientos',
-            'efectivo_esperado', 'transferencia_esperada',
-            'empleado_apertura_nombre', 'empleado_cierre_nombre'  # 🔥 AGREGAR
+            'id', 'empleado_apertura', 'empleado_apertura_nombre',
+            'fecha_apertura', 'monto_inicial', 'empleado_cierre',
+            'empleado_cierre_nombre', 'fecha_cierre', 'estado',
+            'closing_counted_amount', 'closing_system_amount',
+            'difference_amount', 'notas',
+            'efectivo_esperado', 'transferencia_esperada'  # ⭐ Agregar estos
         ]
-    
-    def get_efectivo_esperado(self, obj):
-        """Calcular cuánto efectivo debería haber"""
-        total = obj.monto_inicial
-        
-        for mov in obj.movimientos.filter(tipo_pago='efectivo'):
-            if mov.tipo == "ingreso":
-                total += mov.monto
-            elif mov.tipo == "egreso":
-                total -= mov.monto
-        
-        return total
-    
-    def get_transferencia_esperada(self, obj):
-        """Calcular cuánto en transferencias debería haber"""
-        total = 0
-        
-        for mov in obj.movimientos.filter(tipo_pago='transferencia'):
-            if mov.tipo == "ingreso":
-                total += mov.monto
-            elif mov.tipo == "egreso":
-                total -= mov.monto
-        
-        return total
-    
-    # MÉTODOS PARA OBTENER NOMBRES
-    def get_empleado_apertura_nombre(self, obj):
-        if obj.empleado_apertura:
-            user = obj.empleado_apertura.user
-            return f"{user.first_name} {user.last_name}".strip() or user.username
-        return "No registrado"
-    
-    def get_empleado_cierre_nombre(self, obj):
-        if obj.empleado_cierre:
-            user = obj.empleado_cierre.user
-            return f"{user.first_name} {user.last_name}".strip() or user.username
-        return None
+        read_only_fields = ['empleado_apertura', 'fecha_apertura', 'empleado_cierre', 'fecha_cierre']
