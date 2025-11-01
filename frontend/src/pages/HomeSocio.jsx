@@ -1,9 +1,11 @@
+// frontend/src/pages/HomeSocio.jsx
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LogOut, Calendar, Dumbbell, CreditCard, Clock } from "lucide-react";
+import TurnosList from "../components/turnos/TurnosList";
 
 const HomeSocio = () => {
   const { user, logout } = useAuth();
@@ -170,31 +172,12 @@ const HomeSocio = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-3">
-                Tenés turnos disponibles para reservar en las siguientes actividades:
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 bg-primary rounded-full"></span>
-                  Clases grupales
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 bg-primary rounded-full"></span>
-                  Entrenamiento personalizado
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 bg-primary rounded-full"></span>
-                  Evaluación física
-                </li>
-              </ul>
-            </div>
-            <Button className="w-full" size="lg">
-              <Calendar className="mr-2 h-5 w-5" />
-              Reservar Ahora
-            </Button>
+            {/* Aquí puede haber ya contenido fijo, pero queremos mostrar turnos reales */}
+            <TurnosList userRole={user.rol} />
           </CardContent>
         </Card>
+
+
 
       </div>
     </div>

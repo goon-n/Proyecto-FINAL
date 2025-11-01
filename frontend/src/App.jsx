@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Router } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import HomeAdmin from "./pages/HomeAdmin";
@@ -11,6 +11,7 @@ import CajaPage from "./pages/CajaPage";
 import GestionCompras from "./pages/GestionCompras";
 import AdminLayout from "./components/layout/AdminLayout";
 import { useAuth } from "./context/AuthContext";
+import TurnosPage from "./pages/TurnosPage";
 
 function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
@@ -51,6 +52,7 @@ export default function App() {
                   <Route path="accesorios" element={<GestionAccesorios />} />
                   <Route path="compras" element={<GestionCompras />} />
                   <Route path="caja" element={<CajaPage />} />
+                  <Route path="turnos" element={<TurnosPage userRole="admin" />} />
                 </Routes>
               </AdminLayout>
             </PrivateRoute>
@@ -68,6 +70,7 @@ export default function App() {
                   <Route path="usuarios" element={<GestionUsuarios />} />
                   <Route path="accesorios" element={<GestionAccesorios />} />
                   <Route path="caja" element={<CajaPage />} />
+                  <Route path="turnos" element={<TurnosPage userRole="entrenador" />} />
                 </Routes>
               </AdminLayout>
             </PrivateRoute>
@@ -80,6 +83,14 @@ export default function App() {
           element={
             <PrivateRoute rolesPermitidos={["socio"]}>
               <HomeSocio />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/socio/turnos"
+          element={
+            <PrivateRoute rolesPermitidos={["socio"]}>
+              <TurnosPage userRole={"SOCIO"} />
             </PrivateRoute>
           }
         />

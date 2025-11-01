@@ -1,3 +1,4 @@
+// frontend/src/pages/HomeAdmin.jsx
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ import {
   Settings,
   Box 
 } from "lucide-react";
+import TurnosList from "@/components/turnos/TurnosList";
+import CrearTurno from "@/components/turnos/CrearTurno";
 
 const HomeEntrenador = () => {
   const { user, logout } = useAuth();
@@ -68,18 +71,12 @@ const HomeEntrenador = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" size="lg">
-                <Calendar className="mr-2 h-4 w-4" />
-                Ver Todos los Turnos
-              </Button>
-              <Button variant="outline" size="lg">
-                <Calendar className="mr-2 h-4 w-4" />
-                Crear Nuevo Cupo
-              </Button>
-            </div>
+            <CrearTurno userRole={user.rol} />
+            <Separator className="my-4" />
+            <TurnosList userRole={user.rol} />
           </CardContent>
         </Card>
+
 
         {/* Tareas de Administración */}
         <Card>

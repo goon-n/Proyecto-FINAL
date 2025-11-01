@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'api',
     'movimiento_caja',
+    'turnos',
 ]
 
 MIDDLEWARE = [
@@ -70,7 +71,6 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #        'NAME': BASE_DIR / 'db.sqlite3',
 #    }
 #}
-import os
 
 DATABASES = {
     'default': {
