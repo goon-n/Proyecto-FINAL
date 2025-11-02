@@ -37,61 +37,66 @@ export default function CajaEdit({ id, onGuardado }) {
   };
 
   const handleSubmit = async e => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (caja.estado === 'CERRADA' && !caja.closing_counted_amount) {
+    toast.error("Debes ingresar el efectivo contado al cerrar la caja");
+    return;
+  }
+
+  if (caja.estado === 'CERRADA') {
+    const efectivo = Number(caja.efectivo_esperado || 0);
+    const transferencia = Number(caja.transferencia_esperada || 0);
+    const totalGeneral = efectivo + transferencia;
+    const montoContado = Number(caja.closing_counted_amount);
+    const diferenciaEfectivo = montoContado - efectivo;
     
-    if (caja.estado === 'CERRADA' && !caja.closing_counted_amount) {
-      toast.error("Debes ingresar el monto contado al cerrar la caja");
+    const confirmar = window.confirm(
+      `═══════════════════════════════════\n` +
+      `   RESUMEN DE CIERRE DE CAJA\n` +
+      `═══════════════════════════════════\n\n` +
+      `💵 EFECTIVO:\n` +
+      `   Esperado: $${efectivo.toFixed(2)}\n` +
+      `   Contado:  $${montoContado.toFixed(2)}\n` +
+      `   Diferencia: $${diferenciaEfectivo.toFixed(2)} ${Math.abs(diferenciaEfectivo) < 0.01 ? '✅' : '⚠️'}\n\n` +
+      `🏦 TRANSFERENCIAS: $${transferencia.toFixed(2)}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `${Math.abs(diferenciaEfectivo) > 0.01 ? '⚠️ HAY DIFERENCIA EN EFECTIVO' : '✅ EFECTIVO CORRECTO'}\n\n` +
+      `¿Confirmar cierre de caja?`
+    );
+    
+    if (!confirmar) {
+      setCaja(prev => ({ ...prev, estado: 'ABIERTA' }));
+      toast.info("Cierre de caja cancelado");
       return;
     }
+  }
 
-    if (caja.estado === 'CERRADA') {
-      const efectivo = Number(caja.efectivo_esperado || 0);
-      const transferencia = Number(caja.transferencia_esperada || 0);
-      const montoSistema = Number(caja.closing_system_amount);
-      const montoContado = Number(caja.closing_counted_amount);
-      const diferencia = montoSistema - montoContado;
-      
-      const confirmar = window.confirm(
-        `RESUMEN DE CIERRE DE CAJA\n\n` +
-        `💵 Efectivo esperado: $${efectivo.toFixed(2)}\n` +
-        `🏦 Transferencias: $${transferencia.toFixed(2)}\n\n` +
-        `💰 TOTALES:\n` +
-        `Monto sistema: $${montoSistema.toFixed(2)}\n` +
-        `Monto contado: $${montoContado.toFixed(2)}\n` +
-        `Diferencia: $${diferencia.toFixed(2)}\n\n` +
-        `${Math.abs(diferencia) > 0.01 ? '⚠️ HAY DIFERENCIA - ' : '✅ TODO OK - '}¿Confirmar cierre?`
-      );
-      
-      if (!confirmar) {
-        setCaja(prev => ({ ...prev, estado: 'ABIERTA' }));
-        toast.info("Cierre de caja cancelado");
-        return;
-      }
+  setGuardando(true);
+  try {
+    await updateCaja(id, {
+      estado: caja.estado,
+      monto_inicial: Number(caja.monto_inicial),
+      closing_counted_amount: caja.closing_counted_amount ? Number(caja.closing_counted_amount) : null,
+      notas: caja.notas
+    });
+    
+    const cajaActualizada = await getCaja(id);
+    setCaja(cajaActualizada.data);
+    
+    toast.success(caja.estado === 'CERRADA' ? "✅ Caja cerrada correctamente" : "Caja actualizada correctamente");
+    
+    if (caja.estado === 'CERRADA' && onGuardado) {
+      setTimeout(onGuardado, 1500);
     }
-
-    setGuardando(true);
-    try {
-      await updateCaja(id, {
-        estado: caja.estado,
-        monto_inicial: Number(caja.monto_inicial),
-        closing_counted_amount: caja.closing_counted_amount ? Number(caja.closing_counted_amount) : null,
-        notas: caja.notas
-      });
-      
-      const cajaActualizada = await getCaja(id);
-      setCaja(cajaActualizada.data);
-      
-      toast.success(caja.estado === 'CERRADA' ? "Caja cerrada correctamente" : "Caja actualizada correctamente");
-      
-      if (caja.estado === 'CERRADA' && onGuardado) {
-        setTimeout(onGuardado, 1500);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Error al guardar la caja");
-    } finally {
-      setGuardando(false);
-    }
-  };
+  } catch (error) {
+    toast.error(error.response?.data?.detail || "Error al guardar la caja");
+  } finally {
+    setGuardando(false);
+  }
+};
 
   if (loading || !caja) {
     return (

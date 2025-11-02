@@ -1,10 +1,9 @@
-// components/compra/CompraAdd.jsx - Versión con validación de caja
-
 import React, { useEffect, useState } from "react";
 import { createCompra, getProveedores, getAccesorios } from "../../services/compra.service";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { getCSRFToken } from "../../utils/csrf";
+import { Search } from "lucide-react";
 
 export default function CompraAdd({ onAdd }) {
   const [proveedores, setProveedores] = useState([]);
@@ -14,15 +13,17 @@ export default function CompraAdd({ onAdd }) {
   const [notas, setNotas] = useState("");
   const [tipoPago, setTipoPago] = useState("efectivo");
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(null);
-  const [cajaAbierta, setCajaAbierta] = useState(null); // ⭐ Estado de caja
+  const [cajaAbierta, setCajaAbierta] = useState(null);
   const [cargandoCaja, setCargandoCaja] = useState(true);
+  
+  // ⭐ Estados para búsqueda de productos
+  const [busquedaProducto, setBusquedaProducto] = useState({});
 
   useEffect(() => {
     cargarDatos();
     verificarCajaAbierta();
   }, []);
 
-  // ⭐ Verificar si hay caja abierta
   const verificarCajaAbierta = async () => {
     try {
       setCargandoCaja(true);
@@ -30,10 +31,8 @@ export default function CompraAdd({ onAdd }) {
         withCredentials: true
       });
       setCajaAbierta(response.data);
-      console.log("✅ Caja abierta encontrada:", response.data);
     } catch (error) {
       if (error.response?.status === 404) {
-        console.log("⚠️ No hay caja abierta");
         setCajaAbierta(null);
       }
     } finally {
@@ -43,9 +42,6 @@ export default function CompraAdd({ onAdd }) {
 
   const cargarDatos = async () => {
     try {
-      await axios.get("http://localhost:8000/api/user/", { withCredentials: true });
-      const csrfToken = getCSRFToken();
-      
       const usuarioRes = await axios.get("http://localhost:8000/api/user/", { withCredentials: true });
       setUsuarioAutenticado(usuarioRes.data);
       
@@ -67,7 +63,12 @@ export default function CompraAdd({ onAdd }) {
     }
   };
 
-  const addItem = () => setItems([...items, { accesorio: "", cantidad: 1, precio_unitario: 0 }]);
+  const addItem = () => {
+    const nuevoItem = { accesorio: "", cantidad: 1, precio_unitario: 0 };
+    setItems([...items, nuevoItem]);
+    // Inicializar búsqueda para este nuevo item
+    setBusquedaProducto(prev => ({...prev, [items.length]: ""}));
+  };
   
   const handleItemChange = (idx, field, value) => {
     const copia = [...items];
@@ -75,14 +76,29 @@ export default function CompraAdd({ onAdd }) {
     setItems(copia);
   };
   
-  const removeItem = idx => setItems(items.filter((_, i) => i !== idx));
+  const removeItem = idx => {
+    setItems(items.filter((_, i) => i !== idx));
+    // Limpiar búsqueda del item eliminado
+    const nuevaBusqueda = {...busquedaProducto};
+    delete nuevaBusqueda[idx];
+    setBusquedaProducto(nuevaBusqueda);
+  };
+
+  // ⭐ Filtrar accesorios según búsqueda
+  const filtrarAccesorios = (idx) => {
+    const busqueda = busquedaProducto[idx] || "";
+    if (!busqueda) return accesorios;
+    
+    return accesorios.filter(a => 
+      a.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    );
+  };
 
   const total = items.reduce((a, i) => a + Number(i.cantidad) * Number(i.precio_unitario), 0);
 
   const handleSubmit = async e => {
     e.preventDefault();
     
-    // ⭐ VALIDACIÓN: Verificar caja abierta
     if (!cajaAbierta) {
       toast.error("⚠️ No hay caja abierta. Debe abrir una caja antes de registrar compras.");
       return;
@@ -122,6 +138,7 @@ export default function CompraAdd({ onAdd }) {
       setItems([]); 
       setNotas("");
       setTipoPago("efectivo");
+      setBusquedaProducto({});
       toast.success("✅ Compra registrada y movimiento de caja creado");
       if (onAdd) onAdd();
     } catch (error) {
@@ -129,8 +146,8 @@ export default function CompraAdd({ onAdd }) {
       
       if (error.response?.data?.error === 'No hay caja abierta') {
         toast.error("⚠️ " + error.response.data.detail);
-        setCajaAbierta(null); // Actualizar estado
-        verificarCajaAbierta(); // Revalidar
+        setCajaAbierta(null);
+        verificarCajaAbierta();
       } else if (error.response?.status === 403) {
         toast.error("No tienes permisos para crear compras");
       } else if (error.response?.status === 401) {
@@ -147,7 +164,6 @@ export default function CompraAdd({ onAdd }) {
       <div className="border-b pb-4">
         <h3 className="text-xl font-bold text-gray-900 mb-3">Registrar Nueva Compra</h3>
         
-        {/* Estado de autenticación */}
         {usuarioAutenticado ? (
           <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded">
             <p className="text-green-700 text-sm">
@@ -163,7 +179,7 @@ export default function CompraAdd({ onAdd }) {
         )}
       </div>
 
-      {/* ⭐ Estado de Caja */}
+      {/* Estado de Caja */}
       {cargandoCaja ? (
         <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
           <p className="text-gray-600 text-sm">🔄 Verificando estado de caja...</p>
@@ -180,13 +196,6 @@ export default function CompraAdd({ onAdd }) {
                 Monto inicial: ${Number(cajaAbierta.monto_inicial).toFixed(2)}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={verificarCajaAbierta}
-              className="text-green-600 hover:text-green-800 text-xs underline"
-            >
-         
-            </button>
           </div>
         </div>
       ) : (
@@ -198,26 +207,20 @@ export default function CompraAdd({ onAdd }) {
               <p className="text-red-700 text-sm mt-1">
                 Debe abrir una caja antes de registrar compras.
               </p>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3">
                 <a 
                   href="/admin/caja" 
                   className="inline-block bg-red-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-700 transition-colors"
                 >
                   Ir a Gestión de Caja
                 </a>
-                <button
-                  type="button"
-                  onClick={verificarCajaAbierta}
-                  className="inline-block text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-600 transition-colors"
-                >
-                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Formulario - Deshabilitado si no hay caja */}
+      {/* Formulario */}
       <fieldset disabled={!cajaAbierta} className={!cajaAbierta ? 'opacity-50' : ''}>
         {/* Proveedor */}
         <div>
@@ -246,7 +249,6 @@ export default function CompraAdd({ onAdd }) {
             <option value="efectivo">💵 Efectivo</option>
             <option value="transferencia">🏦 Transferencia</option>
           </select>
-          
         </div>
 
         {/* Notas */}
@@ -261,9 +263,9 @@ export default function CompraAdd({ onAdd }) {
           />
         </div>
 
-        {/* Items */}
+        {/* Items con búsqueda */}
         <div>
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-start items-center gap-4 mb-3">
             <h4 className="font-semibold text-gray-700">Productos a comprar</h4>
             <button 
               type="button" 
@@ -281,59 +283,93 @@ export default function CompraAdd({ onAdd }) {
             </div>
           ) : (
             <div className="space-y-3">
-              {items.map((item, idx) => (
-                <div key={idx} className="flex gap-3 items-start p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Producto *</label>
-                    <select 
-                      required 
-                      value={item.accesorio} 
-                      onChange={e => handleItemChange(idx, "accesorio", e.target.value)} 
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {accesorios.map(a =>
-                        <option key={a.id} value={a.id}>{a.nombre} (Stock: {a.stock || 0})</option>
+              {items.map((item, idx) => {
+                const accesoriosFiltrados = filtrarAccesorios(idx);
+                
+                return (
+                  <div key={idx} className="flex gap-3 items-start p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Producto *</label>
+                      
+                      {/* ⭐ Campo de búsqueda */}
+                      <div className="relative mb-2">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar producto..."
+                          value={busquedaProducto[idx] || ""}
+                          onChange={e => setBusquedaProducto({...busquedaProducto, [idx]: e.target.value})}
+                          className="w-full border border-gray-300 rounded px-3 py-2 pl-10 text-sm focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      {/* Select filtrado */}
+                      <select 
+                        required 
+                        value={item.accesorio} 
+                        onChange={e => handleItemChange(idx, "accesorio", e.target.value)} 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {accesoriosFiltrados.length > 0 ? (
+                          accesoriosFiltrados.map(a => (
+                            <option key={a.id} value={a.id}>
+                              {a.nombre} (Stock: {a.stock || 0})
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>No se encontraron productos</option>
+                        )}
+                      </select>
+                      
+                      {busquedaProducto[idx] && accesoriosFiltrados.length === 0 && (
+                        <p className="text-xs text-red-500 mt-1">
+                          No se encontraron productos con "{busquedaProducto[idx]}"
+                        </p>
                       )}
-                    </select>
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad *</label>
-                    <input 
-                      type="number" 
-                      min={1} 
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                      value={item.cantidad} 
-                      onChange={e => handleItemChange(idx, "cantidad", e.target.value)} 
-                      required
-                    />
-                  </div>
-                  <div className="w-28">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Precio *</label>
-                    <input 
-                      type="number" 
-                      min={0} 
-                      step="0.01"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                      value={item.precio_unitario} 
-                      onChange={e => handleItemChange(idx, "precio_unitario", e.target.value)} 
-                      required
-                    />
-                  </div>
-                  <div className="w-28 pt-6">
-                    <div className="text-sm font-semibold text-green-600 text-right">
-                      ${(Number(item.cantidad) * Number(item.precio_unitario)).toFixed(2)}
                     </div>
+                    
+                    <div className="w-24">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad *</label>
+                      <input 
+                        type="number" 
+                        min={1} 
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                        value={item.cantidad} 
+                        onChange={e => handleItemChange(idx, "cantidad", e.target.value)} 
+                        required
+                      />
+                    </div>
+                    
+                    <div className="w-28">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Precio *</label>
+                      <input 
+                        type="number" 
+                        min={0} 
+                        step="0.01"
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                        value={item.precio_unitario} 
+                        onChange={e => handleItemChange(idx, "precio_unitario", e.target.value)} 
+                        required
+                      />
+                    </div>
+                    
+                    <div className="w-28 pt-6">
+                      <div className="text-sm font-semibold text-green-600 text-right">
+                        ${(Number(item.cantidad) * Number(item.precio_unitario)).toFixed(2)}
+                      </div>
+                    </div>
+                    
+                    <button 
+                      type="button" 
+                      onClick={() => removeItem(idx)} 
+                      className="text-red-600 hover:bg-red-100 p-2 rounded transition-colors mt-6"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={() => removeItem(idx)} 
-                    className="text-red-600 hover:bg-red-100 p-2 rounded transition-colors mt-6"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -355,7 +391,7 @@ export default function CompraAdd({ onAdd }) {
           </div>
         )}
 
-        {/* Botón Submit */}
+        {/* Botones */}
         <div className="flex justify-end gap-3 pt-4 border-t">
           <button 
             type="button"
@@ -364,6 +400,7 @@ export default function CompraAdd({ onAdd }) {
               setItems([]);
               setNotas("");
               setTipoPago("efectivo");
+              setBusquedaProducto({});
             }}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
           >
