@@ -39,49 +39,6 @@ const HomeSocio = () => {
 
       {/* Grid de Cards */}
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Card de Clases */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-cyan-500" />
-              <CardTitle className="text-2xl text-cyan-600">Tus Clases</CardTitle>
-            </div>
-            <CardDescription>
-              Clases en las que estás inscripto
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-accent rounded-lg">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="font-semibold">Yoga</p>
-                  <p className="text-sm text-muted-foreground">Lunes 18:00</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-accent rounded-lg">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="font-semibold">Spinning</p>
-                  <p className="text-sm text-muted-foreground">Miércoles 19:30</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-accent rounded-lg">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="font-semibold">HIIT</p>
-                  <p className="text-sm text-muted-foreground">Viernes 17:00</p>
-                </div>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <Button className="w-full" variant="outline">
-              <Calendar className="mr-2 h-4 w-4" />
-              Ver todas las clases
-            </Button>
-          </CardContent>
-        </Card>
 
         {/* Card de Rutinas */}
         <Card className="hover:shadow-lg transition-shadow">

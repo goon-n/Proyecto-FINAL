@@ -28,7 +28,7 @@ const AdminLayout = ({ children }) => {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-semibold">Panel Admin</h1>
+            <h1 className="text-lg font-semibold">ADN-FIT GYM</h1>
           </div>
         </header>
 

@@ -1,9 +1,11 @@
+// frontend/src/components/turnos/TurnosList.jsx
 import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
-import { Calendar, Users } from "lucide-react";
+import { Calendar, Users, Pencil } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
-const TurnosList = ({ userRole, refresh }) => {
+const TurnosList = ({ userRole, refresh, onEditar }) => {
   const [turnos, setTurnos] = useState([]);
   const [msg, setMsg] = useState("");
 
@@ -57,6 +59,18 @@ const TurnosList = ({ userRole, refresh }) => {
                   <span className="font-semibold text-gray-700">Estado:</span>
                   <span className="text-gray-800">{t.estado}</span>
                 </div>
+                {/* Botón editar solo para admin/entrenador */}
+                {["ADMIN", "admin", "ENTRENADOR", "entrenador"].includes(userRole) && (
+                  <Button
+                    variant="outline"
+                    className="mt-3 flex items-center gap-1"
+                    onClick={() => onEditar(t)}
+                  >
+                    <Pencil className="h-4 w-4 text-indigo-700" />
+                    Editar
+                  </Button>
+                )}
+                {/* Botones para socios */}
                 {userRole === "SOCIO" && t.estado === "PENDIENTE" && !t.socio &&
                   <button className="mt-3 px-3 py-1 bg-cyan-700 text-white rounded hover:bg-cyan-800"
                     onClick={async () => {

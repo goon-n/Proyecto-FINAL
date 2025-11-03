@@ -1,22 +1,29 @@
-// src/pages/TurnosPage.jsx
+// frontend/src/pages/TurnosPage.jsx
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Plus, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
-// Components
 import CrearTurno from "../components/turnos/CrearTurno";
 import TurnosList from "../components/turnos/TurnosList";
-// Header compartido (opcional)
+import TurnosEdit from "@/components/turnos/TurnosEdit";
 import { PageHeader } from "../components/shared/PageHeader";
 
 const TurnosPage = ({ userRole }) => {
-  const [vistaActual, setVistaActual] = useState("lista"); // "lista" | "agregar"
+  const [vistaActual, setVistaActual] = useState("lista"); // "lista" | "agregar" | "editar"
   const [reload, setReload] = useState(0);
+  const [turnoEditar, setTurnoEditar] = useState(null);
 
   // Handlers
-  const volverALista = () => setVistaActual("lista");
+  const volverALista = () => {
+    setVistaActual("lista");
+    setTurnoEditar(null);
+  };
   const abrirFormularioAgregar = () => setVistaActual("agregar");
+  const abrirFormularioEditar = (turno) => {
+    setTurnoEditar(turno);
+    setVistaActual("editar");
+  };
 
   const handleTurnoCreado = () => {
     setReload(prev => prev + 1);
@@ -24,7 +31,13 @@ const TurnosPage = ({ userRole }) => {
     toast.success("¡Turno creado exitosamente!");
   };
 
-  // Header contextual (opcional, puedes usar cualquier header)
+  const handleTurnoActualizado = () => {
+    setReload(prev => prev + 1);
+    setVistaActual("lista");
+    setTurnoEditar(null);
+    toast.success("¡Turno actualizado exitosamente!");
+  };
+
   const getTitleConfig = () => {
     switch (vistaActual) {
       case "agregar":
@@ -32,6 +45,12 @@ const TurnosPage = ({ userRole }) => {
           title: "Crear Turno",
           subtitle: "Creá un nuevo cupo libre o turno directo",
           icon: Plus
+        };
+      case "editar":
+        return {
+          title: "Editar Turno",
+          subtitle: "Modifica los datos del turno",
+          icon: Calendar
         };
       default:
         return {
@@ -44,7 +63,6 @@ const TurnosPage = ({ userRole }) => {
   
   const { title, subtitle, icon: TitleIcon } = getTitleConfig();
 
-  // Render principal
   return (
     <div className="container mx-auto p-6 space-y-6">
       <PageHeader
@@ -75,7 +93,6 @@ const TurnosPage = ({ userRole }) => {
         </div>
       </PageHeader>
 
-      {/* Breadcrumb o navegación corta si lo usas */}
       <nav className="text-sm text-muted-foreground mb-4">
         <span 
           className="cursor-pointer hover:text-primary" 
@@ -84,10 +101,16 @@ const TurnosPage = ({ userRole }) => {
           Turnos
         </span>
         {vistaActual === "agregar" && " / Crear"}
+        {vistaActual === "editar" && " / Editar"}
       </nav>
       
-      {/* Render condicional */}
-      {vistaActual === "agregar" ? (
+      {vistaActual === "editar" ? (
+        <TurnosEdit 
+          turno={turnoEditar}
+          onUpdate={handleTurnoActualizado}
+          onCancel={volverALista}
+        />
+      ) : vistaActual === "agregar" ? (
         <CrearTurno 
           userRole={userRole}
           onTurnoCreado={handleTurnoCreado}
@@ -96,7 +119,8 @@ const TurnosPage = ({ userRole }) => {
       ) : (
         <TurnosList 
           userRole={userRole}
-          reload={reload}
+          refresh={reload}
+          onEditar={abrirFormularioEditar}
         />
       )}
     </div>

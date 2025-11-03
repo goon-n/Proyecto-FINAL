@@ -4,20 +4,40 @@ from rest_framework.response import Response
 from .models import Turno
 from .serializers import TurnoSerializer
 from django.db import models
+from django.utils import timezone
 
 class TurnoViewSet(viewsets.ModelViewSet):
-    queryset = Turno.objects.all()
     serializer_class = TurnoSerializer
-    permission_classes = [permissions.AllowAny]  # <-- Solo para pruebas. Usa IsAdminUser / IsAuthenticated en desarrollo real.
-
+    permission_classes = [permissions.AllowAny]  # En producción pon IsAuthenticated o custom
 
     def get_queryset(self):
+        # Antes de devolver el queryset, actualiza estados de vencidos
+        self.actualizar_turnos_vencidos()
+        now = timezone.now()
+        base_queryset = Turno.objects.filter(
+            hora_fin__gte=now  # Solo futuros/vigentes
+        ).order_by('hora_inicio')
         user = self.request.user
         if not user.is_authenticated or user.is_staff:
-            return Turno.objects.all()
-        return Turno.objects.filter(
+            return base_queryset
+        return base_queryset.filter(
             models.Q(estado='PENDIENTE', socio__isnull=True) | models.Q(socio=user)
-        ).order_by('hora_inicio')
+        )
+
+    def actualizar_turnos_vencidos(self):
+        now = timezone.now()
+        # Turnos vencidos no tomados = SUSPENDIDO
+        Turno.objects.filter(
+            hora_fin__lt=now,
+            estado="PENDIENTE",
+            socio__isnull=True
+        ).update(estado="SUSPENDIDO")
+        # Turnos vencidos tomados = FINALIZADO
+        Turno.objects.filter(
+            hora_fin__lt=now,
+            estado="CONFIRMADO",
+            socio__isnull=False
+        ).update(estado="FINALIZADO")
 
     @action(methods=['post'], detail=True)
     def reservar(self, request, pk=None):
@@ -46,5 +66,5 @@ class TurnoViewSet(viewsets.ModelViewSet):
             turno.estado = 'PENDIENTE'
             turno.socio = None
             turno.save()
-            return Response({'detail': 'Turno cancelado'}, status=status.HTTP_200_OK)
+            return Response({'detail': 'Turno cancelado, cupo libre.'}, status=status.HTTP_200_OK)
         return Response({'detail': 'No se puede cancelar este turno'}, status=status.HTTP_400_BAD_REQUEST)

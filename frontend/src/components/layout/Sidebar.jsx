@@ -95,7 +95,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         {/* Header */}
         <div className="p-6 border-b border-gray-800 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Gym System</h1>
+            <h1 className="text-2xl font-bold">ADN-FIT</h1>
             <p className="text-sm text-gray-400 mt-1">
               {user?.rol === 'admin' ? 'Panel Admin' : 'Panel Entrenador'}
             </p>
