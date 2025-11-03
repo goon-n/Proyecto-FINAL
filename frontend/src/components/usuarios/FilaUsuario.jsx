@@ -17,7 +17,8 @@ export const FilaUsuario = ({
   onDesactivar,
   onActivar,
   guardando,
-  procesando
+  procesando,
+  esEntrenador  // ← RECIBIR LA PROP
 }) => {
   return (
     <TableRow className={esDesactivado ? "opacity-60" : ""}>
@@ -42,7 +43,8 @@ export const FilaUsuario = ({
         </Badge>
       </TableCell>
 
-      {!esDesactivado && (
+      {/* COLUMNA "CAMBIAR ROL" - Solo mostrar si NO es entrenador y NO está desactivado */}
+      {!esEntrenador && !esDesactivado && (
         <TableCell>
           {!esUsuarioActual ? (
             <SelectorRol
@@ -66,25 +68,28 @@ export const FilaUsuario = ({
         </TableCell>
       )}
 
-      <TableCell className="text-right">
-        {!esUsuarioActual ? (
-          esDesactivado ? (
-            <DialogActivar
-              usuario={usuario}
-              onConfirmar={() => onActivar(usuario.id)}
-              procesando={procesando === usuario.id}
-            />
+      {/* COLUMNA "ACCIONES" - Solo mostrar si NO es entrenador */}
+      {!esEntrenador && (
+        <TableCell className="text-right">
+          {!esUsuarioActual ? (
+            esDesactivado ? (
+              <DialogActivar
+                usuario={usuario}
+                onConfirmar={() => onActivar(usuario.id)}
+                procesando={procesando === usuario.id}
+              />
+            ) : (
+              <DialogDesactivar
+                usuario={usuario}
+                onConfirmar={() => onDesactivar(usuario.id)}
+                procesando={procesando === usuario.id}
+              />
+            )
           ) : (
-            <DialogDesactivar
-              usuario={usuario}
-              onConfirmar={() => onDesactivar(usuario.id)}
-              procesando={procesando === usuario.id}
-            />
-          )
-        ) : (
-          <span className="text-muted-foreground italic text-sm">-</span>
-        )}
-      </TableCell>
+            <span className="text-muted-foreground italic text-sm">-</span>
+          )}
+        </TableCell>
+      )}
     </TableRow>
   );
 };

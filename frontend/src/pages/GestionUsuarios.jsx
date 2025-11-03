@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "../components/ui/card"; // corregido: ruta relativa
+import { Card, CardContent } from "../components/ui/card";
 import { Users } from "lucide-react";
 
 // Custom hooks
@@ -18,6 +18,7 @@ import { PageHeader } from "../components/shared/PageHeader";
 // Componentes específicos de usuarios
 import { FiltrosUsuarios } from "../components/usuarios/FiltrosUsuarios";
 import { TablaUsuarios } from "../components/usuarios/TablaUsuarios";
+import { AgregarUsuario } from "../components/usuarios/AgregarUsuario"; 
 
 const GestionUsuarios = () => {
   const { user } = useAuth();
@@ -29,6 +30,15 @@ const GestionUsuarios = () => {
   const [guardando, setGuardando] = useState(null);
   const [procesando, setProcesando] = useState(null);
   const [vistaActual, setVistaActual] = useState("activos");
+
+
+  const esEntrenador = user?.rol === "entrenador";
+  const esAdmin = user?.rol === "admin";
+
+ 
+  const usuariosFiltrados = esEntrenador 
+    ? usuariosActivos.filter(u => u.perfil__rol === "socio")
+    : usuariosActivos;
 
   // ========== HANDLERS ==========
 
@@ -124,7 +134,7 @@ const GestionUsuarios = () => {
     return (
       <ErrorCard
         mensaje={error}
-        onVolver={() => navigate("/admin")}
+        onVolver={() => navigate(esEntrenador ? "/entrenador" : "/admin")}
         textoBoton="Volver al Panel"
       />
     );
@@ -132,7 +142,7 @@ const GestionUsuarios = () => {
 
   // ========== RENDER ==========
 
-  const usuariosAMostrar = vistaActual === "activos" ? usuariosActivos : usuariosDesactivados;
+  const usuariosAMostrar = vistaActual === "activos" ? usuariosFiltrados : usuariosDesactivados;
   const esDesactivados = vistaActual === "desactivados";
 
   return (
@@ -140,20 +150,31 @@ const GestionUsuarios = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         <PageHeader
           icon={Users}
-          titulo="Gestión de Usuarios"
-          descripcion={`${usuariosActivos.length} activo${usuariosActivos.length !== 1 ? "s" : ""} • ${usuariosDesactivados.length} desactivado${usuariosDesactivados.length !== 1 ? "s" : ""}`}
-          onVolver={() => navigate("/admin")}
+          titulo={esEntrenador ? "Gestión de Socios" : "Gestión de Usuarios"}
+          descripcion={esEntrenador 
+            ? `${usuariosFiltrados.length} socio${usuariosFiltrados.length !== 1 ? "s" : ""} activo${usuariosFiltrados.length !== 1 ? "s" : ""}`
+            : `${usuariosActivos.length} activo${usuariosActivos.length !== 1 ? "s" : ""} • ${usuariosDesactivados.length} desactivado${usuariosDesactivados.length !== 1 ? "s" : ""}`
+          }
+          onVolver={() => navigate(esEntrenador ? "/entrenador" : "/admin")}
           textoBoton="Volver al Panel"
+        />
+
+        <AgregarUsuario 
+          onUsuarioCreado={refetch} 
+          esEntrenador={esEntrenador}
         />
 
         <Card>
           <CardContent className="pt-6">
-            <FiltrosUsuarios
-              vistaActual={vistaActual}
-              onCambiarVista={setVistaActual}
-              cantidadActivos={usuariosActivos.length}
-              cantidadDesactivados={usuariosDesactivados.length}
-            />
+
+            {!esEntrenador && (
+              <FiltrosUsuarios
+                vistaActual={vistaActual}
+                onCambiarVista={setVistaActual}
+                cantidadActivos={usuariosActivos.length}
+                cantidadDesactivados={usuariosDesactivados.length}
+              />
+            )}
 
             <TablaUsuarios
               usuarios={usuariosAMostrar}
@@ -166,6 +187,7 @@ const GestionUsuarios = () => {
               onActivar={activarUsuario}
               guardando={guardando}
               procesando={procesando}
+              esEntrenador={esEntrenador} // ← PASAR PROP
             />
           </CardContent>
         </Card>

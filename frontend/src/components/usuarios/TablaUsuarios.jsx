@@ -20,7 +20,8 @@ export const TablaUsuarios = ({
   onDesactivar,
   onActivar,
   guardando,
-  procesando
+  procesando,
+  esEntrenador  // ← YA LO RECIBES desde GestionUsuarios
 }) => {
   return (
     <Table>
@@ -30,19 +31,23 @@ export const TablaUsuarios = ({
           <TableHead>Usuario</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Rol</TableHead>
-          {!esDesactivados && <TableHead>Cambiar Rol</TableHead>}
+          {/* Solo mostrar columna "Cambiar Rol" si NO es entrenador y NO está en desactivados */}
+          {!esEntrenador && !esDesactivados && <TableHead>Cambiar Rol</TableHead>}
           {esDesactivados && <TableHead>Desactivado</TableHead>}
-          <TableHead className="text-right">Acciones</TableHead>
+          {/* Solo mostrar columna "Acciones" si NO es entrenador */}
+          {!esEntrenador && <TableHead className="text-right">Acciones</TableHead>}
         </TableRow>
       </TableHeader>
       
       <TableBody>
         {usuarios.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+            <TableCell colSpan={esEntrenador ? 4 : 6} className="text-center text-muted-foreground py-8">
               {esDesactivados 
                 ? "No hay usuarios desactivados" 
-                : "No hay usuarios activos"}
+                : esEntrenador 
+                  ? "No hay socios activos"
+                  : "No hay usuarios activos"}
             </TableCell>
           </TableRow>
         ) : (
@@ -59,6 +64,7 @@ export const TablaUsuarios = ({
               onActivar={onActivar}
               guardando={guardando}
               procesando={procesando}
+              esEntrenador={esEntrenador}  // ← PASAR LA PROP
             />
           ))
         )}

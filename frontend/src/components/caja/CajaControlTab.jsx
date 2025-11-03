@@ -128,7 +128,6 @@ export default function CajaControlTab({
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 italic">
-                  ℹ️ El total general debe coincidir con la suma de todas las ventas y movimientos
                 </p>
               </div>
 
