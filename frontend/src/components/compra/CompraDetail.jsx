@@ -157,7 +157,7 @@ export default function CompraDetail({ compraId, onClose }) {
                   {compra.items.map((item, index) => (
                     <tr key={index} className="hover:bg-gray-50 transition-colors">
                       <td className="border border-gray-300 px-4 py-3">
-                        <span className="font-medium">{item.accesorio || `Accesorio ID: ${item.accesorio}`}</span>
+                        <span className="font-medium">{item.accesorio_nombre || `Accesorio ID: ${item.accesorio}`}</span>
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-center">
                         <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">

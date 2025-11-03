@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate, Router } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import LandingPage from "./components/LandingPage";
 import HomeAdmin from "./pages/HomeAdmin";
 import HomeEntrenador from "./pages/HomeEntrenador";
 import HomeSocio from "./pages/HomeSocio";
@@ -12,6 +13,7 @@ import GestionCompras from "./pages/GestionCompras";
 import AdminLayout from "./components/layout/AdminLayout";
 import { useAuth } from "./context/AuthContext";
 import TurnosPage from "./pages/TurnosPage";
+import Payment from "./pages/Payment";
 
 function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
@@ -21,11 +23,11 @@ function PrivateRoute({ children, rolesPermitidos }) {
   }
   
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
   
   if (rolesPermitidos && !rolesPermitidos.includes(user.rol)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
   
   return children;
@@ -36,8 +38,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Rutas públicas */}
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/payment" element={<Payment />} />
         
         {/* Rutas del Admin */}
         <Route
@@ -59,7 +63,7 @@ export default function App() {
           }
         />
         
-        {/* Rutas del Entrenador - USA EL MISMO LAYOUT */}
+        {/* Rutas del Entrenador */}
         <Route
           path="/entrenador/*"
           element={
@@ -90,7 +94,7 @@ export default function App() {
           path="/socio/turnos"
           element={
             <PrivateRoute rolesPermitidos={["socio"]}>
-              <TurnosPage userRole={"SOCIO"} />
+              <TurnosPage userRole={"socio"} />
             </PrivateRoute>
           }
         />

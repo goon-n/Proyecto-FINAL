@@ -1,4 +1,4 @@
-// frontend/src/pages/HomeAdmin.jsx
+// frontend/src/pages/HomeEntrenador.jsx
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,6 @@ const HomeEntrenador = () => {
           </CardContent>
         </Card>
 
-
         {/* Tareas de Administración */}
         <Card>
           <CardHeader>
@@ -92,7 +91,7 @@ const HomeEntrenador = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               <Button 
-                onClick={() => navigate("/admin/usuarios")}
+                onClick={() => navigate("/entrenador/usuarios")} 
                 variant="outline" 
                 size="lg"
                 className="justify-start"
@@ -101,7 +100,7 @@ const HomeEntrenador = () => {
                 Gestión de Usuarios
               </Button>
               <Button 
-                onClick={() => navigate("/admin/caja")}
+                onClick={() => navigate("/entrenador/caja")} 
                 variant="outline" 
                 size="lg"
                 className="justify-start"
@@ -122,7 +121,7 @@ const HomeEntrenador = () => {
                 Clases
               </Button>
               <Button 
-                onClick={() => navigate("/admin/accesorios")}
+                onClick={() => navigate("/entrenador/accesorios")} 
                 variant="outline" 
                 size="lg" 
                 className="justify-start"
