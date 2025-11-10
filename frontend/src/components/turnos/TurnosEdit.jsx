@@ -1,112 +1,147 @@
-import React, { useState } from "react";
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
-import { Pencil } from "lucide-react";
+// frontend/src/components/turnos/TurnosEdit.jsx
+import React, { useState } from 'react';
+import axios from 'axios';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import moment from 'moment-timezone';
+import { toast } from 'react-hot-toast'; 
+
+const API_URL = '/api/turnos/';
+// Estados disponibles para el Staff
+const ESTADOS = [
+    { value: 'SOLICITUD', label: 'Cupo Libre (Disponible)' },
+    { value: 'RESERVADO', label: 'Reservado (Pendiente de Confirmación)' },
+    { value: 'CONFIRMADO', label: 'Confirmado' },
+    { value: 'CANCELADO', label: 'Cancelado/Liberado' },
+    { value: 'FINALIZADO', label: 'Finalizado' },
+];
 
 const TurnosEdit = ({ turno, onUpdate, onCancel }) => {
-  const [horaInicio, setHoraInicio] = useState(turno.hora_inicio);
-  const [horaFin, setHoraFin] = useState(turno.hora_fin);
-  const [capacidad, setCapacidad] = useState(turno.capacidad);
-  const [estado, setEstado] = useState(turno.estado);
-  const [msg, setMsg] = useState("");
+    // El modelo ahora solo tiene hora_inicio. Convertimos a formato datetime-local.
+    const [horaInicio, setHoraInicio] = useState(
+        moment(turno.hora_inicio).format('YYYY-MM-DDTHH:mm')
+    );
+    const [estado, setEstado] = useState(turno.estado);
+    const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMsg("");
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/turnos/${turno.id}/`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          hora_inicio: horaInicio,
-          hora_fin: horaFin,
-          capacidad,
-          estado
-        }),
-      });
-      if (!response.ok) throw new Error("Error al actualizar turno");
-      setMsg("Turno actualizado correctamente.");
-      if (onUpdate) onUpdate();
-    } catch {
-      setMsg("Error al actualizar turno");
-    }
-  };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
 
-  return (
-    <Card className="mb-7 border-cyan-600">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Pencil className="h-6 w-6 text-cyan-600" />
-          <CardTitle className="text-xl text-cyan-800">Editar Turno</CardTitle>
-        </div>
-        <CardDescription>Modifica los datos del turno</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="flex flex-col md:flex-row gap-4">
-            <input
-              type="datetime-local"
-              value={horaInicio}
-              onChange={(e) => setHoraInicio(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
-              required
-            />
-            <input
-              type="datetime-local"
-              value={horaFin}
-              onChange={(e) => setHoraFin(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
-              required
-            />
-            <input
-              type="number"
-              value={capacidad}
-              min={1}
-              max={50}
-              onChange={(e) => setCapacidad(Number(e.target.value))}
-              className="border rounded px-3 py-2 w-full"
-              required
-              placeholder="Capacidad"
-            />
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
-            >
-              <option value="PENDIENTE">Pendiente</option>
-              <option value="CONFIRMADO">Confirmado</option>
-              <option value="CANCELADO">Cancelado</option>
-              <option value="FINALIZADO">Finalizado</option>
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              className="bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 rounded"
-            >
-              Guardar cambios
-            </Button>
-            {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                className="text-gray-700"
-                onClick={onCancel}
-              >
-                Cancelar
-              </Button>
-            )}
-          </div>
-        </form>
-        {msg && (
-          <p className={`mt-2 ${msg.includes("correctamente") ? "text-green-600" : "text-red-600"}`}>
-            {msg}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
+        const selectedMoment = moment(horaInicio);
+        
+        if (selectedMoment.minute() !== 0) {
+            toast.error("La hora de inicio debe ser una hora en punto.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const hora_inicio_iso = selectedMoment.toISOString(); 
+
+            await axios.patch(`${API_URL}${turno.id}/`, {
+                hora_inicio: hora_inicio_iso,
+                estado: estado,
+                // No se edita el socio aquí, se usa el endpoint de reserva/cancelación
+            });
+            
+            toast.success("¡Turno actualizado exitosamente!");
+            onUpdate();
+            
+        } catch (error) {
+            console.error("Error al actualizar el turno:", error.response?.data);
+            const detail = error.response?.data?.detail || "Error desconocido al actualizar.";
+            toast.error(`Error: ${detail}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // Función para eliminar el turno (solo Staff)
+    const handleDelete = async () => {
+        if (!window.confirm("¿Estás seguro de que quieres ELIMINAR este cupo?")) return;
+        setLoading(true);
+        try {
+            await axios.delete(`${API_URL}${turno.id}/`);
+            toast.success("Cupo eliminado con éxito.");
+            onUpdate();
+        } catch (error) {
+            toast.error("Error al eliminar el cupo.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const socioInfo = turno.socio_info ? `Asignado a: ${turno.socio_info.username}` : 'Cupo libre';
+
+    return (
+        <Card className="max-w-xl mx-auto">
+            <CardHeader>
+                <CardTitle>Editar Turno</CardTitle>
+                <p className="text-sm text-muted-foreground">{socioInfo}</p>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    
+                    <div className="space-y-2">
+                        <Label htmlFor="hora_inicio">Nueva Fecha y Hora de Inicio</Label>
+                        <Input
+                            id="hora_inicio"
+                            type="datetime-local"
+                            value={horaInicio}
+                            onChange={(e) => setHoraInicio(e.target.value)}
+                            min={moment().format('YYYY-MM-DDTHH:mm')}
+                            required
+                            // No permitir editar si ya está confirmado para evitar conflictos
+                            disabled={turno.estado === 'CONFIRMADO'}
+                        />
+                        {turno.estado === 'CONFIRMADO' && <p className="text-xs text-red-500">No se puede editar la hora de turnos CONFIRMADOS.</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="estado">Estado del Turno</Label>
+                        <Select value={estado} onValueChange={setEstado} required>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar estado" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {ESTADOS.map(s => (
+                                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-4">
+                        <Button 
+                            type="button" 
+                            variant="destructive" 
+                            onClick={handleDelete}
+                            disabled={loading}
+                        >
+                            Eliminar Cupo
+                        </Button>
+                        <div className="flex gap-3">
+                             <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={onCancel}
+                                disabled={loading}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button type="submit" disabled={loading} className="bg-cyan-600 hover:bg-cyan-700">
+                                {loading ? 'Actualizando...' : 'Guardar Cambios'}
+                            </Button>
+                        </div>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
+    );
 };
 
 export default TurnosEdit;

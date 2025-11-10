@@ -3,6 +3,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
@@ -71,6 +73,17 @@ def register_user(request):
     user = User.objects.create_user(username=username, password=password, email=email)
     Perfil.objects.create(user=user, rol=rol)
     return Response({'message': 'Usuario registrado correctamente'}, status=201)
+
+
+# Endpoint para establecer la cookie CSRF en el cliente (GET)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@ensure_csrf_cookie
+def get_csrf(request):
+    """Devuelve una respuesta que força a Django a setear la cookie 'csrftoken'.
+    Útil para que el frontend obtenga el token CSRF antes de hacer POSTs.
+    """
+    return Response({'detail': 'CSRF cookie set'})
 
 # ========== VIEWSETS CRUD ==========
 

@@ -4,7 +4,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-q-dty3%a2u!@kp4wv!_vpkf303h-*8j)=tgz#55qq%u9v4m0f!'
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "192.168.0.10"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -103,14 +103,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---- Cookies de sesión ----
 SESSION_COOKIE_DOMAIN = None
+# En desarrollo mantenemos SECURE=False, en producción debe ser True (HTTPS)
 SESSION_COOKIE_SECURE = False  # True solo si usas HTTPS
-SESSION_COOKIE_HTTPONLY = False  # React necesita acceder a la cookie
+# No permitir que JS acceda al sessionid: proteger contra robo por XSS.
+# Si tu frontend necesita información, usa endpoints que devuelvan datos
+# y no expongas `sessionid` a JavaScript. Para CSRF la cookie `csrftoken`
+# debe seguir siendo accesible desde JS (CSRF_COOKIE_HTTPONLY = False).
+SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_SAMESITE = "Lax"
+CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-]
+SESSION_COOKIE_SAMESITE = "Lax"  # Si frontend y backend en mismo dominio
+SESSION_COOKIE_SECURE = False    # Si estás en http en local
+
+CSRF_COOKIE_HTTPONLY = False
+
+
+CSRF_TRUSTED_ORIGINS = [ "http://localhost:5173", "http://127.0.0.1:5173", ]
+
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False

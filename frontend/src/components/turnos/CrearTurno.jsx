@@ -1,119 +1,139 @@
-import React, { useState } from "react";
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
-import { CalendarPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+// frontend/src/components/turnos/CrearTurno.jsx
 
-const CrearTurno = ({ userRole, onTurnoCreado, onCancel }) => {
-  const [horaInicio, setHoraInicio] = useState("");
-  const [horaFin, setHoraFin] = useState("");
-  const [capacidad, setCapacidad] = useState(10);
-  const [estado, setEstado] = useState("PENDIENTE");
-  const [msg, setMsg] = useState("");
+import React, { useState } from 'react';
+import moment from 'moment';
+import { useAuth } from '../../context/AuthContext'; 
+import { createTurno } from "../../services/turnoService"; // ⬅️ USAMOS EL SERVICIO
 
-  // Asegura que userRole es válido
-  if (!["ADMIN", "admin", "ENTRENADOR", "entrenador"].includes(userRole)) return null;
+const CrearTurno = ({ onCreationSuccess }) => {
+    const { user } = useAuth();
+    const [formData, setFormData] = useState({
+        fecha: moment().format('YYYY-MM-DD'),
+        hora: '08:00',
+    });
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMsg("");
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/turnos/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          hora_inicio: horaInicio,
-          hora_fin: horaFin,
-          capacidad,
-          estado
-        }),
-      });
-      if (!response.ok) throw new Error("Error al crear turno");
-      setMsg("Turno creado correctamente.");
-      setHoraInicio("");
-      setHoraFin("");
-      setCapacidad(10);
-      setEstado("PENDIENTE");
-      if (onTurnoCreado) onTurnoCreado();
-    } catch {
-      setMsg("Error al crear turno");
+    if (!user || !user.is_staff) {
+        return null;
     }
-  };
 
-  return (
-    <Card className="mb-7 border-cyan-600">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <CalendarPlus className="h-6 w-6 text-cyan-600" />
-          <CardTitle className="text-xl text-cyan-800">Nuevo Turno</CardTitle>
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value,
+        });
+        setMessage('');
+        setError('');
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setMessage('');
+        setError('');
+
+        const hora_inicio_iso = `${formData.fecha}T${formData.hora}:00`;
+
+        try {
+            const dataToSend = {
+                hora_inicio: hora_inicio_iso,
+            };
+            
+            // 🚨 USAMOS LA FUNCIÓN DEL SERVICIO (que tiene la URL corregida)
+            const response = await createTurno(dataToSend);
+
+            setMessage(response.detail || 'Cupo de turno creado con éxito.');
+            setLoading(false);
+            
+            if (onCreationSuccess) {
+                onCreationSuccess();
+            }
+
+        } catch (err) {
+            setLoading(false);
+            const errorMessage = err.response?.data?.detail || err.response?.data?.error || 'Error desconocido al crear el cupo.';
+            console.error("Error al crear el cupo:", errorMessage);
+            setError(errorMessage);
+        }
+    };
+
+    const generateHourOptions = () => {
+        const hours = [];
+        for (let h = 8; h <= 20; h++) {
+            const hourString = h.toString().padStart(2, '0') + ':00';
+            hours.push(hourString);
+        }
+        return hours;
+    };
+
+    return (
+        <div className="p-4 border rounded-lg shadow-md mb-6 bg-white">
+            <h3 className="text-lg font-semibold mb-3 text-indigo-700">Crear Cupo Único de 1 Hora</h3>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+                
+                {/* 1. Fecha */}
+                <div>
+                    <label htmlFor="fecha" className="block text-sm font-medium text-gray-700">
+                        Fecha y Hora de Inicio (Slot de 1 hora)
+                    </label>
+                    <div className='flex space-x-2'>
+                        <input
+                            type="date"
+                            id="fecha"
+                            name="fecha"
+                            value={formData.fecha}
+                            onChange={handleChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        />
+                        <select
+                            id="hora"
+                            name="hora"
+                            value={formData.hora}
+                            onChange={handleChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        >
+                            {generateHourOptions().map(hour => (
+                                <option key={hour} value={hour}>
+                                    {hour}hs
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                        **Importante:** Solo acepta horas en punto (ej: 10:00).
+                    </p>
+                </div>
+                
+                {/* Mensajes de Estado */}
+                {message && (
+                    <div className="text-green-600 p-2 bg-green-50 border border-green-300 rounded">
+                        {message}
+                    </div>
+                )}
+                {error && (
+                    <div className="text-red-600 p-2 bg-red-50 border border-red-300 rounded">
+                        {error}
+                    </div>
+                )}
+
+                {/* Botón de Envío */}
+                <div className="flex justify-end space-x-3">
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className={`px-4 py-2 text-white font-medium rounded-md shadow-sm ${loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'}`}
+                    >
+                        {loading ? 'Creando...' : 'Crear Cupo'}
+                    </button>
+                </div>
+            </form>
         </div>
-        <CardDescription>Completá los datos para agregar un cupo de turno</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="flex flex-col md:flex-row gap-4">
-            <input
-              type="datetime-local"
-              value={horaInicio}
-              onChange={(e) => setHoraInicio(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
-              required
-            />
-            <input
-              type="datetime-local"
-              value={horaFin}
-              onChange={(e) => setHoraFin(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
-              required
-            />
-            <input
-              type="number"
-              value={capacidad}
-              min={1}
-              max={50}
-              onChange={(e) => setCapacidad(Number(e.target.value))}
-              className="border rounded px-3 py-2 w-full"
-              required
-              placeholder="Capacidad"
-            />
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
-            >
-              <option value="PENDIENTE">Pendiente</option>
-              <option value="CONFIRMADO">Confirmado</option>
-              <option value="CANCELADO">Cancelado</option>
-              <option value="FINALIZADO">Finalizado</option>
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              className="bg-cyan-700 hover:bg-cyan-800 text-white px-4 py-2 rounded"
-            >
-              Crear Turno
-            </Button>
-            {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                className="text-gray-700"
-                onClick={onCancel}
-              >
-                Cancelar
-              </Button>
-            )}
-          </div>
-        </form>
-        {msg && (
-          <p className={`mt-2 ${msg.includes("correctamente") ? "text-green-600" : "text-red-600"}`}>
-            {msg}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
+    );
 };
 
 export default CrearTurno;

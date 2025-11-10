@@ -1,119 +1,69 @@
-// src/api/api.js
+// src/api/api.js (REEMPLAZAR TODO)
 
-// Base URL de tu backend Django
-const BASE_URL = "http://127.0.0.1:8000/api"; // Cambialo si tu backend está en otra URL
+import axiosInstance from "../lib/axiosInstance"; // Asegúrate que esta ruta sea correcta
 
 const api = {
-  // ----- Usuarios existentes -----
+ // ----- Usuarios -----
   listarUsuarios: async () => {
-    const res = await fetch(`${BASE_URL}/usuarios/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error al obtener usuarios");
-    return res.json();
+     const response = await axiosInstance.get('/usuarios/');
+    return response.data;
   },
-
   crearUsuario: async (data) => {
-    const res = await fetch(`${BASE_URL}/usuarios/crear-usuario/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error al crear usuario");
-    return res.json();
+     const response = await axiosInstance.post('/usuarios/crear-usuario/', data);
+    return response.data;
   },
-
+  
   editarRolUsuario: async (userId, rol) => {
-    const res = await fetch(`${BASE_URL}/usuarios/${userId}/rol/`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ rol }),
-    });
-    if (!res.ok) throw new Error("Error al editar rol");
-    return res.json();
+     const response = await axiosInstance.patch(`/usuarios/${userId}/rol/`, { rol });
+    return response.data;
   },
 
   eliminarUsuario: async (userId) => {
-    const res = await fetch(`${BASE_URL}/usuarios/${userId}/eliminar/`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al eliminar usuario");
-    return res.json();
+    const response = await axiosInstance.delete(`/usuarios/${userId}/eliminar/`);
+    return response.data;
   },
 
-  // ----- Clases existentes -----
+  // ----- Clases -----
   listarClases: async () => {
-    const res = await fetch(`${BASE_URL}/clases/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error al obtener clases");
-    return res.json();
+    const response = await axiosInstance.get('/clases/');
+    return response.data;
   },
-
+  
   asignarSocio: async (claseId, socioId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/socios/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ socio_id: socioId }),
-    });
-    if (!res.ok) throw new Error("Error al asignar socio");
-    return res.json();
+    const response = await axiosInstance.post(`/clases/${claseId}/socios/`, { socio_id: socioId });
+    return response.data;
   },
 
   quitarSocio: async (claseId, socioId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/socios/${socioId}/`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al quitar socio");
-    return res.json();
+    const response = await axiosInstance.delete(`/clases/${claseId}/socios/${socioId}/`);
+    return response.data;
   },
 
   anotarseClase: async (claseId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/anotarse/`, {
-      method: "POST",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al anotarse a la clase");
-    return res.json();
+   const response = await axiosInstance.post(`/clases/${claseId}/anotarse/`);
+    return response.data;
   },
 
   desuscribirseClase: async (claseId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/desuscribirse/`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al desuscribirse de la clase");
-    return res.json();
+    const response = await axiosInstance.delete(`/clases/${claseId}/desuscribirse/`);
+    return response.data;
   },
 
-  // ----- NUEVOS: AUTH -----
+// ----- AUTH (Si ya están en AuthContext, estas son redundantes) -----
+// Pero si las usas, deben usar axiosInstance.
   register: async (data) => {
-    const res = await fetch(`${BASE_URL}/register/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error al registrar usuario");
-    return res.json();
+    const response = await axiosInstance.post('/register/', data);
+    return response.data;
   },
 
   login: async (data) => {
-    const res = await fetch(`${BASE_URL}/login/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error en login");
-    return res.json();
+    const response = await axiosInstance.post('/login/', data);
+    return response.data;
   },
 
   getProfile: async () => {
-    const res = await fetch(`${BASE_URL}/profile/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error al obtener perfil");
-    return res.json();
+    const response = await axiosInstance.get('/profile/');
+    return response.data;
   },
 };
 

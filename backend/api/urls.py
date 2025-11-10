@@ -33,6 +33,7 @@ from .views import (
     estadisticas_compras,
     compras_por_proveedor,
     eliminar_compra_con_stock,
+    get_csrf,
 )
 
 router = DefaultRouter()
@@ -45,6 +46,7 @@ router.register(r'compras', CompraViewSet)
 urlpatterns = [
     # Autenticación (PRIMERO)
     path('login/', login_view, name='login'),
+    path('csrf/', get_csrf, name='get-csrf'),
     path('logout/', logout_view, name='logout'),
     path('register/', register_user, name='register'),
     path('user/', obtener_usuario_actual, name='user'),
