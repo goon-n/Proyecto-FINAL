@@ -1,68 +1,193 @@
-// src/api/api.js (REEMPLAZAR TODO)
 
-import axiosInstance from "../lib/axiosInstance"; // Asegúrate que esta ruta sea correcta
+import apiClient from "../services/authService";
 
 const api = {
- // ----- Usuarios -----
+  // ----- Usuarios -----
   listarUsuarios: async () => {
-     const response = await axiosInstance.get('/usuarios/');
+    const response = await apiClient.get('/general/usuarios/');
     return response.data;
   },
-  crearUsuario: async (data) => {
-     const response = await axiosInstance.post('/usuarios/crear-usuario/', data);
+
+  listarUsuariosDesactivados: async () => {
+    const response = await apiClient.get('/general/usuarios/desactivados/');
+    return response.data;
+  },
+
+  desactivarUsuario: async (userId) => {
+    const response = await apiClient.delete(`/general/usuarios/${userId}/desactivar/`);
+    return response.data;
+  },
+
+  activarUsuario: async (userId) => {
+    const response = await apiClient.post(`/general/usuarios/${userId}/activar/`);
     return response.data;
   },
   
   editarRolUsuario: async (userId, rol) => {
-     const response = await axiosInstance.patch(`/usuarios/${userId}/rol/`, { rol });
+    const response = await apiClient.patch(`/general/usuarios/${userId}/rol/`, { rol });
     return response.data;
   },
 
-  eliminarUsuario: async (userId) => {
-    const response = await axiosInstance.delete(`/usuarios/${userId}/eliminar/`);
+  // ----- Proveedores -----
+  listarProveedoresActivos: async () => {
+    const response = await apiClient.get('/general/proveedores/activos/');
+    return response.data;
+  },
+
+  listarProveedoresDesactivados: async () => {
+    const response = await apiClient.get('/general/proveedores/desactivados/');
+    return response.data;
+  },
+
+  crearProveedor: async (data) => {
+    const response = await apiClient.post('/general/proveedores/crear/', data);
+    return response.data;
+  },
+
+  editarProveedor: async (proveedorId, data) => {
+    const response = await apiClient.put(`/general/proveedores/${proveedorId}/editar/`, data);
+    return response.data;
+  },
+
+  desactivarProveedor: async (proveedorId) => {
+    const response = await apiClient.delete(`/general/proveedores/${proveedorId}/desactivar/`);
+    return response.data;
+  },
+
+  activarProveedor: async (proveedorId) => {
+    const response = await apiClient.post(`/general/proveedores/${proveedorId}/activar/`);
+    return response.data;
+  },
+
+  // ----- Accesorios -----
+  listarAccesorios: async () => {
+    const response = await apiClient.get('/general/accesorios/');
+    return response.data;
+  },
+
+  crearAccesorio: async (data) => {
+    const response = await apiClient.post('/general/accesorios/', data);
+    return response.data;
+  },
+
+  editarAccesorio: async (accesorioId, data) => {
+    const response = await apiClient.put(`/general/accesorios/${accesorioId}/`, data);
+    return response.data;
+  },
+
+  eliminarAccesorio: async (accesorioId) => {
+    const response = await apiClient.delete(`/general/accesorios/${accesorioId}/`);
+    return response.data;
+  },
+
+  // ----- Compras -----
+  listarCompras: async (params) => {
+    const response = await apiClient.get('/general/compras/', { params });
+    return response.data;
+  },
+
+  crearCompra: async (data) => {
+    const response = await apiClient.post('/general/compras/', data);
+    return response.data;
+  },
+
+  eliminarCompraConStock: async (compraId) => {
+    const response = await apiClient.delete(`/general/compras/${compraId}/eliminar-con-stock/`);
+    return response.data;
+  },
+
+  estadisticasCompras: async () => {
+    const response = await apiClient.get('/general/compras/estadisticas/');
+    return response.data;
+  },
+
+  comprasPorProveedor: async (proveedorId) => {
+    const response = await apiClient.get(`/general/compras/proveedor/${proveedorId}/`);
     return response.data;
   },
 
   // ----- Clases -----
   listarClases: async () => {
-    const response = await axiosInstance.get('/clases/');
+    const response = await apiClient.get('/general/clases/');
+    return response.data;
+  },
+
+  crearClase: async (data) => {
+    const response = await apiClient.post('/general/clases/', data);
+    return response.data;
+  },
+
+  editarClase: async (claseId, data) => {
+    const response = await apiClient.put(`/general/clases/${claseId}/editar/`, data);
+    return response.data;
+  },
+
+  eliminarClase: async (claseId) => {
+    const response = await apiClient.delete(`/general/clases/${claseId}/eliminar/`);
     return response.data;
   },
   
   asignarSocio: async (claseId, socioId) => {
-    const response = await axiosInstance.post(`/clases/${claseId}/socios/`, { socio_id: socioId });
+    const response = await apiClient.post(`/general/clases/${claseId}/socios/`, { socio_id: socioId });
     return response.data;
   },
 
   quitarSocio: async (claseId, socioId) => {
-    const response = await axiosInstance.delete(`/clases/${claseId}/socios/${socioId}/`);
+    const response = await apiClient.delete(`/general/clases/${claseId}/socios/${socioId}/`);
     return response.data;
   },
 
   anotarseClase: async (claseId) => {
-   const response = await axiosInstance.post(`/clases/${claseId}/anotarse/`);
+    const response = await apiClient.post(`/general/clases/${claseId}/anotarse/`);
     return response.data;
   },
 
   desuscribirseClase: async (claseId) => {
-    const response = await axiosInstance.delete(`/clases/${claseId}/desuscribirse/`);
+    const response = await apiClient.delete(`/general/clases/${claseId}/desuscribirse/`);
     return response.data;
   },
 
-// ----- AUTH (Si ya están en AuthContext, estas son redundantes) -----
-// Pero si las usas, deben usar axiosInstance.
-  register: async (data) => {
-    const response = await axiosInstance.post('/register/', data);
+  sociosDisponibles: async (claseId) => {
+    const response = await apiClient.get(`/general/clases/${claseId}/socios/disponibles/`);
     return response.data;
   },
 
-  login: async (data) => {
-    const response = await axiosInstance.post('/login/', data);
+  // ----- Dashboard Socio -----
+  dashboardSocio: async () => {
+    const response = await apiClient.get('/general/dashboard/socio/');
     return response.data;
   },
 
-  getProfile: async () => {
-    const response = await axiosInstance.get('/profile/');
+  // ----- Caja -----
+  listarCajas: async (params) => {
+    const response = await apiClient.get('/caja/caja/', { params });
+    return response.data;
+  },
+
+  cajaActual: async () => {
+    const response = await apiClient.get('/caja/caja/actual/');
+    return response.data;
+  },
+
+  abrirCaja: async (data) => {
+    const response = await apiClient.post('/caja/caja/', data);
+    return response.data;
+  },
+
+  cerrarCaja: async (cajaId, data) => {
+    const response = await apiClient.patch(`/caja/caja/${cajaId}/`, data);
+    return response.data;
+  },
+
+  listarMovimientos: async (cajaId) => {
+    const response = await apiClient.get('/caja/movimiento-caja/', {
+      params: { caja: cajaId }
+    });
+    return response.data;
+  },
+
+  crearMovimiento: async (data) => {
+    const response = await apiClient.post('/caja/movimiento-caja/', data);
     return response.data;
   },
 };

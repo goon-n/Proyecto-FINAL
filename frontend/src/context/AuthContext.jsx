@@ -1,17 +1,11 @@
-// src/context/AuthContext.jsx
-
 import { createContext, useContext, useState, useEffect } from "react";
-// Importamos la instancia de Axios configurada para manejar cookies y CSRF
-import axiosInstance from "../lib/axiosInstance"; // RUTA ASUMIDA: src/lib/axiosInstance.js
+import { authService } from "../services/authService";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    // NOTA: La función getCSRFToken ya no es necesaria aquí si usamos axiosInstance,
-    // ya que está implementada en el interceptor de axiosInstance.
 
     // Verificar si hay un usuario logueado al cargar
     useEffect(() => {
@@ -20,24 +14,26 @@ export function AuthProvider({ children }) {
 
     const checkAuth = async () => {
         try {
-            // Usamos axiosInstance.get, que envía cookies
-            const response = await axiosInstance.get("/user/"); 
-            
-            console.log("CheckAuth response:", response.status); // <-- DEBUG
-            
-            if (response.status === 200) {
-                const data = response.data;
-                console.log("Usuario autenticado:", data); // <-- DEBUG
-                setUser(data);
+            // Si hay token, intentar obtener el usuario
+            if (authService.isAuthenticated()) {
+                const result = await authService.getProfile();
+                
+                if (result.success) {
+                    console.log("Usuario autenticado:", result.data);
+                    setUser(result.data);
+                } else {
+                    console.log("Token inválido o expirado");
+                    setUser(null);
+                    authService.logout();
+                }
             } else {
-                console.log("No autenticado"); // <-- DEBUG
-            }
-        } catch (error) {
-            // Si la respuesta es 401 (Unauthorized), asumimos que no hay sesión.
-            if (error.response && error.response.status === 401) {
+                console.log("No hay token guardado");
                 setUser(null);
             }
-            console.log("Error en checkAuth:", error); // <-- DEBUG
+        } catch (error) {
+            console.error("Error en checkAuth:", error);
+            setUser(null);
+            authService.logout();
         } finally {
             setLoading(false);
         }
@@ -45,22 +41,23 @@ export function AuthProvider({ children }) {
 
     const login = async (username, password) => {
         try {
-            // Usamos axiosInstance.post, que envía CSRF token automáticamente
-            const response = await axiosInstance.post("/login/", { username, password });
+            const result = await authService.login(username, password);
 
-            const data = response.data;
-            setUser(data);
-            return data;
+            if (result.success) {
+                setUser(result.user);
+                return result.user;
+            } else {
+                throw new Error(result.error);
+            }
         } catch (error) {
-            console.error("Error en login:", error.response?.data?.error || error.message);
+            console.error("Error en login:", error.message);
             throw error;
         }
     };
 
     const logout = async () => {
         try {
-            // Usamos axiosInstance.post, que envía CSRF token automáticamente
-            await axiosInstance.post("/logout/"); 
+            authService.logout();
             setUser(null);
             window.location.href = "/";
         } catch (error) {
@@ -68,14 +65,17 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const register = async (username, password, email, rol = "socio") => {
+    const register = async (username, password, email) => {
         try {
-            // Usamos axiosInstance.post, que envía CSRF token automáticamente
-            const response = await axiosInstance.post("/register/", { username, password, email, rol });
+            const result = await authService.register(username, password, email);
 
-            return response.data;
+            if (result.success) {
+                return result.data;
+            } else {
+                throw new Error(result.error);
+            }
         } catch (error) {
-            console.error("Error en registro:", error.response?.data?.error || error.message);
+            console.error("Error en registro:", error.message);
             throw error;
         }
     };

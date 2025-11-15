@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',  # necesario para CORS
     'rest_framework',
+    'rest_framework_simplejwt',
     'api',
     'movimiento_caja',
     'turnos',
@@ -40,12 +41,32 @@ CORS_ALLOWED_ORIGINS = [
 
 # Para REST Framework y autenticación de sesión
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    "DEFAULT_PERMISSION_CLASSES": [],
+    # Tu configuración de permisos (ej: IsAuthenticated o AllowAny por defecto)
+    # 'DEFAULT_PERMISSION_CLASSES': [
+    #     'rest_framework.permissions.IsAuthenticated',
+    # ],
 }
+from datetime import timedelta
 
+SIMPLE_JWT = {
+    # Duración del Token de Acceso (ej: 1 hora)
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60), 
+    
+    # Duración del Token de Refresco (ej: 1 día o más)
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1), 
+    
+    # Algoritmo de firmado (HS256 es el más común)
+    "ALGORITHM": "HS256", 
+    
+    # Usa tu SECRET_KEY de Django
+    "SIGNING_KEY": 'django-insecure-!+)x#(6_%6%!w!_s^)#cfq-s68-t#5njg)yt$noy5n)h$#&9m*', 
+    
+    # Prefijo usado en el encabezado Authorization: Bearer <token>
+    "AUTH_HEADER_TYPES": ("Bearer",), 
+}
 ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [

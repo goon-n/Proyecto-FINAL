@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,21 +11,20 @@ import { ArrowLeft, CreditCard, AlertCircle, Edit } from "lucide-react";
 export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { register } = useAuth();
   
-  // Obtener el plan desde el state de la navegación
   const planFromNavigation = location.state?.selectedPlan;
   
   const [selectedPlan, setSelectedPlan] = useState(planFromNavigation || null);
   const [formData, setFormData] = useState({
     nombre: "",
-    usuario: "",
+    username: "",
     email: "",
     password: "",
     telefono: ""
   });
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,32 +38,21 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Aquí va tu lógica de registro con el backend
-      const response = await fetch("http://localhost:8000/api/register/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          plan_id: selectedPlan?.id,
-          rol: "socio"
-        })
+      await register(formData.username, formData.password, formData.email);
+      
+      navigate("/payment", { 
+        state: { 
+          user: {
+            username: formData.username,
+            email: formData.email,
+            nombre: formData.nombre,
+            telefono: formData.telefono
+          }, 
+          plan: selectedPlan 
+        } 
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Pasar la info al pago por navegación (NO localStorage)
-        navigate("/payment", { 
-          state: { 
-            user: data, 
-            plan: selectedPlan 
-          } 
-        });
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || "Error en el registro");
-      }
     } catch (err) {
-      setError("Error de conexión. Intentá de nuevo.");
+      setError(err.message || "Error en el registro. Intentá de nuevo.");
     } finally {
       setIsLoading(false);
     }
@@ -74,10 +64,9 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-white from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6 relative">
-      {/* Botón volver */}
       <Button
         variant="ghost"
-        className="absolute top-4 left-4 text-white hover:text-[#00FF41]"
+        className="absolute top-4 left-4"
         onClick={handleBackToPlans}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -95,7 +84,6 @@ export default function Register() {
         </CardHeader>
 
         <CardContent>
-          {/* Plan seleccionado */}
           {selectedPlan ? (
             <div className="bg-primary/10 border border-primary/30 p-4 rounded-lg mb-6 relative">
               <p className="text-sm text-muted-foreground mb-1">
@@ -163,10 +151,9 @@ export default function Register() {
               </div>
 
               <div className="space-y-2">
-
-                <Label htmlFor="nombre">Usuario</Label>
+                <Label htmlFor="username">Usuario</Label>
                 <Input
-                  id="nombre"
+                  id="username"
                   type="text"
                   placeholder="juanperez"
                   value={formData.username}
@@ -208,7 +195,7 @@ export default function Register() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="password">Contraseña</Label>
                 <Input
                   id="password"
