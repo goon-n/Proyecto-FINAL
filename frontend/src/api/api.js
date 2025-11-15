@@ -1,5 +1,6 @@
+// src/api/api.js - ACTUALIZADO PARA JWT
 
-import apiClient from "../services/authService";
+import apiClient from "../services/authServices"; // Importar el cliente configurado con JWT
 
 const api = {
   // ----- Usuarios -----
@@ -22,7 +23,7 @@ const api = {
     const response = await apiClient.post(`/general/usuarios/${userId}/activar/`);
     return response.data;
   },
-  
+
   editarRolUsuario: async (userId, rol) => {
     const response = await apiClient.patch(`/general/usuarios/${userId}/rol/`, { rol });
     return response.data;
@@ -126,7 +127,7 @@ const api = {
     const response = await apiClient.delete(`/general/clases/${claseId}/eliminar/`);
     return response.data;
   },
-  
+
   asignarSocio: async (claseId, socioId) => {
     const response = await apiClient.post(`/general/clases/${claseId}/socios/`, { socio_id: socioId });
     return response.data;
@@ -159,8 +160,13 @@ const api = {
   },
 
   // ----- Caja -----
-  listarCajas: async (params) => {
-    const response = await apiClient.get('/caja/caja/', { params });
+  listarCajas: async (params = {}) => {
+    // Si no se especifica page_size, traer todas (o un número grande)
+    const finalParams = {
+      page_size: 5, // Traer hasta 5 cajas por defecto
+      ...params
+    };
+    const response = await apiClient.get('/caja/caja/', { params: finalParams });
     return response.data;
   },
 

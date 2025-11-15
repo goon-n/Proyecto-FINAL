@@ -72,17 +72,6 @@ export default function CajaControlTab({
                 ⚠️ Contar SOLO el efectivo físico en la caja
               </p>
             </div>
-
-            <div>
-              <Label htmlFor="notas">Notas y Observaciones</Label>
-              <Input
-                id="notas"
-                name="notas"
-                value={caja.notas || ""}
-                onChange={handleChange}
-                placeholder="Ej: Faltaron $50 en billetes de 10"
-              />
-            </div>
           </div>
 
           {/* RESUMEN ANTES DE CERRAR */}

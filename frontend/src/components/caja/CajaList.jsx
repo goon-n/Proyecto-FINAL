@@ -1,5 +1,7 @@
+// src/components/CajaList.jsx
+
 import React, { useEffect, useState } from "react";
-import { getCajas } from "../../services/caja.service";
+import api from "../../api/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,36 +29,58 @@ export default function CajaList({ reload, onEditar, onHistorial }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 10;
 
   const fetchCajas = async (page = 1) => {
-  setLoading(true);
-  setError("");
-  try {
-    const res = await getCajas(page);
+    setLoading(true);
+    setError("");
     
-    console.log("Respuesta completa:", res.data); 
-    
-    // Django REST Framework devuelve la data paginada en este formato
-    if (res.data.results) {
-      setCajas(res.data.results);
-      setTotalCount(res.data.count);
-      const calculatedPages = Math.ceil(res.data.count / 10);
-      console.log("Total count:", res.data.count); 
-      console.log("Páginas calculadas:", calculatedPages); 
-      setTotalPages(calculatedPages);
-    } else {
-      // Si no hay paginación (por alguna razón)
-      setCajas(res.data);
-      setTotalCount(res.data.length);
+    try {
+      // ✅ Llamar a la API con paginación
+      const response = await api.listarCajas({ 
+        page, 
+        page_size: pageSize 
+      });
+      
+      console.log("Respuesta completa:", response);
+      
+      // ✅ Manejar respuesta paginada de Django REST Framework
+      if (response && typeof response === "object") {
+        if (response.results && Array.isArray(response.results)) {
+          // Respuesta paginada: { count: X, next: "...", previous: null, results: [...] }
+          setCajas(response.results);
+          setTotalCount(response.count || 0);
+          setTotalPages(Math.ceil((response.count || 0) / pageSize));
+          console.log(`✅ Cajas cargadas: ${response.results.length} de ${response.count}`);
+        } else if (Array.isArray(response)) {
+          // Respuesta como array directo (sin paginación)
+          setCajas(response);
+          setTotalCount(response.length);
+          setTotalPages(1);
+          console.log(`✅ Cajas cargadas (array directo): ${response.length}`);
+        } else {
+          // Formato inesperado
+          console.error("Formato de respuesta inesperado:", response);
+          setCajas([]);
+          setTotalCount(0);
+          setTotalPages(1);
+        }
+      } else {
+        console.error("Respuesta inválida:", response);
+        setCajas([]);
+        setTotalCount(0);
+        setTotalPages(1);
+      }
+    } catch (error) {
+      console.error("❌ Error al cargar cajas:", error);
+      setError(error.message || "Error al cargar las cajas");
+      setCajas([]);
+      setTotalCount(0);
       setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error al cargar cajas:", error); 
-    setError("No se pudieron cargar las cajas.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchCajas(currentPage);
@@ -80,6 +104,7 @@ export default function CajaList({ reload, onEditar, onHistorial }) {
   };
 
   const formatMoney = (amount) => {
+    if (amount === null || amount === undefined) return "-";
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS'

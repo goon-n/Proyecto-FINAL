@@ -29,7 +29,7 @@ class Caja(models.Model):
     fecha_cierre = models.DateTimeField(null=True, blank=True)
     estado = models.CharField(max_length=10, choices=ESTADOS, default='ABIERTA')
     closing_counted_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    notas = models.TextField(blank=True, null=True)
+    notas = models.TextField(blank=True, null=True) #lo sacas y se rompe todo
 
     # Propiedades calculadas para efectivo y transferencias
     @property

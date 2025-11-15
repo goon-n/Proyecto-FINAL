@@ -1,37 +1,39 @@
-// services/caja.service.js
+// src/services/caja.service.js - CON JWT
 
-import axios from "axios";
-import { getCSRFToken } from "../utils/csrf";
+import apiClient from "./authServices"; // ✅ Usar el cliente con JWT
 
-const API_URL = 'http://localhost:8000/api/caja/'; 
+const API_URL = '/caja/caja/';
 
+export const getCajas = async (params = {}) => {
+  const finalParams = {
+    page_size: 100,
+    ...params
+  };
+  const response = await apiClient.get(API_URL, { params: finalParams });
+  return response;
+};
 
-export const getCajas = (page = 1) =>
-  axios.get(`${API_URL}?page=${page}`, { withCredentials: true });
+export const getCaja = async (id) => {
+  const response = await apiClient.get(`${API_URL}${id}/`);
+  return response;
+};
 
-export const getCaja = (id) =>
-  axios.get(`${API_URL}${id}/`, { withCredentials: true });
+export const createCaja = async (data) => {
+  const response = await apiClient.post(API_URL, data);
+  return response;
+};
 
-export const createCaja = (data) =>
-  axios.post(API_URL, data, {
-    withCredentials: true,
-    headers: {
-      "X-CSRFToken": getCSRFToken(),
-    },
-  });
+export const updateCaja = async (id, data) => {
+  const response = await apiClient.patch(`${API_URL}${id}/`, data);
+  return response;
+};
 
-export const updateCaja = (id, data) =>
-  axios.patch(`${API_URL}${id}/`, data, {
-    withCredentials: true,
-    headers: {
-      "X-CSRFToken": getCSRFToken(),
-    },
-  });
+export const deleteCaja = async (id) => {
+  const response = await apiClient.delete(`${API_URL}${id}/`);
+  return response;
+};
 
-export const deleteCaja = (id) =>
-  axios.delete(`${API_URL}${id}/`, {
-    withCredentials: true,
-    headers: {
-      "X-CSRFToken": getCSRFToken(),
-    },
-  });
+export const getCajaActual = async () => {
+  const response = await apiClient.get(`${API_URL}actual/`);
+  return response;
+};

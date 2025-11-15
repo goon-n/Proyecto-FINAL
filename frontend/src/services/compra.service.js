@@ -1,88 +1,88 @@
-// src/services/compra.service.js
+// src/services/compra.service.js - CON JWT
 
-import axios from 'axios';
-import { getCSRFToken } from "../utils/csrf";
+import apiClient from "./authServices"; // ✅ Usar el cliente con JWT
 
-const API_URL = "http://localhost:8000/api/compras/";
-const PROV_URL = "http://localhost:8000/api/proveedores/";
-const ACC_URL = "http://localhost:8000/api/accesorios/";
+const API_URL = "/general/compras/";
+const PROV_URL = "/general/proveedores/";
+const ACC_URL = "/general/accesorios/";
 
 // Compras básicas
-export const getCompras = (filtros = {}) => {
-  const params = new URLSearchParams();
-  
-  if (filtros.proveedor) {
-    params.append('proveedor', filtros.proveedor);
-  }
-  if (filtros.fecha_desde) {
-    params.append('fecha_desde', filtros.fecha_desde);
-  }
-  if (filtros.fecha_hasta) {
-    params.append('fecha_hasta', filtros.fecha_hasta);
-  }
-  
-  const url = params.toString() ? `${API_URL}?${params.toString()}` : API_URL;
-  return axios.get(url, { withCredentials: true });
+export const getCompras = async (filtros = {}) => {
+  const params = {};
+
+  if (filtros.proveedor) params.proveedor = filtros.proveedor;
+  if (filtros.fecha_desde) params.fecha_desde = filtros.fecha_desde;
+  if (filtros.fecha_hasta) params.fecha_hasta = filtros.fecha_hasta;
+
+  const response = await apiClient.get(API_URL, { params });
+  return response;
 };
 
-export const getCompra = (id) => axios.get(`${API_URL}${id}/`, { withCredentials: true });
+export const getCompra = async (id) => {
+  const response = await apiClient.get(`${API_URL}${id}/`);
+  return response;
+};
 
-export const createCompra = (data) => axios.post(API_URL, data, {
-  withCredentials: true,
-  headers: {
-    "X-CSRFToken": getCSRFToken(),
-  }
-});
+export const createCompra = async (data) => {
+  const response = await apiClient.post(API_URL, data);
+  return response;
+};
 
-export const updateCompra = (id, data) => axios.put(`${API_URL}${id}/`, data, {
-  withCredentials: true,
-  headers: {
-    "X-CSRFToken": getCSRFToken(),
-  }
-});
+export const updateCompra = async (id, data) => {
+  const response = await apiClient.put(`${API_URL}${id}/`, data);
+  return response;
+};
 
-export const deleteCompra = (id) => axios.delete(`${API_URL}${id}/`, {
-  withCredentials: true,
-  headers: {
-    "X-CSRFToken": getCSRFToken(),
-  }
-});
+export const deleteCompra = async (id) => {
+  const response = await apiClient.delete(`${API_URL}${id}/`);
+  return response;
+};
 
 // Funciones específicas de compras
-export const eliminarCompraConStock = (id) => 
-  axios.delete(`http://localhost:8000/api/compras/${id}/eliminar-con-stock/`, {
-    withCredentials: true,
-    headers: {
-      "X-CSRFToken": getCSRFToken(),
-    }
-  });
+export const eliminarCompraConStock = async (id) => {
+  const response = await apiClient.delete(`/general/compras/${id}/eliminar-con-stock/`);
+  return response;
+};
 
-export const getEstadisticasCompras = () => 
-  axios.get("http://localhost:8000/api/compras/estadisticas/", { withCredentials: true });
+export const getEstadisticasCompras = async () => {
+  const response = await apiClient.get("/general/compras/estadisticas/");
+  return response;
+};
 
-export const getComprasPorProveedor = (proveedorId) => 
-  axios.get(`http://localhost:8000/api/compras/proveedor/${proveedorId}/`, { withCredentials: true });
+export const getComprasPorProveedor = async (proveedorId) => {
+  const response = await apiClient.get(`/general/compras/proveedor/${proveedorId}/`);
+  return response;
+};
 
 // Proveedores
-export const getProveedores = () => 
-  axios.get("http://localhost:8000/api/proveedores/activos/", { withCredentials: true });
+export const getProveedores = async () => {
+  const response = await apiClient.get("/general/proveedores/activos/");
+  return response;
+};
 
-export const getProveedoresActivos = () => 
-  axios.get("http://localhost:8000/api/proveedores/activos/", { withCredentials: true });
+export const getProveedoresActivos = async () => {
+  const response = await apiClient.get("/general/proveedores/activos/");
+  return response;
+};
 
 // Función alternativa si necesitas todos los proveedores (incluidos inactivos)
-export const getTodosLosProveedores = () => axios.get(PROV_URL, { withCredentials: true });
+export const getTodosLosProveedores = async () => {
+  const response = await apiClient.get(PROV_URL);
+  return response;
+};
 
 // Accesorios
-export const getAccesorios = () => axios.get(ACC_URL, { withCredentials: true });
+export const getAccesorios = async () => {
+  const response = await apiClient.get(ACC_URL);
+  return response;
+};
 
 // Funciones de utilidad para manejar errores
 export const handleApiError = (error) => {
   if (error.response) {
-    // El servidor respondió con un código de estado de error
     const status = error.response.status;
     const message = error.response.data?.detail || error.response.data?.error || 'Error en el servidor';
-    
+
     switch (status) {
       case 400:
         return `Datos inválidos: ${message}`;
@@ -98,10 +98,8 @@ export const handleApiError = (error) => {
         return message;
     }
   } else if (error.request) {
-    // La petición se hizo pero no se recibió respuesta
     return 'No se pudo conectar con el servidor. Verifique su conexión.';
   } else {
-    // Algo pasó al configurar la petición
     return 'Error al procesar la solicitud.';
   }
 };

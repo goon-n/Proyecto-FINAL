@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { authService } from "../services/authService";
+import { authService } from "../services/authServices";
 
 const AuthContext = createContext();
 
@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
             // Si hay token, intentar obtener el usuario
             if (authService.isAuthenticated()) {
                 const result = await authService.getProfile();
-                
+
                 if (result.success) {
                     console.log("Usuario autenticado:", result.data);
                     setUser(result.data);
