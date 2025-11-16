@@ -99,9 +99,11 @@ class AccesoriosSerializer(serializers.ModelSerializer):
 
 class ItemCompraSerializer(serializers.ModelSerializer):
     accesorio = serializers.PrimaryKeyRelatedField(queryset=Accesorios.objects.all())
+    accesorio_nombre = serializers.CharField(source='accesorio.nombre', read_only=True)
+    
     class Meta:
         model = ItemCompra
-        fields = ['id', 'accesorio', 'cantidad', 'precio_unitario']
+        fields = ['id', 'accesorio', 'accesorio_nombre', 'cantidad', 'precio_unitario']
 
 class CompraSerializer(serializers.ModelSerializer):
     proveedor = serializers.PrimaryKeyRelatedField(queryset=Proveedor.objects.filter(activo=True))

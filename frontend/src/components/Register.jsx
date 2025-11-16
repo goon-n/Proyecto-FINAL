@@ -1,7 +1,5 @@
-
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +9,6 @@ import { ArrowLeft, CreditCard, AlertCircle, Edit } from "lucide-react";
 export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { register } = useAuth();
   
   const planFromNavigation = location.state?.selectedPlan;
   
@@ -24,7 +21,6 @@ export default function Register() {
     telefono: ""
   });
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,27 +31,20 @@ export default function Register() {
     }
     
     setError(null);
-    setIsLoading(true);
-
-    try {
-      await register(formData.username, formData.password, formData.email);
-      
-      navigate("/payment", { 
-        state: { 
-          user: {
-            username: formData.username,
-            email: formData.email,
-            nombre: formData.nombre,
-            telefono: formData.telefono
-          }, 
-          plan: selectedPlan 
-        } 
-      });
-    } catch (err) {
-      setError(err.message || "Error en el registro. Intentá de nuevo.");
-    } finally {
-      setIsLoading(false);
-    }
+    
+    // ✅ SOLO NAVEGAR AL PAGO CON LOS DATOS (sin registrar todavía)
+    navigate("/payment", { 
+      state: { 
+        user: {
+          username: formData.username,
+          email: formData.email,
+          nombre: formData.nombre,
+          telefono: formData.telefono,
+          password: formData.password  // 🔧 Importante: incluir password
+        }, 
+        plan: selectedPlan 
+      } 
+    });
   };
 
   const handleBackToPlans = () => {
@@ -146,7 +135,7 @@ export default function Register() {
                     setFormData({ ...formData, nombre: e.target.value })
                   }
                   required
-                  disabled={isLoading || !selectedPlan}
+                  disabled={!selectedPlan}
                 />
               </div>
 
@@ -161,7 +150,7 @@ export default function Register() {
                     setFormData({ ...formData, username: e.target.value })
                   }
                   required
-                  disabled={isLoading || !selectedPlan}
+                  disabled={!selectedPlan}
                 />
               </div>
 
@@ -176,7 +165,7 @@ export default function Register() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   required
-                  disabled={isLoading || !selectedPlan}
+                  disabled={!selectedPlan}
                 />
               </div>
 
@@ -191,7 +180,7 @@ export default function Register() {
                     setFormData({ ...formData, telefono: e.target.value })
                   }
                   required
-                  disabled={isLoading || !selectedPlan}
+                  disabled={!selectedPlan}
                 />
               </div>
 
@@ -206,7 +195,7 @@ export default function Register() {
                     setFormData({ ...formData, password: e.target.value })
                   }
                   required
-                  disabled={isLoading || !selectedPlan}
+                  disabled={!selectedPlan}
                   minLength={6}
                 />
               </div>
@@ -215,10 +204,10 @@ export default function Register() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !selectedPlan}
+              disabled={!selectedPlan}
             >
               <CreditCard className="mr-2 h-4 w-4" />
-              {isLoading ? "Procesando..." : "Continuar al Pago"}
+              Continuar al Pago
             </Button>
 
             <div className="relative my-4">
@@ -237,7 +226,6 @@ export default function Register() {
               variant="outline"
               className="w-full"
               onClick={() => navigate("/login")}
-              disabled={isLoading}
             >
               Iniciar Sesión
             </Button>

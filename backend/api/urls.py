@@ -11,6 +11,7 @@ from .views import (
     proveedores_desactivados,
     listar_usuarios,
     editar_rol_usuario,
+    cambiar_contrasena,
     socios_disponibles,
     asignar_socio,
     quitar_socio,
@@ -34,6 +35,7 @@ from .views import (
     compras_por_proveedor,
     eliminar_compra_con_stock,
     get_csrf,
+    register_with_payment
 )
 
 router = DefaultRouter()
@@ -57,6 +59,9 @@ urlpatterns = [
     path('usuarios/<int:user_id>/desactivar/', desactivar_usuario, name='desactivar-usuario'),
     path('usuarios/<int:user_id>/activar/', activar_usuario, name='activar-usuario'),
     path('usuarios/<int:user_id>/rol/', editar_rol_usuario, name='editar-rol-usuario'),
+    path('usuarios/<int:user_id>/cambiar-contrasena/', cambiar_contrasena, name='cambiar-contrasena'),
+    path('register-with-payment/', register_with_payment, name='register_with_payment'),
+
 
     # Gestión de proveedores (ANTES del router)
     path('proveedores/activos/', proveedores_activos, name='proveedores-activos'),

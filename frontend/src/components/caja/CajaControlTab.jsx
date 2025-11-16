@@ -65,7 +65,7 @@ export default function CajaControlTab({
                 name="closing_counted_amount"
                 value={caja.closing_counted_amount || ""}
                 onChange={handleChange}
-                placeholder="Contar solo billetes y monedas"
+                placeholder="Contar solo billetes"
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -125,7 +125,7 @@ export default function CajaControlTab({
                 <div className="p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
                   <p className="text-sm text-yellow-800">
                     ⚠️ <strong>Atención:</strong> Hay una diferencia de ${Math.abs(diferenciaEfectivo).toFixed(2)} en el efectivo.
-                    {diferenciaEfectivo > 0 ? ' Sobran billetes/monedas.' : ' Faltan billetes/monedas.'}
+                    {diferenciaEfectivo > 0 ? ' Sobran billetes.' : ' Faltan billetes.'}
                   </p>
                 </div>
               )}

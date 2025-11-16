@@ -1,11 +1,7 @@
 // src/hooks/useUsuarios.js
-
 import { useState, useEffect } from "react";
+import api from "../api/api"; // ← Usar tu API centralizada
 
-/**
- * Hook para manejar la lógica de usuarios (activos y desactivados)
- * Lo usás así: const { usuariosActivos, usuariosDesactivados, loading, error, refetch } = useUsuarios();
- */
 export const useUsuarios = () => {
   const [usuariosActivos, setUsuariosActivos] = useState([]);
   const [usuariosDesactivados, setUsuariosDesactivados] = useState([]);
@@ -17,43 +13,30 @@ export const useUsuarios = () => {
     setError(null);
     
     try {
-      // Hacemos las dos peticiones al mismo tiempo
-      const [responseActivos, responseDesactivados] = await Promise.all([
-        fetch("http://localhost:8000/api/usuarios/", { 
-          credentials: "include" 
-        }),
-        fetch("http://localhost:8000/api/usuarios/desactivados/", { 
-          credentials: "include" 
-        })
+      const [dataActivos, dataDesactivados] = await Promise.all([
+        api.listarUsuarios(),
+        api.listarUsuariosDesactivados()
       ]);
       
-      if (responseActivos.ok && responseDesactivados.ok) {
-        const dataActivos = await responseActivos.json();
-        const dataDesactivados = await responseDesactivados.json();
-        setUsuariosActivos(dataActivos);
-        setUsuariosDesactivados(dataDesactivados);
-      } else {
-        setError("Error al cargar usuarios");
-      }
+      setUsuariosActivos(dataActivos);
+      setUsuariosDesactivados(dataDesactivados);
     } catch (err) {
-      console.error("Error de conexión:", err);
-      setError("Error de conexión con el servidor");
+      console.error("Error al cargar usuarios:", err);
+      setError(err.response?.data?.detail || "Error al cargar usuarios");
     } finally {
       setLoading(false);
     }
   };
 
-  // Se ejecuta cuando se monta el componente
   useEffect(() => {
     fetchUsuarios();
   }, []);
 
-  // Retornamos todo lo que el componente necesita
   return {
     usuariosActivos,
     usuariosDesactivados,
     loading,
     error,
-    refetch: fetchUsuarios  // Para volver a cargar cuando se necesite
+    refetch: fetchUsuarios
   };
 };

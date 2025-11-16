@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import api from "../api/api"; // ✅ Importar api.js
 
 export const useProveedores = () => {
   const [proveedoresActivos, setProveedoresActivos] = useState([]);
@@ -6,30 +7,21 @@ export const useProveedores = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const ACTIVOS_URL = "http://localhost:8000/api/proveedores/activos/";  // ✅ CORREGIDO
-  const DESACTIVADOS_URL = "http://localhost:8000/api/proveedores/desactivados/";
-
   const fetchProveedores = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [resActivos, resDesactivados] = await Promise.all([
-        fetch(ACTIVOS_URL, { credentials: "include" }),
-        fetch(DESACTIVADOS_URL, { credentials: "include" }),
+      // ✅ Usar api.js que ya tiene configurado /general/ y JWT
+      const [dataActivos, dataDesactivados] = await Promise.all([
+        api.listarProveedoresActivos(),
+        api.listarProveedoresDesactivados(),
       ]);
-
-      if (!resActivos.ok || !resDesactivados.ok) {
-        throw new Error("Error al cargar proveedores");
-      }
-
-      const dataActivos = await resActivos.json();
-      const dataDesactivados = await resDesactivados.json();
 
       setProveedoresActivos(dataActivos || []);
       setProveedoresDesactivados(dataDesactivados || []);
     } catch (err) {
-      setError(err.message);
-      console.error(err);
+      setError(err.message || "Error al cargar proveedores");
+      console.error("Error en fetchProveedores:", err);
     } finally {
       setLoading(false);
     }

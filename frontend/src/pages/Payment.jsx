@@ -4,6 +4,8 @@ import { ArrowLeft, AlertCircle } from "lucide-react";
 import PaymentSummary from "../components/Payment/PaymentSummary";
 import PaymentForm from "../components/Payment/PaymentForm";
 import PaymentSuccess from "../components/Payment/PaymentSuccess";
+import { authService } from "../services/authServices";  // 🔧 Importar desde authServices
+import toast from "react-hot-toast";
 
 export default function Payment() {
   const navigate = useNavigate();
@@ -35,27 +37,52 @@ export default function Payment() {
     );
   }
 
-  const handlePaymentSubmit = (cardData) => {
+  const handlePaymentSubmit = async (cardData) => {
     setIsLoading(true);
 
-    setTimeout(() => {
-      console.log("Pago simulado exitoso:", {
-        usuario: user.nombre,
-        plan: plan.name,
-        monto: plan.price,
-        ultimos_digitos: cardData.numero.replace(/\s/g, '').slice(-4)
-      });
+    try {
+      const ultimos4 = cardData.numero.replace(/\s/g, '').slice(-4);
       
+      // 🔧 Simular delay del procesamiento de tarjeta
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // 🔧 REGISTRAR USUARIO Y CREAR MOVIMIENTO EN CAJA
+      const response = await authService.registerWithPayment({
+        username: user.username,
+        password: user.password,
+        email: user.email,
+        nombre: user.nombre,
+        telefono: user.telefono,
+        plan_name: plan.name,
+        plan_price: parseFloat(plan.price.replace(/\./g, '')),  // "32.000" → 32000
+        card_last4: ultimos4
+      });
+
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+
+      console.log("✅ Usuario registrado y pago procesado:", response.data);
+      
+      toast.success("¡Pago procesado exitosamente!");
       setSuccess(true);
       
       setTimeout(() => {
         navigate("/login", { 
           state: { 
-            message: "¡Registro exitoso! Ahora podés iniciar sesión." 
+            message: "¡Registro exitoso! Ya podés iniciar sesión con tu usuario y contraseña." 
           } 
         });
-      }, 2000);
-    }, 1500);
+      }, 2500);
+      
+    } catch (error) {
+      console.error("❌ Error:", error);
+      setIsLoading(false);
+      
+      // Mostrar error específico
+      const errorMessage = error.message || "Error al procesar el pago. Intente nuevamente.";
+      toast.error(errorMessage);
+    }
   };
 
   if (success) {
@@ -66,7 +93,7 @@ export default function Payment() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative">
       <button
         className="absolute top-4 left-4 text-white hover:text-emerald-400 flex items-center gap-2 transition-colors"
-        onClick={() => navigate("/register")}
+        onClick={() => navigate("/register", { state: { selectedPlan: plan } })}
         disabled={isLoading}
       >
         <ArrowLeft className="w-4 h-4" />

@@ -1,3 +1,4 @@
+// src/services/authServices.js
 
 import axios from 'axios';
 
@@ -121,6 +122,29 @@ export const authService = {
     }
   },
 
+  // 🔧 NUEVO: Registro con pago y movimiento de caja
+  async registerWithPayment(userData) {
+    try {
+      const response = await axios.post(`${API_URL}/general/register-with-payment/`, {
+        username: userData.username,
+        password: userData.password,
+        email: userData.email,
+        nombre: userData.nombre,
+        telefono: userData.telefono,
+        plan_name: userData.plan_name,
+        plan_price: userData.plan_price,
+        card_last4: userData.card_last4
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error en registerWithPayment:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.response?.data?.detail || 'Error al registrar usuario'
+      };
+    }
+  },
+
   // Logout
   logout() {
     localStorage.removeItem('access_token');
@@ -163,4 +187,3 @@ export const authService = {
 
 // Exportar también la instancia de axios configurada
 export default apiClient;
-

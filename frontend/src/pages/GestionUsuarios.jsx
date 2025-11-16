@@ -8,7 +8,6 @@ import { Users } from "lucide-react";
 
 // Custom hooks
 import { useUsuarios } from "../hooks/useUsuarios";
-import { useCSRF } from "../hooks/useCSRF";
 
 // Componentes compartidos
 import { LoadingCard } from "../components/shared/LoadingCard";
@@ -18,12 +17,14 @@ import { PageHeader } from "../components/shared/PageHeader";
 // Componentes específicos de usuarios
 import { FiltrosUsuarios } from "../components/usuarios/FiltrosUsuarios";
 import { TablaUsuarios } from "../components/usuarios/TablaUsuarios";
-import { AgregarUsuario } from "../components/usuarios/AgregarUsuario"; 
+import { AgregarUsuario } from "../components/usuarios/AgregarUsuario";
+
+// API Client
+import apiClient from "../services/authServices";
 
 const GestionUsuarios = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { getCSRFToken } = useCSRF();
   const { usuariosActivos, usuariosDesactivados, loading, error, refetch } = useUsuarios();
 
   const [rolesEditados, setRolesEditados] = useState({});
@@ -31,11 +32,9 @@ const GestionUsuarios = () => {
   const [procesando, setProcesando] = useState(null);
   const [vistaActual, setVistaActual] = useState("activos");
 
-
   const esEntrenador = user?.rol === "entrenador";
   const esAdmin = user?.rol === "admin";
 
- 
   const usuariosFiltrados = esEntrenador 
     ? usuariosActivos.filter(u => u.perfil__rol === "socio")
     : usuariosActivos;
@@ -52,27 +51,14 @@ const GestionUsuarios = () => {
 
     setGuardando(userId);
     try {
-      const response = await fetch(`http://localhost:8000/api/usuarios/${userId}/rol/`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCSRFToken(),
-        },
-        credentials: "include",
-        body: JSON.stringify({ rol: nuevoRol }),
-      });
-
-      if (response.ok) {
-        const nuevosRoles = { ...rolesEditados };
-        delete nuevosRoles[userId];
-        setRolesEditados(nuevosRoles);
-        refetch();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || "Error al actualizar rol");
-      }
-    } catch {
-      alert("Error de conexión");
+      await apiClient.patch(`/general/usuarios/${userId}/rol/`, { rol: nuevoRol });
+      
+      const nuevosRoles = { ...rolesEditados };
+      delete nuevosRoles[userId];
+      setRolesEditados(nuevosRoles);
+      refetch();
+    } catch (error) {
+      alert(error.response?.data?.error || "Error al actualizar rol");
     } finally {
       setGuardando(null);
     }
@@ -81,21 +67,11 @@ const GestionUsuarios = () => {
   const desactivarUsuario = async (userId) => {
     setProcesando(userId);
     try {
-      const response = await fetch(`http://localhost:8000/api/usuarios/${userId}/desactivar/`, {
-        method: "DELETE",
-        headers: { "X-CSRFToken": getCSRFToken() },
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        await refetch();
-        setVistaActual("activos");
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || "Error al desactivar usuario");
-      }
-    } catch {
-      alert("Error de conexión");
+      await apiClient.delete(`/general/usuarios/${userId}/desactivar/`);
+      await refetch();
+      setVistaActual("activos");
+    } catch (error) {
+      alert(error.response?.data?.error || "Error al desactivar usuario");
     } finally {
       setProcesando(null);
     }
@@ -104,21 +80,11 @@ const GestionUsuarios = () => {
   const activarUsuario = async (userId) => {
     setProcesando(userId);
     try {
-      const response = await fetch(`http://localhost:8000/api/usuarios/${userId}/activar/`, {
-        method: "POST",
-        headers: { "X-CSRFToken": getCSRFToken() },
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        await refetch();
-        setVistaActual("desactivados");
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || "Error al activar usuario");
-      }
-    } catch  {
-      alert("Error de conexión");
+      await apiClient.post(`/general/usuarios/${userId}/activar/`);
+      await refetch();
+      setVistaActual("desactivados");
+    } catch (error) {
+      alert(error.response?.data?.error || "Error al activar usuario");
     } finally {
       setProcesando(null);
     }
@@ -187,7 +153,7 @@ const GestionUsuarios = () => {
               onActivar={activarUsuario}
               guardando={guardando}
               procesando={procesando}
-              esEntrenador={esEntrenador} // ← PASAR PROP
+              esEntrenador={esEntrenador}
             />
           </CardContent>
         </Card>

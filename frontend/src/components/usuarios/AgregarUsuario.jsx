@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
-import { useCSRF } from "../../hooks/useCSRF";
+import api from "../../api/api";
 
 export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
-  const { getCSRFToken } = useCSRF();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,38 +34,25 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
       return;
     }
 
-    // Si es admin, la contraseña es obligatoria
-    if (!esEntrenador && !formData.password) {
+    // ✅ Ahora la contraseña es obligatoria para todos
+    if (!formData.password) {
       toast.error("La contraseña es obligatoria");
+      return;
+    }
+
+    if (formData.password.length < 4) {
+      toast.error("La contraseña debe tener al menos 4 caracteres");
       return;
     }
 
     setGuardando(true);
     try {
-      const response = await fetch("http://localhost:8000/api/usuarios/crear/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCSRFToken(),
-        },
-        credentials: "include",
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Error al crear usuario");
-      }
-
-      const data = await response.json();
+      await api.crearUsuario(formData);
       
       if (esEntrenador) {
-        toast.success(
-          "Socio creado exitosamente. Deberá configurar su contraseña en el primer inicio de sesión.",
-          { duration: 5000 }
-        );
+        toast.success("✅ Socio creado exitosamente. Puede iniciar sesión con las credenciales proporcionadas.");
       } else {
-        toast.success("Usuario creado exitosamente");
+        toast.success("✅ Usuario creado exitosamente");
       }
       
       setFormData({
@@ -78,7 +64,8 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
       setMostrarFormulario(false);
       if (onUsuarioCreado) onUsuarioCreado();
     } catch (error) {
-      toast.error(error.message);
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.message;
+      toast.error("❌ " + errorMsg);
     } finally {
       setGuardando(false);
     }
@@ -133,23 +120,26 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
                 />
               </div>
 
-              {/* Solo mostrar contraseña si es ADMIN */}
-              {!esEntrenador && (
-                <div>
-                  <Label htmlFor="password">Contraseña *</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    required
-                    disabled={guardando}
-                    minLength={4}
-                  />
-                </div>
-              )}
+              {/* ✅ Ahora SIEMPRE se muestra la contraseña */}
+              <div>
+                <Label htmlFor="password">Contraseña *</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  disabled={guardando}
+                  minLength={4}
+                />
+                {esEntrenador && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    💡 El socio podrá cambiar su contraseña desde su perfil
+                  </p>
+                )}
+              </div>
 
               <div>
                 <Label htmlFor="rol">Rol *</Label>

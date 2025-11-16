@@ -3,6 +3,12 @@
 import apiClient from "../services/authServices"; // Importar el cliente configurado con JWT
 
 const api = {
+  // ----- Usuario Actual -----
+  obtenerUsuarioActual: async () => {
+    const response = await apiClient.get('/general/user/');
+    return response.data;
+  },
+
   // ----- Usuarios -----
   listarUsuarios: async () => {
     const response = await apiClient.get('/general/usuarios/');
@@ -29,6 +35,17 @@ const api = {
     return response.data;
   },
 
+
+  crearUsuario: async (data) => {
+  const response = await apiClient.post('/general/usuarios/', data);
+  return response.data;
+
+},
+
+  cambiarContrasena: async (userId, data) => {
+  const response = await apiClient.patch(`/general/usuarios/${userId}/cambiar-contrasena/`, data);
+  return response.data;
+},
   // ----- Proveedores -----
   listarProveedoresActivos: async () => {
     const response = await apiClient.get('/general/proveedores/activos/');
@@ -161,9 +178,8 @@ const api = {
 
   // ----- Caja -----
   listarCajas: async (params = {}) => {
-    // Si no se especifica page_size, traer todas (o un número grande)
     const finalParams = {
-      page_size: 5, // Traer hasta 5 cajas por defecto
+      page_size: 5,
       ...params
     };
     const response = await apiClient.get('/caja/caja/', { params: finalParams });

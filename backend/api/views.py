@@ -113,7 +113,7 @@ class CompraViewSet(viewsets.ModelViewSet):
         """Crear compra y registrar movimiento en caja automáticamente"""
         from movimiento_caja.models import Caja, MovimientoDeCaja
         
-        # ⭐ VALIDACIÓN: Verificar que haya caja abierta
+        # VALIDACIÓN: Verificar que haya caja abierta
         caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
         
         if not caja_abierta:
@@ -169,40 +169,6 @@ class CompraViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(fecha__lte=fecha_hasta)
             
         return queryset.order_by('-fecha')
-    def get_queryset(self):
-        queryset = Compra.objects.all().select_related('proveedor').prefetch_related('items__accesorio')
-        
-        # Filtros opcionales
-        proveedor_id = self.request.query_params.get('proveedor', None)
-        fecha_desde = self.request.query_params.get('fecha_desde', None)
-        fecha_hasta = self.request.query_params.get('fecha_hasta', None)
-        
-        if proveedor_id:
-            queryset = queryset.filter(proveedor_id=proveedor_id)
-        if fecha_desde:
-            queryset = queryset.filter(fecha__gte=fecha_desde)
-        if fecha_hasta:
-            queryset = queryset.filter(fecha__lte=fecha_hasta)
-            
-        return queryset.order_by('-fecha')
-    
-    def get_queryset(self):
-        queryset = Compra.objects.all().select_related('proveedor').prefetch_related('items__accesorio')
-        
-        # Filtros
-        proveedor_id = self.request.query_params.get('proveedor', None)
-        fecha_desde = self.request.query_params.get('fecha_desde', None)
-        fecha_hasta = self.request.query_params.get('fecha_hasta', None)
-        
-        if proveedor_id:
-            queryset = queryset.filter(proveedor_id=proveedor_id)
-        if fecha_desde:
-            queryset = queryset.filter(fecha__gte=fecha_desde)
-        if fecha_hasta:
-            queryset = queryset.filter(fecha__lte=fecha_hasta)
-            
-        return queryset.order_by('-fecha')
-
 
 class ClaseViewSet(viewsets.ModelViewSet):
     queryset = Clase.objects.all()
@@ -223,15 +189,78 @@ class ClaseViewSet(viewsets.ModelViewSet):
 
 # ========== ENDPOINTS DE USUARIO/ADMIN Y FUNCIONES ADICIONALES ==========
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def listar_usuarios(request):
-    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
-        return Response({'error': 'No tienes permisos'}, status=403)
-    usuarios = User.objects.filter(perfil__is_active=True).values(
-        'id', 'username', 'email', 'date_joined', 'perfil__rol'
-    )
-    return Response(list(usuarios))
+    """
+    GET: Listar usuarios activos
+    POST: Crear nuevo usuario
+    """
+    
+    # GET - Listar usuarios
+    if request.method == 'GET':
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
+            return Response({'error': 'No tienes permisos'}, status=403)
+        
+        usuarios = User.objects.filter(perfil__is_active=True).values(
+            'id', 'username', 'email', 'date_joined', 'perfil__rol'
+        )
+        return Response(list(usuarios))
+    
+    # POST - Crear usuario
+    elif request.method == 'POST':
+        if not hasattr(request.user, 'perfil'):
+            return Response({'error': 'No tienes permisos'}, status=403)
+        
+        user_rol = request.user.perfil.rol
+        if user_rol not in ['admin', 'entrenador']:
+            return Response({'error': 'Solo admins y entrenadores pueden crear usuarios'}, status=403)
+        
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email', '')
+        rol = request.data.get('rol', 'socio')
+        
+        if not username:
+            return Response({'error': 'El nombre de usuario es obligatorio'}, status=400)
+        
+        if not password:
+            return Response({'error': 'La contraseña es obligatoria'}, status=400)
+        
+        if User.objects.filter(username=username).exists():
+            return Response({'error': 'El usuario ya existe'}, status=400)
+        
+        if user_rol == 'entrenador' and rol != 'socio':
+            return Response({'error': 'Los entrenadores solo pueden crear socios'}, status=403)
+        
+        if rol not in ['admin', 'entrenador', 'socio']:
+            return Response({'error': 'Rol no válido'}, status=400)
+        
+        try:
+            # Crear usuario
+            user = User.objects.create_user(username=username, password=password, email=email)
+            print(f"✅ Usuario creado: {user.id} - {user.username}")
+            
+            # Crear perfil con is_active=True explícitamente
+            perfil = Perfil.objects.create(user=user, rol=rol, is_active=True)
+            print(f"✅ Perfil creado: {perfil.id} - rol: {perfil.rol} - activo: {perfil.is_active}")
+            
+            return Response({
+                'message': 'Usuario creado correctamente',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'rol': rol
+                }
+            }, status=201)
+            
+        except Exception as e:
+            print(f"❌ ERROR al crear usuario: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({'error': f'Error al crear usuario: {str(e)}'}, status=400)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -251,6 +280,7 @@ def usuarios_desactivados(request):
         })
     return Response(data)
 
+
 @api_view(['DELETE'])
 @permission_classes([IsAdminUser])
 def desactivar_usuario(request, user_id):
@@ -265,6 +295,7 @@ def desactivar_usuario(request, user_id):
     user.save()
     return Response({'detail': f'Usuario {user.username} desactivado correctamente'}, status=200)
 
+
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def activar_usuario(request, user_id):
@@ -276,6 +307,7 @@ def activar_usuario(request, user_id):
     user.is_active = True
     user.save()
     return Response({'detail': f'Usuario {user.username} activado correctamente'}, status=200)
+
 
 @api_view(['PATCH'])
 @permission_classes([IsAdminUser])
@@ -290,19 +322,108 @@ def editar_rol_usuario(request, user_id):
     user.perfil.save()
     return Response({'detail': f'Rol de {user.username} actualizado a {nuevo_rol}'}, status=200)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def proveedores_activos(request):
-    activos = Proveedor.objects.filter(activo=True)
-    serializer = ProveedorSerializer(activos, many=True)
-    return Response(serializer.data)
 
-@api_view(['GET'])
+@api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
-def proveedores_desactivados(request):
-    desactivados = Proveedor.objects.filter(activo=False)
-    serializer = ProveedorSerializer(desactivados, many=True)
-    return Response(serializer.data)
+def cambiar_contrasena(request, user_id):
+    """Cambiar contraseña de usuario"""
+    if request.user.id != user_id:
+        return Response({'error': 'Solo puedes cambiar tu propia contraseña'}, status=403)
+    
+    password_actual = request.data.get('password_actual')
+    password_nueva = request.data.get('password_nueva')
+    
+    if not password_actual or not password_nueva:
+        return Response({'error': 'Faltan datos'}, status=400)
+    
+    if not request.user.check_password(password_actual):
+        return Response({'error': 'La contraseña actual es incorrecta'}, status=400)
+    
+    if len(password_nueva) < 4:
+        return Response({'error': 'La contraseña debe tener al menos 4 caracteres'}, status=400)
+    
+    request.user.set_password(password_nueva)
+    request.user.save()
+    
+    return Response({'detail': 'Contraseña actualizada correctamente'}, status=200)
+
+# ========== REGISTRO DE USUARIO CON MOVIMIENTO DE CAJA ==========
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_with_payment(request):
+    """Registrar usuario y crear movimiento de caja en una sola transacción"""
+    from movimiento_caja.models import Caja, MovimientoDeCaja
+    from django.db import transaction
+    
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email')
+    nombre = request.data.get('nombre')
+    telefono = request.data.get('telefono')
+    plan_name = request.data.get('plan_name')
+    plan_price = request.data.get('plan_price')
+    card_last4 = request.data.get('card_last4', '')
+    
+    # Validaciones
+    if not username or not password:
+        return Response({'error': 'Faltan datos obligatorios'}, status=400)
+    
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'El usuario ya existe'}, status=400)
+    
+    # Verificar caja abierta
+    caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
+    if not caja_abierta:
+        return Response({
+            'error': 'No hay caja abierta',
+            'detail': 'Debe haber una caja abierta para registrar nuevos socios. Contacte al administrador.'
+        }, status=400)
+    
+    try:
+        with transaction.atomic():
+            # 1. Crear usuario
+            user = User.objects.create_user(
+                username=username, 
+                password=password, 
+                email=email,
+                first_name=nombre
+            )
+            perfil = Perfil.objects.create(user=user, rol='socio')
+            
+            # 2. Crear movimiento en caja
+            MovimientoDeCaja.objects.create(
+                caja=caja_abierta,
+                tipo='ingreso',
+                monto=plan_price,
+                tipo_pago='tarjeta',
+                descripcion=f"Nuevo socio: {nombre} ({username}) - Plan: {plan_name}" + 
+                           (f" - Tarjeta *{card_last4}" if card_last4 else ""),
+                creado_por=caja_abierta.empleado_apertura  # Usuario que abrió la caja
+            )
+            
+            print(f"✅ Usuario {username} registrado y movimiento de caja creado")
+            
+            return Response({
+                'message': 'Usuario registrado correctamente',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'nombre': nombre
+                }
+            }, status=201)
+        
+    except Exception as e:
+        print(f"❌ Error en registro: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return Response({
+            'error': f'Error al registrar: {str(e)}'
+        }, status=400)
+
+
 
 # ========== GESTIÓN DE PROVEEDORES (CRUD COMPLETO) ==========
 
@@ -344,6 +465,20 @@ def activar_proveedor(request, proveedor_id):
     proveedor.activo = True
     proveedor.save()
     return Response({'detail': f'Proveedor {proveedor.nombre} activado correctamente'}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def proveedores_activos(request):
+    activos = Proveedor.objects.filter(activo=True)
+    serializer = ProveedorSerializer(activos, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def proveedores_desactivados(request):
+    desactivados = Proveedor.objects.filter(activo=False)
+    serializer = ProveedorSerializer(desactivados, many=True)
+    return Response(serializer.data)
 
 # ========== CLASES Y SOCIOS / DASHBOARD ==========
 

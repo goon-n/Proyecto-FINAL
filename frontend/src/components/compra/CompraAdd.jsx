@@ -1,8 +1,9 @@
+// src/components/Compras/CompraAdd.jsx
+
 import React, { useEffect, useState } from "react";
 import { createCompra, getProveedores, getAccesorios } from "../../services/compra.service";
 import toast from "react-hot-toast";
-import axios from "axios";
-import { getCSRFToken } from "../../utils/csrf";
+import api from "../../api/api";
 import { Search } from "lucide-react";
 
 export default function CompraAdd({ onAdd }) {
@@ -16,7 +17,6 @@ export default function CompraAdd({ onAdd }) {
   const [cajaAbierta, setCajaAbierta] = useState(null);
   const [cargandoCaja, setCargandoCaja] = useState(true);
   
-  // ⭐ Estados para búsqueda de productos
   const [busquedaProducto, setBusquedaProducto] = useState({});
 
   useEffect(() => {
@@ -24,26 +24,30 @@ export default function CompraAdd({ onAdd }) {
     verificarCajaAbierta();
   }, []);
 
+  // ✅ CORREGIDO: Usar api.js
   const verificarCajaAbierta = async () => {
     try {
       setCargandoCaja(true);
-      const response = await axios.get("http://localhost:8000/api/caja/actual/", {
-        withCredentials: true
-      });
-      setCajaAbierta(response.data);
+      const caja = await api.cajaActual();
+      setCajaAbierta(caja);
+      console.log("✅ Caja abierta detectada:", caja); // Debug
     } catch (error) {
+      console.error("Error al verificar caja:", error);
       if (error.response?.status === 404) {
         setCajaAbierta(null);
+        console.log("⚠️ No hay caja abierta");
       }
     } finally {
       setCargandoCaja(false);
     }
   };
 
+  // ✅ CORREGIDO: Usar api.js
   const cargarDatos = async () => {
     try {
-      const usuarioRes = await axios.get("http://localhost:8000/api/user/", { withCredentials: true });
-      setUsuarioAutenticado(usuarioRes.data);
+      const usuarioRes = await api.obtenerUsuarioActual();
+      setUsuarioAutenticado(usuarioRes);
+      console.log("✅ Usuario autenticado:", usuarioRes); // Debug
       
       const [proveedoresRes, accesoriosRes] = await Promise.all([
         getProveedores(),
@@ -66,7 +70,6 @@ export default function CompraAdd({ onAdd }) {
   const addItem = () => {
     const nuevoItem = { accesorio: "", cantidad: 1, precio_unitario: 0 };
     setItems([...items, nuevoItem]);
-    // Inicializar búsqueda para este nuevo item
     setBusquedaProducto(prev => ({...prev, [items.length]: ""}));
   };
   
@@ -78,13 +81,11 @@ export default function CompraAdd({ onAdd }) {
   
   const removeItem = idx => {
     setItems(items.filter((_, i) => i !== idx));
-    // Limpiar búsqueda del item eliminado
     const nuevaBusqueda = {...busquedaProducto};
     delete nuevaBusqueda[idx];
     setBusquedaProducto(nuevaBusqueda);
   };
 
-  // ⭐ Filtrar accesorios según búsqueda
   const filtrarAccesorios = (idx) => {
     const busqueda = busquedaProducto[idx] || "";
     if (!busqueda) return accesorios;
@@ -172,9 +173,7 @@ export default function CompraAdd({ onAdd }) {
           </div>
         ) : (
           <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded">
-            <p className="text-red-700 text-sm">
-              ❌ No autenticado. <a href="/login" className="underline font-medium">Iniciar sesión</a>
-            </p>
+            <p className="text-red-700 text-sm">⚠️ No estás autenticado</p>
           </div>
         )}
       </div>
@@ -291,7 +290,6 @@ export default function CompraAdd({ onAdd }) {
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-600 mb-1">Producto *</label>
                       
-                      {/* ⭐ Campo de búsqueda */}
                       <div className="relative mb-2">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input
@@ -303,7 +301,6 @@ export default function CompraAdd({ onAdd }) {
                         />
                       </div>
                       
-                      {/* Select filtrado */}
                       <select 
                         required 
                         value={item.accesorio} 
