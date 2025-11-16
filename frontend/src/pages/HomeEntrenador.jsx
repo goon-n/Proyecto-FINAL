@@ -1,24 +1,37 @@
+// frontend/src/pages/HomeEntrenador.jsx
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { 
   LogOut, 
   Calendar, 
+  Users, 
   DollarSign, 
   CreditCard, 
   Dumbbell, 
   Package, 
   FileText, 
-  Settings 
+  Truck, 
+  Settings,
+  Box 
 } from "lucide-react";
+import TurnosList from "@/components/turnos/TurnosList";
+import CrearTurno from "@/components/turnos/CrearTurno";
 
 const HomeEntrenador = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  if (!user) {
+    return <div className="text-white text-center mt-10">Cargando...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-white from-green-900 via-green-800 to-emerald-900 p-6">
-      {/* Header con nombre y botón de logout */}
+      {/* Header */}
       <div className="max-w-7xl mx-auto mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -45,7 +58,7 @@ const HomeEntrenador = () => {
 
       {/* Grid de secciones */}
       <div className="max-w-7xl mx-auto space-y-6">
-        
+
         {/* Gestión de Turnos */}
         <Card>
           <CardHeader>
@@ -58,16 +71,9 @@ const HomeEntrenador = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" size="lg">
-                <Calendar className="mr-2 h-4 w-4" />
-                Ver Todos los Turnos
-              </Button>
-              <Button variant="outline" size="lg">
-                <Calendar className="mr-2 h-4 w-4" />
-                Crear Nuevo Cupo
-              </Button>
-            </div>
+            <CrearTurno userRole={user.rol} />
+            <Separator className="my-4" />
+            <TurnosList userRole={user.rol} />
           </CardContent>
         </Card>
 
@@ -79,31 +85,50 @@ const HomeEntrenador = () => {
               <CardTitle className="text-2xl text-yellow-600">Tareas de Administración</CardTitle>
             </div>
             <CardDescription>
-              Gestioná planes, clases y rutinas
+              Gestioná todos los aspectos del gimnasio
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Button 
+                onClick={() => navigate("/entrenador/usuarios")} 
+                variant="outline" 
+                size="lg"
+                className="justify-start"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Gestión de Usuarios
+              </Button>
+              <Button 
+                onClick={() => navigate("/entrenador/caja")} 
+                variant="outline" 
+                size="lg"
+                className="justify-start"
+              >
+                <Box className="mr-2 h-4 w-4 text-green-600" />
+                Gestión de Caja
+              </Button>
               <Button variant="outline" size="lg" className="justify-start">
                 <DollarSign className="mr-2 h-4 w-4" />
                 Planes y Precios
               </Button>
-              
               <Button variant="outline" size="lg" className="justify-start">
                 <CreditCard className="mr-2 h-4 w-4" />
                 Membresías
               </Button>
-              
               <Button variant="outline" size="lg" className="justify-start">
                 <Dumbbell className="mr-2 h-4 w-4" />
                 Clases
               </Button>
-              
-              <Button variant="outline" size="lg" className="justify-start">
+              <Button 
+                onClick={() => navigate("/entrenador/accesorios")} 
+                variant="outline" 
+                size="lg" 
+                className="justify-start"
+              >
                 <Package className="mr-2 h-4 w-4" />
                 Accesorios
               </Button>
-              
               <Button variant="outline" size="lg" className="justify-start">
                 <FileText className="mr-2 h-4 w-4" />
                 Asignar Rutinas
@@ -120,7 +145,7 @@ const HomeEntrenador = () => {
               <CardTitle className="text-2xl text-blue-600">Configuración General</CardTitle>
             </div>
             <CardDescription>
-              Ajustes de perfil
+              Ajustes de perfil y sistema
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -1,110 +1,213 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, CreditCard, AlertCircle, Edit } from "lucide-react";
 
 export default function Register() {
-  const { register } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [email, setEmail] = useState("");
+  const location = useLocation();
+  
+  const planFromNavigation = location.state?.selectedPlan;
+  
+  const [selectedPlan, setSelectedPlan] = useState(planFromNavigation || null);
+  const [formData, setFormData] = useState({
+    nombre: "",
+    username: "",
+    email: "",
+    password: "",
+    telefono: ""
+  });
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setIsLoading(true);
     
-    try {
-      await register(username, password, email);
-      setSuccess(true);
-      setTimeout(() => {
-        navigate("/");
-      }, 2000);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
+    if (!selectedPlan) {
+      setError("Debes seleccionar un plan para continuar");
+      return;
     }
+    
+    setError(null);
+    
+    // ✅ SOLO NAVEGAR AL PAGO CON LOS DATOS (sin registrar todavía)
+    navigate("/payment", { 
+      state: { 
+        user: {
+          username: formData.username,
+          email: formData.email,
+          nombre: formData.nombre,
+          telefono: formData.telefono,
+          password: formData.password  // 🔧 Importante: incluir password
+        }, 
+        plan: selectedPlan 
+      } 
+    });
+  };
+
+  const handleBackToPlans = () => {
+    navigate("/");
   };
 
   return (
-    <div className="min-h-screen bg-white from-green-900 via-green-800 to-emerald-900 flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-white from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6 relative">
+      <Button
+        variant="ghost"
+        className="absolute top-4 left-4"
+        onClick={handleBackToPlans}
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Volver al inicio
+      </Button>
+
+      <Card className="w-full max-w-2xl">
         <CardHeader className="space-y-1">
           <CardTitle className="text-3xl font-bold text-center">
-            Registrarse
+            Crear Cuenta
           </CardTitle>
           <CardDescription className="text-center">
-            Creá tu cuenta
+            Completá tus datos para registrarte
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent>
+          {selectedPlan ? (
+            <div className="bg-primary/10 border border-primary/30 p-4 rounded-lg mb-6 relative">
+              <p className="text-sm text-muted-foreground mb-1">
+                Plan seleccionado:
+              </p>
+              <p className="text-xl font-bold text-primary">
+                {selectedPlan.name}
+              </p>
+              <p className="text-2xl font-black">
+                ${selectedPlan.price}/mes
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2"
+                onClick={handleBackToPlans}
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                Cambiar
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-destructive/15 border border-destructive/30 p-4 rounded-lg mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-destructive mb-1">
+                  No hay plan seleccionado
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Primero debes elegir un plan de suscripción.
+                </p>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleBackToPlans}
+                >
+                  Ir a seleccionar plan
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-destructive/15 text-destructive border border-destructive/30 p-3 rounded-md text-sm mb-4 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-destructive/15 text-destructive border border-destructive/30 p-3 rounded-md text-sm">
-                {error}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre Completo</Label>
+                <Input
+                  id="nombre"
+                  type="text"
+                  placeholder="Juan Pérez"
+                  value={formData.nombre}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nombre: e.target.value })
+                  }
+                  required
+                  disabled={!selectedPlan}
+                />
               </div>
-            )}
-            
-            {success && (
-              <div className="bg-green-500/15 text-green-600 border border-green-500/30 p-3 rounded-md text-sm">
-                ¡Registro exitoso! Redirigiendo al login...
+
+              <div className="space-y-2">
+                <Label htmlFor="username">Usuario</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="juanperez"
+                  value={formData.username}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value })
+                  }
+                  required
+                  disabled={!selectedPlan}
+                />
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="username">Usuario</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Nombre de usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                disabled={isLoading}
-              />
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="juan@ejemplo.com"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  required
+                  disabled={!selectedPlan}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telefono">Teléfono</Label>
+                <Input
+                  id="telefono"
+                  type="tel"
+                  placeholder="387 123-4567"
+                  value={formData.telefono}
+                  onChange={(e) =>
+                    setFormData({ ...formData, telefono: e.target.value })
+                  }
+                  required
+                  disabled={!selectedPlan}
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  required
+                  disabled={!selectedPlan}
+                  minLength={6}
+                />
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mínimo 8 caracteres"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={!selectedPlan}
             >
-              {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
+              <CreditCard className="mr-2 h-4 w-4" />
+              Continuar al Pago
             </Button>
 
             <div className="relative my-4">
@@ -122,10 +225,9 @@ export default function Register() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => navigate("/")}
-              disabled={isLoading}
+              onClick={() => navigate("/login")}
             >
-              Volver al Login
+              Iniciar Sesión
             </Button>
           </form>
         </CardContent>

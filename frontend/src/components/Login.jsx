@@ -1,3 +1,5 @@
+// src/components/Login.jsx - CON JWT Y SHADCN/UI
+
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
@@ -23,21 +26,29 @@ export default function Login() {
       const user = await login(username, password);
       console.log("Login exitoso:", user);
       console.log("Rol del usuario:", user.rol);
-      console.log("Tipo de rol:", typeof user.rol);
 
-      // redirige según rol
+      // Redirigir según rol
       if (user.rol === "admin") navigate("/admin");
       else if (user.rol === "entrenador") navigate("/entrenador");
       else if (user.rol === "socio") navigate("/socio");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Usuario o contraseña incorrecta");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-white from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6 relative">
+      <Button
+        variant="ghost"
+        className="absolute top-4 left-4"
+        onClick={() => navigate("/")}
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Volver al inicio
+      </Button>
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-3xl font-bold text-center">
