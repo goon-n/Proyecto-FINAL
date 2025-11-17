@@ -9,11 +9,12 @@ from datetime import timedelta, time
 User = get_user_model()
 
 ESTADO_CHOICES = (
-    ('SOLICITUD', 'Cupo Libre'),
+    ('DISPONIBLE', 'Cupo Disponible'),  # ✅ CAMBIO: SOLICITUD -> DISPONIBLE
     ('RESERVADO', 'Reservado - Pendiente de Confirmación'),
     ('CONFIRMADO', 'Confirmado'),
     ('CANCELADO', 'Cancelado/Liberado'),
     ('FINALIZADO', 'Finalizado'),
+    ('BLOQUEADO', 'Bloqueado'),  # ✅ NUEVO para sábados 13-17
 )
 
 class Turno(models.Model):
@@ -27,10 +28,10 @@ class Turno(models.Model):
     hora_inicio = models.DateTimeField()
     
     estado = models.CharField(
-        max_length=20, 
-        choices=ESTADO_CHOICES, 
-        default='SOLICITUD'
-    )
+    max_length=20, 
+    choices=ESTADO_CHOICES, 
+    default='DISPONIBLE'  # ✅ CAMBIO: SOLICITUD -> DISPONIBLE
+)
     fecha_reserva = models.DateTimeField(null=True, blank=True)
 
     class Meta:

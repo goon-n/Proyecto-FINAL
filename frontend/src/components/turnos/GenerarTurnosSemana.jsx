@@ -39,6 +39,9 @@ const GenerarTurnosSemana = ({ onSuccess }) => {
             const data = await api.generarTurnosSemana(fechaSeleccionada);
             
             console.log('✅ Turnos generados:', data);
+            if (data.errores && data.errores.length > 0) {
+            console.log('❌ Errores detallados:', data.errores.slice(0, 10));
+      }
             setResultado(data);
             
             if (onSuccess) {
