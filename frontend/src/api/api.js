@@ -212,6 +212,58 @@ const api = {
     const response = await apiClient.post('/caja/movimiento-caja/', data);
     return response.data;
   },
+  listarTurnos: async () => {
+    const response = await apiClient.get('/turnos/turno/');
+    return response.data;
+  },
+
+  obtenerCalendarioTurnos: async (fechaInicio, fechaFin) => {
+    const response = await apiClient.get('/turnos/turno/calendario/', {
+      params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin }
+    });
+    return response.data;
+  },
+
+  reservarTurno: async (turnoId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/reservar/`);
+    return response.data;
+  },
+
+  confirmarTurno: async (turnoId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/confirmar/`);
+    return response.data;
+  },
+
+  cancelarTurno: async (turnoId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/cancelar/`);
+    return response.data;
+  },
+
+  crearTurno: async (data) => {
+    const response = await apiClient.post('/turnos/turno/', {
+      hora_inicio: data.hora_inicio
+    });
+    return response.data;
+  },
+
+  actualizarTurno: async (turnoId, data) => {
+    const response = await apiClient.patch(`/turnos/turno/${turnoId}/`, data);
+    return response.data;
+  },
+
+  eliminarTurno: async (turnoId) => {
+    const response = await apiClient.delete(`/turnos/turno/${turnoId}/`);
+    return response.data;
+  },
+
+  generarTurnosSemana: async (fechaInicio) => {
+    const response = await apiClient.post('/turnos/turno/generar_turnos_semana/', {
+      fecha_inicio: fechaInicio
+    });
+    return response.data;
+  },
 };
 
 export default api;
+
+

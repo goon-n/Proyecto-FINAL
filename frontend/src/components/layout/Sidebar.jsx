@@ -8,7 +8,8 @@ import {
   ShoppingBag, 
   DollarSign, 
   ShoppingCart, 
-  Package, 
+  Package,
+  Calendar, // 👈 NUEVO ÍCONO
   LogOut,
   X
 } from "lucide-react";
@@ -39,6 +40,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       name: "Gestión de Usuarios",
       path: `${basePath}/usuarios`,
       icon: Users,
+      roles: ['admin', 'entrenador']
+    },
+    {
+      name: "Turnos", // 👈 NUEVO
+      path: `${basePath}/turnos`,
+      icon: Calendar,
       roles: ['admin', 'entrenador']
     },
     {

@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import moment from 'moment';
 import { useAuth } from '../../context/AuthContext'; 
-import { createTurno } from "../../services/turnoService"; // ⬅️ USAMOS EL SERVICIO
+import { createTurno } from "../../services/turnoService"; // 
+import api from '../../api/api';
 
 const CrearTurno = ({ onCreationSuccess }) => {
     const { user } = useAuth();
@@ -37,12 +38,7 @@ const CrearTurno = ({ onCreationSuccess }) => {
         const hora_inicio_iso = `${formData.fecha}T${formData.hora}:00`;
 
         try {
-            const dataToSend = {
-                hora_inicio: hora_inicio_iso,
-            };
-            
-            // 🚨 USAMOS LA FUNCIÓN DEL SERVICIO (que tiene la URL corregida)
-            const response = await createTurno(dataToSend);
+            const response = await api.crearTurno({ hora_inicio: hora_inicio_iso }); // 👈 CAMBIO
 
             setMessage(response.detail || 'Cupo de turno creado con éxito.');
             setLoading(false);
@@ -53,7 +49,9 @@ const CrearTurno = ({ onCreationSuccess }) => {
 
         } catch (err) {
             setLoading(false);
-            const errorMessage = err.response?.data?.detail || err.response?.data?.error || 'Error desconocido al crear el cupo.';
+            const errorMessage = err.response?.data?.detail || 
+                                err.response?.data?.error || 
+                                'Error desconocido al crear el cupo.';
             console.error("Error al crear el cupo:", errorMessage);
             setError(errorMessage);
         }
@@ -61,7 +59,7 @@ const CrearTurno = ({ onCreationSuccess }) => {
 
     const generateHourOptions = () => {
         const hours = [];
-        for (let h = 8; h <= 20; h++) {
+        for (let h = 8; h <= 22; h++) { // 👈 CAMBIAR A 22 (hasta 22:00)
             const hourString = h.toString().padStart(2, '0') + ':00';
             hours.push(hourString);
         }
@@ -73,8 +71,6 @@ const CrearTurno = ({ onCreationSuccess }) => {
             <h3 className="text-lg font-semibold mb-3 text-indigo-700">Crear Cupo Único de 1 Hora</h3>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-                
-                {/* 1. Fecha */}
                 <div>
                     <label htmlFor="fecha" className="block text-sm font-medium text-gray-700">
                         Fecha y Hora de Inicio (Slot de 1 hora)
@@ -105,11 +101,10 @@ const CrearTurno = ({ onCreationSuccess }) => {
                         </select>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                        **Importante:** Solo acepta horas en punto (ej: 10:00).
+                        **Importante:** Solo acepta horas en punto (ej: 10:00, no 10:30).
                     </p>
                 </div>
                 
-                {/* Mensajes de Estado */}
                 {message && (
                     <div className="text-green-600 p-2 bg-green-50 border border-green-300 rounded">
                         {message}
@@ -121,12 +116,15 @@ const CrearTurno = ({ onCreationSuccess }) => {
                     </div>
                 )}
 
-                {/* Botón de Envío */}
                 <div className="flex justify-end space-x-3">
                     <button
                         type="submit"
                         disabled={loading}
-                        className={`px-4 py-2 text-white font-medium rounded-md shadow-sm ${loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'}`}
+                        className={`px-4 py-2 text-white font-medium rounded-md shadow-sm ${
+                            loading 
+                                ? 'bg-gray-400 cursor-not-allowed' 
+                                : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                        }`}
                     >
                         {loading ? 'Creando...' : 'Crear Cupo'}
                     </button>

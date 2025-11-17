@@ -18,8 +18,7 @@ import {
   Settings,
   Box 
 } from "lucide-react";
-import TurnosList from "@/components/turnos/TurnosList";
-import CrearTurno from "@/components/turnos/CrearTurno";
+import { SeccionTurnos } from "../components/shared/SeccionTurnos"; // ✨ AGREGAR ESTO
 
 const HomeEntrenador = () => {
   const { user, logout } = useAuth();
@@ -59,23 +58,8 @@ const HomeEntrenador = () => {
       {/* Grid de secciones */}
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* Gestión de Turnos */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-cyan-500" />
-              <CardTitle className="text-2xl text-cyan-600">Gestión de Turnos</CardTitle>
-            </div>
-            <CardDescription>
-              Administrá los turnos y horarios de clases
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CrearTurno userRole={user.rol} />
-            <Separator className="my-4" />
-            <TurnosList userRole={user.rol} />
-          </CardContent>
-        </Card>
+        {/* ✨ REEMPLAZAR toda esta Card por: */}
+        <SeccionTurnos mostrarBotonCrear={true} />
 
         {/* Tareas de Administración */}
         <Card>
