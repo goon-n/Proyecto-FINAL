@@ -359,9 +359,11 @@ def cambiar_contrasena(request, user_id):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_with_payment(request):
-    """Registrar usuario y crear movimiento de caja en una sola transacción"""
+    """Registrar usuario, crear cuota, historial de pago y movimiento de caja"""
     from movimiento_caja.models import Caja, MovimientoDeCaja
+    from cuotas_mensuales.models import Plan, CuotaMensual, HistorialPago
     from django.db import transaction
+    from datetime import timedelta
     
     username = request.data.get('username')
     password = request.data.get('password')
@@ -387,6 +389,11 @@ def register_with_payment(request):
             'detail': 'Debe haber una caja abierta para registrar nuevos socios. Contacte al administrador.'
         }, status=400)
     
+    # Buscar plan (si existe)
+    plan = None
+    if plan_name:
+        plan = Plan.objects.filter(nombre__iexact=plan_name, activo=True).first()
+    
     try:
         with transaction.atomic():
             # 1. Crear usuario
@@ -399,17 +406,43 @@ def register_with_payment(request):
             perfil = Perfil.objects.create(user=user, rol='socio')
             
             # 2. Crear movimiento en caja
-            MovimientoDeCaja.objects.create(
+            movimiento = MovimientoDeCaja.objects.create(
                 caja=caja_abierta,
                 tipo='ingreso',
                 monto=plan_price,
                 tipo_pago='tarjeta',
                 descripcion=f"Nuevo socio: {nombre} ({username}) - Plan: {plan_name}" + 
                            (f" - Tarjeta *{card_last4}" if card_last4 else ""),
-                creado_por=caja_abierta.empleado_apertura  # Usuario que abrió la caja
+                creado_por=caja_abierta.empleado_apertura
             )
             
-            print(f"✅ Usuario {username} registrado y movimiento de caja creado")
+            # 3. Crear cuota mensual (si hay plan)
+            cuota = None
+            if plan:
+                fecha_inicio = timezone.now().date()
+                fecha_vencimiento = fecha_inicio + timedelta(days=30)
+                
+                cuota = CuotaMensual.objects.create(
+                    socio=user,
+                    plan=plan,
+                    plan_nombre=plan.nombre,
+                    plan_precio=plan.precio,
+                    fecha_inicio=fecha_inicio,
+                    fecha_vencimiento=fecha_vencimiento,
+                    tarjeta_ultimos_4=card_last4,
+                    estado='activa'
+                )
+                
+                # 4. Crear historial de pago
+                HistorialPago.objects.create(
+                    cuota=cuota,
+                    monto=plan_price,
+                    metodo_pago='tarjeta',
+                    referencia=f"Registro inicial - Mov. Caja #{movimiento.id}",
+                    movimiento_caja_id=movimiento.id
+                )
+            
+            print(f"✅ Usuario {username} registrado - Cuota creada - Movimiento caja #{movimiento.id}")
             
             return Response({
                 'message': 'Usuario registrado correctamente',
@@ -418,7 +451,9 @@ def register_with_payment(request):
                     'username': user.username,
                     'email': user.email,
                     'nombre': nombre
-                }
+                },
+                'cuota_id': cuota.id if cuota else None,
+                'movimiento_caja_id': movimiento.id
             }, status=201)
         
     except Exception as e:

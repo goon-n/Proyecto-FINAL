@@ -48,8 +48,13 @@ export default function MovimientoCajaHistorial({ movimientos: movimientosProp, 
   };
 
   const getTipoPagoIcon = (tipoPago) => {
-    return tipoPago === 'efectivo' ? '💵' : '🏦';
+  const icons = {
+    'efectivo': '💵',
+    'transferencia': '🏦',
+    'tarjeta': '💳'
   };
+  return icons[tipoPago] || '💰';
+};
 
   return (
     <div className="rounded-md border overflow-hidden">

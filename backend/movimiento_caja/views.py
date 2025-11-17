@@ -59,11 +59,11 @@ class CajaViewSet(viewsets.ModelViewSet):
                 
                 # Solo registrar si hay diferencia (no es 0)
                 if diferencia != 0:
-                    # Determinar si es faltante o sobrante
+                    # 🔧 CORREGIDO: Invertir la lógica
                     if diferencia > 0:
-                        tipo_texto = "faltante"
+                        tipo_texto = "sobrante" 
                     else:
-                        tipo_texto = "sobrante"
+                        tipo_texto = "faltante"  
                     
                     descripcion = f"Caja cerrada con {tipo_texto} de ${abs(diferencia):,.2f}"
                     
