@@ -8,7 +8,8 @@ import {
   Plus, 
   ArrowLeft, 
   DollarSign,
-  Package
+  Package,
+  Users
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -66,6 +67,10 @@ export default function GestionCompras() {
 
   const irACrearAccesorio = () => {
     navigate('/admin/accesorios', { state: { accion: 'agregar' } });
+  };
+
+  const irAProveedores = () => {
+    navigate('/admin/proveedores');
   };
 
   // ========== ESTADÍSTICAS (Solo 2 cards) ==========
@@ -139,6 +144,33 @@ export default function GestionCompras() {
       case 'agregar':
         return (
           <div className="space-y-4">
+            {/* Botón para crear proveedores */}
+            <Card className="bg-purple-50 border-purple-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-purple-600" />
+                    <div>
+                      <p className="font-medium text-purple-900">
+                        ¿No encuentras el proveedor?
+                      </p>
+                      <p className="text-sm text-purple-700">
+                        Crea uno nuevo antes de registrar la compra
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={irAProveedores}
+                    variant="default"
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Ir a Proveedores
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Botón para crear accesorios */}
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-4">

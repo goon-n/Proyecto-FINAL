@@ -39,36 +39,50 @@ export default function CajaResumenTab({ caja, totalIngresos, totalEgresos }) {
 
       {/* Desglose por tipo de pago */}
       <Card>
-        <CardHeader>
-          <CardTitle>Cantidad por Tipo de Pago</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">💵</span>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Efectivo Esperado</p>
-                    <p className="text-2xl font-bold text-green-700">
-                      ${Number(caja.efectivo_esperado || 0).toFixed(2)}
-                    </p>
-                  </div>
+      <CardHeader>
+        <CardTitle>Cantidad por Tipo de Pago</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">💵</span>
+                <div>
+                  <p className="text-sm text-muted-foreground">Efectivo Esperado</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    ${Number(caja.efectivo_esperado || 0).toFixed(2)}
+                  </p>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">🏦</span>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Transferencias</p>
-                    <p className="text-2xl font-bold text-blue-700">
-                      ${Number(caja.transferencia_esperada || 0).toFixed(2)}
-                    </p>
-                  </div>
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🏦</span>
+                <div>
+                  <p className="text-sm text-muted-foreground">Transferencias</p>
+                  <p className="text-2xl font-bold text-blue-700">
+                    ${Number(caja.transferencia_esperada || 0).toFixed(2)}
+                  </p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">💳</span>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tarjetas</p>
+                  <p className="text-2xl font-bold text-purple-700">
+                    ${Number(caja.tarjeta_esperada || 0).toFixed(2)}
+                  </p>
+                </div>
+              </div>
               </div>
             </div>
           </div>

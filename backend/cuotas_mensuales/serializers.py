@@ -1,0 +1,134 @@
+# cuotas_mensuales/serializers.py
+
+from rest_framework import serializers
+from .models import Plan, CuotaMensual, HistorialPago
+from django.contrib.auth.models import User
+
+class PlanSerializer(serializers.ModelSerializer):
+    features = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Plan
+        fields = [
+            'id',
+            'nombre',
+            'precio',
+            'frecuencia',
+            'descripcion',
+            'activo',
+            'es_popular',
+            'features',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def get_features(self, obj):
+        """Retorna las características como lista"""
+        return obj.get_caracteristicas_list()
+
+
+class CuotaMensualSerializer(serializers.ModelSerializer):
+    socio_username = serializers.CharField(source='socio.username', read_only=True)
+    socio_nombre = serializers.CharField(source='socio.first_name', read_only=True)
+    socio_email = serializers.CharField(source='socio.email', read_only=True)
+    plan_info = PlanSerializer(source='plan', read_only=True)
+    dias_restantes = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CuotaMensual
+        fields = [
+            'id',
+            'socio',
+            'socio_username',
+            'socio_nombre',
+            'socio_email',
+            'plan',
+            'plan_info',
+            'plan_nombre',
+            'plan_precio',
+            'fecha_inicio',
+            'fecha_vencimiento',
+            'estado',
+            'tarjeta_ultimos_4',
+            'dias_restantes',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['plan_nombre', 'plan_precio', 'created_at', 'updated_at']
+    
+    def get_dias_restantes(self, obj):
+        return obj.dias_restantes()
+
+
+class CuotaMensualCreateSerializer(serializers.ModelSerializer):
+    """Serializer para crear nuevas cuotas"""
+    
+    class Meta:
+        model = CuotaMensual
+        fields = [
+            'socio',
+            'plan',
+            'fecha_inicio',
+            'fecha_vencimiento',
+            'tarjeta_ultimos_4'
+        ]
+    
+    def create(self, validated_data):
+        # El modelo se encarga de guardar plan_nombre y plan_precio
+        return super().create(validated_data)
+
+
+class CuotaMensualSocioSerializer(serializers.ModelSerializer):
+    """Serializer simplificado para que el socio vea su cuota"""
+    dias_restantes = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CuotaMensual
+        fields = [
+            'id',
+            'plan_nombre',
+            'plan_precio',
+            'fecha_inicio',
+            'fecha_vencimiento',
+            'estado',
+            'dias_restantes'
+        ]
+    
+    def get_dias_restantes(self, obj):
+        return obj.dias_restantes()
+
+
+class HistorialPagoSerializer(serializers.ModelSerializer):
+    cuota_info = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = HistorialPago
+        fields = [
+            'id',
+            'cuota',
+            'cuota_info',
+            'monto',
+            'fecha_pago',
+            'metodo_pago',
+            'referencia',
+            'notas',
+            'created_at'
+        ]
+        read_only_fields = ['created_at']
+    
+    def get_cuota_info(self, obj):
+        return {
+            'plan_nombre': obj.cuota.plan_nombre,
+            'socio_username': obj.cuota.socio.username
+        }
+
+
+class RenovarCuotaSerializer(serializers.Serializer):
+    """Serializer para renovar una cuota"""
+    fecha_vencimiento = serializers.DateField(required=False)
+    monto = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    metodo_pago = serializers.ChoiceField(
+        choices=['tarjeta', 'efectivo', 'transferencia'],
+        default='tarjeta'
+    )

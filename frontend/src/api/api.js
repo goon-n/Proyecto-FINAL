@@ -1,6 +1,6 @@
-// src/api/api.js - ACTUALIZADO PARA JWT
+// src/api/api.js - ACTUALIZADO CON MEMBRESÍAS
 
-import apiClient from "../services/authServices"; // Importar el cliente configurado con JWT
+import apiClient from "../services/authServices";
 
 const api = {
   // ----- Usuario Actual -----
@@ -35,17 +35,88 @@ const api = {
     return response.data;
   },
 
-
   crearUsuario: async (data) => {
-  const response = await apiClient.post('/general/usuarios/', data);
-  return response.data;
-
-},
+    const response = await apiClient.post('/general/usuarios/', data);
+    return response.data;
+  },
 
   cambiarContrasena: async (userId, data) => {
-  const response = await apiClient.patch(`/general/usuarios/${userId}/cambiar-contrasena/`, data);
-  return response.data;
-},
+    const response = await apiClient.patch(`/general/usuarios/${userId}/cambiar-contrasena/`, data);
+    return response.data;
+  },
+
+  // ----- Membresías ----- ⭐ NUEVA SECCIÓN
+
+
+  // ----- Cuotas Mensuales -----
+  // Planes
+  listarPlanes: async () => {
+    const response = await apiClient.get('/cuotas/planes/');
+    return response.data;
+  },
+
+  listarPlanesActivos: async () => {
+    const response = await apiClient.get('/cuotas/planes/planes_activos/');
+    return response.data;
+  },
+
+  obtenerPlanPopular: async () => {
+    const response = await apiClient.get('/cuotas/planes/plan_popular/');
+    return response.data;
+  },
+
+  // Cuotas
+  obtenerCuotaSocio: async () => {
+    const response = await apiClient.get('/cuotas/cuotas/mi_cuota/');
+    return response.data;
+  },
+
+  listarCuotas: async () => {
+    const response = await apiClient.get('/cuotas/cuotas/');
+    return response.data;
+  },
+
+  listarCuotasActivas: async () => {
+    const response = await apiClient.get('/cuotas/cuotas/cuotas_activas/');
+    return response.data;
+  },
+
+  listarCuotasVencidas: async () => {
+    const response = await apiClient.get('/cuotas/cuotas/cuotas_vencidas/');
+    return response.data;
+  },
+
+  crearCuota: async (data) => {
+    const response = await apiClient.post('/cuotas/cuotas/', data);
+    return response.data;
+  },
+
+  renovarCuota: async (cuotaId, data) => {
+    const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/renovar/`, data);
+    return response.data;
+  },
+
+  suspenderCuota: async (cuotaId) => {
+    const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/suspender/`);
+    return response.data;
+  },
+
+  cancelarCuota: async (cuotaId) => {
+    const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/cancelar/`);
+    return response.data;
+  },
+
+  // Historial de pagos
+  listarHistorialPagos: async () => {
+    const response = await apiClient.get('/cuotas/historial-pagos/');
+    return response.data;
+  },
+
+  miHistorialPagos: async () => {
+    const response = await apiClient.get('/cuotas/historial-pagos/mis_pagos/');
+    return response.data;
+  },
+
   // ----- Proveedores -----
   listarProveedoresActivos: async () => {
     const response = await apiClient.get('/general/proveedores/activos/');
@@ -212,6 +283,8 @@ const api = {
     const response = await apiClient.post('/caja/movimiento-caja/', data);
     return response.data;
   },
+
+  // ----- Turnos -----
   listarTurnos: async () => {
     const response = await apiClient.get('/turnos/turno/');
     return response.data;
@@ -265,5 +338,3 @@ const api = {
 };
 
 export default api;
-
-

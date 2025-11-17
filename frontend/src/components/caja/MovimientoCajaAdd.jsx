@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { createMovimiento } from "../../services/movimientoCaja.service";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import toast from "react-hot-toast";
+import ModalPagoTarjeta from "./ModalPagoTarjeta";
 
 export default function MovimientoCajaAdd({ cajaId, onAdd }) {
   const [tipo, setTipo] = useState("ingreso");
@@ -12,8 +12,9 @@ export default function MovimientoCajaAdd({ cajaId, onAdd }) {
   const [monto, setMonto] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [modalTarjetaOpen, setModalTarjetaOpen] = useState(false);
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!monto || Number(monto) <= 0) {
@@ -21,14 +22,29 @@ export default function MovimientoCajaAdd({ cajaId, onAdd }) {
       return;
     }
 
+    // Si es tarjeta, abrir modal
+    if (tipoPago === "tarjeta") {
+      setModalTarjetaOpen(true);
+      return;
+    }
+
+    // Si no es tarjeta, procesar directamente
+    await procesarMovimiento({});
+  };
+
+  const procesarMovimiento = async (cardData = {}) => {
     setGuardando(true);
     try {
+      const descripcionFinal = tipoPago === "tarjeta" && cardData.ultimos4
+        ? `${descripcion} - Tarjeta *${cardData.ultimos4}`
+        : descripcion;
+
       await createMovimiento({
         caja: cajaId,
         tipo,
         tipo_pago: tipoPago,
         monto: Number(monto),
-        descripcion
+        descripcion: descripcionFinal
       });
       
       // Limpiar formulario
@@ -39,79 +55,91 @@ export default function MovimientoCajaAdd({ cajaId, onAdd }) {
       if (onAdd) onAdd();
     } catch (error) {
       toast.error("Error al registrar el movimiento");
+      throw error;
     } finally {
       setGuardando(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Tipo de Movimiento */}
-        <div>
-          <Label htmlFor="tipo">Tipo de Movimiento *</Label>
-          <select
-            id="tipo"
-            value={tipo}
-            onChange={e => setTipo(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            disabled={guardando}
-          >
-            <option value="ingreso">Ingreso</option>
-            <option value="egreso">Egreso</option>
-          </select>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tipo de Movimiento */}
+          <div>
+            <Label htmlFor="tipo">Tipo de Movimiento *</Label>
+            <select
+              id="tipo"
+              value={tipo}
+              onChange={e => setTipo(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              disabled={guardando}
+            >
+              <option value="ingreso">Ingreso</option>
+              <option value="egreso">Egreso</option>
+            </select>
+          </div>
+
+          {/* Tipo de Pago */}
+          <div>
+            <Label htmlFor="tipoPago">Tipo de Pago *</Label>
+            <select
+              id="tipoPago"
+              value={tipoPago}
+              onChange={e => setTipoPago(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              disabled={guardando}
+            >
+              <option value="efectivo">💵 Efectivo</option>
+              <option value="transferencia">🏦 Transferencia</option>
+              <option value="tarjeta">💳 Tarjeta</option>
+            </select>
+          </div>
+
+          {/* Monto */}
+          <div>
+            <Label htmlFor="monto">Monto *</Label>
+            <Input
+              id="monto"
+              type="number"
+              step="0.01"
+              value={monto}
+              onChange={e => setMonto(e.target.value)}
+              placeholder="0.00"
+              disabled={guardando}
+              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+
+          {/* Descripción */}
+          <div>
+            <Label htmlFor="descripcion">Descripción</Label>
+            <Input
+              id="descripcion"
+              type="text"
+              value={descripcion}
+              onChange={e => setDescripcion(e.target.value)}
+              placeholder="Concepto del movimiento..."
+              disabled={guardando}
+            />
+          </div>
         </div>
 
-        {/* Tipo de Pago */}
-        <div>
-          <Label htmlFor="tipoPago">Tipo de Pago *</Label>
-          <select
-            id="tipoPago"
-            value={tipoPago}
-            onChange={e => setTipoPago(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            disabled={guardando}
-          >
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia</option>
-            <option value="tarjeta" disabled>Tarjeta (Próximamente)</option>
-          </select>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={guardando}>
+            {guardando ? "Registrando..." : "Registrar Movimiento"}
+          </Button>
         </div>
+      </form>
 
-        {/* Monto */}
-        <div>
-          <Label htmlFor="monto">Monto *</Label>
-          <Input
-            id="monto"
-            type="number"
-            step="0.01"
-            value={monto}
-            onChange={e => setMonto(e.target.value)}
-            placeholder="0.00"
-            disabled={guardando}
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-        </div>
-
-        {/* Descripción */}
-        <div>
-          <Label htmlFor="descripcion">Descripción</Label>
-          <Input
-            id="descripcion"
-            type="text"
-            value={descripcion}
-            onChange={e => setDescripcion(e.target.value)}
-            placeholder="Concepto del movimiento..."
-            disabled={guardando}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" disabled={guardando}>
-          {guardando ? "Registrando..." : "Registrar Movimiento"}
-        </Button>
-      </div>
-    </form>
+      {/* Modal de tarjeta */}
+      <ModalPagoTarjeta
+        isOpen={modalTarjetaOpen}
+        onClose={() => setModalTarjetaOpen(false)}
+        onSubmit={procesarMovimiento}
+        monto={monto}
+        descripcion={descripcion}
+      />
+    </>
   );
 }

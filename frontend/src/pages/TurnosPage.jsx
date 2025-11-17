@@ -115,15 +115,6 @@ const TurnosPage = ({ userRole }) => {
                                 <Zap className="h-4 w-4" />
                                 {mostrarGenerador ? 'Ocultar Generador' : 'Generar Semana Completa'}
                             </Button>
-
-                            <Button 
-                                onClick={abrirFormularioAgregar}
-                                variant="outline"
-                                className="flex items-center gap-2 border-cyan-600 text-cyan-600 hover:bg-cyan-50"
-                            >
-                                <Plus className="h-4 w-4" />
-                                Crear Cupo Manual
-                            </Button>
                         </>
                     )}
                 </div>
