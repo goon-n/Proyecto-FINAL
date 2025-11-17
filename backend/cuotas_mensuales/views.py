@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db import transaction
 from datetime import timedelta
 
 from .models import Plan, CuotaMensual, HistorialPago
@@ -17,6 +18,7 @@ from .serializers import (
     HistorialPagoSerializer,
     RenovarCuotaSerializer
 )
+from movimiento_caja.models import Caja, MovimientoDeCaja
 
 
 class PlanViewSet(viewsets.ModelViewSet):
@@ -121,9 +123,10 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
     def renovar(self, request, pk=None):
         """
-        Renovar una cuota mensual
+        Renovar una cuota mensual Y registrar el pago en caja
         """
         cuota = self.get_object()
         
@@ -132,6 +135,17 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             return Response(
                 {'detail': 'No tienes permisos para renovar cuotas'},
                 status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Verificar que hay caja abierta
+        caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
+        if not caja_abierta:
+            return Response(
+                {
+                    'detail': 'No hay caja abierta. Debes abrir una caja antes de registrar pagos.',
+                    'error': 'NO_CAJA_ABIERTA'
+                },
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         serializer = RenovarCuotaSerializer(data=request.data)
@@ -145,17 +159,46 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         monto = serializer.validated_data.get('monto', cuota.plan_precio)
         metodo_pago = serializer.validated_data.get('metodo_pago', 'tarjeta')
         
-        HistorialPago.objects.create(
+        # Crear historial de pago
+        historial_pago = HistorialPago.objects.create(
             cuota=cuota,
             monto=monto,
             metodo_pago=metodo_pago,
-            referencia=f"Renovación {cuota.id}"
+            referencia=f"Renovación cuota #{cuota.id}",
+            notas=f"Renovado por {request.user.username}"
         )
         
-        return Response({
-            'detail': 'Cuota renovada exitosamente',
-            'cuota': CuotaMensualSerializer(cuota).data
-        })
+        # 🔥 REGISTRAR EN CAJA
+        try:
+            # Determinar tipo de pago para caja
+            tipo_pago_caja = 'efectivo' if metodo_pago == 'efectivo' else 'transferencia'
+            
+            movimiento = MovimientoDeCaja.objects.create(
+                caja=caja_abierta,
+                tipo='ingreso',
+                monto=monto,
+                tipo_pago=tipo_pago_caja,
+                descripcion=f"Renovación cuota - {cuota.socio.username} - {cuota.plan_nombre}",
+                creado_por=request.user.perfil
+            )
+            
+            # Vincular movimiento con historial
+            historial_pago.movimiento_caja_id = movimiento.id
+            historial_pago.save()
+            
+            print(f"✅ Movimiento de caja creado: ID {movimiento.id}")
+            
+            return Response({
+                'detail': 'Cuota renovada exitosamente y registrada en caja',
+                'cuota': CuotaMensualSerializer(cuota).data,
+                'movimiento_caja_id': movimiento.id,
+                'monto': float(monto)
+            })
+                
+        except Exception as e:
+            # Si falla la creación del movimiento, revertir todo
+            print(f"❌ Error al crear movimiento de caja: {str(e)}")
+            raise  # Esto hará rollback de la transacción completa
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def suspender(self, request, pk=None):

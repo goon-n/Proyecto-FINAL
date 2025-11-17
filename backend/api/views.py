@@ -1,7 +1,6 @@
 #backend/api/views.py
-#backend/api/views.py
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -13,10 +12,13 @@ from .models import Socio, Perfil, Clase, Proveedor, Accesorios, Compra, ItemCom
 from .serializers import (
     CompraSerializer, ItemCompraSerializer, SocioSerializer,
     ClaseSerializer, CustomUserSerializer, ProveedorSerializer, AccesoriosSerializer,
+    RegisterWithPaymentSerializer  # ← AGREGÁ ESTA LÍNEA
 )
 from django.utils import timezone
-from django.db.models import Q
-from rest_framework.decorators import action, api_view, permission_classes
+from django.db.models import Q, Sum, Count, Avg
+from django.db import transaction
+
+
 
 # ========== AUTENTICACIÓN ==========
 
@@ -355,81 +357,53 @@ def cambiar_contrasena(request, user_id):
     return Response({'detail': 'Contraseña actualizada correctamente'}, status=200)
 
 # ========== REGISTRO DE USUARIO CON MOVIMIENTO DE CAJA ==========
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_with_payment(request):
-    """Registrar usuario y crear movimiento de caja en una sola transacción"""
-    from movimiento_caja.models import Caja, MovimientoDeCaja
-    from django.db import transaction
+    """
+    Endpoint para registrar un nuevo socio con pago de cuota inicial
+    """
+    print(f"\n{'='*60}")
+    print(f"📥 Datos recibidos del frontend:")
+    print(f"{'='*60}")
+    print(request.data)
+    print(f"{'='*60}\n")
     
-    username = request.data.get('username')
-    password = request.data.get('password')
-    email = request.data.get('email')
-    nombre = request.data.get('nombre')
-    telefono = request.data.get('telefono')
-    plan_name = request.data.get('plan_name')
-    plan_price = request.data.get('plan_price')
-    card_last4 = request.data.get('card_last4', '')
+    serializer = RegisterWithPaymentSerializer(data=request.data)
     
-    # Validaciones
-    if not username or not password:
-        return Response({'error': 'Faltan datos obligatorios'}, status=400)
-    
-    if User.objects.filter(username=username).exists():
-        return Response({'error': 'El usuario ya existe'}, status=400)
-    
-    # Verificar caja abierta
-    caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
-    if not caja_abierta:
-        return Response({
-            'error': 'No hay caja abierta',
-            'detail': 'Debe haber una caja abierta para registrar nuevos socios. Contacte al administrador.'
-        }, status=400)
-    
-    try:
-        with transaction.atomic():
-            # 1. Crear usuario
-            user = User.objects.create_user(
-                username=username, 
-                password=password, 
-                email=email,
-                first_name=nombre
-            )
-            perfil = Perfil.objects.create(user=user, rol='socio')
-            
-            # 2. Crear movimiento en caja
-            MovimientoDeCaja.objects.create(
-                caja=caja_abierta,
-                tipo='ingreso',
-                monto=plan_price,
-                tipo_pago='tarjeta',
-                descripcion=f"Nuevo socio: {nombre} ({username}) - Plan: {plan_name}" + 
-                           (f" - Tarjeta *{card_last4}" if card_last4 else ""),
-                creado_por=caja_abierta.empleado_apertura  # Usuario que abrió la caja
-            )
-            
-            print(f"✅ Usuario {username} registrado y movimiento de caja creado")
+    if serializer.is_valid():
+        try:
+            result = serializer.save()
             
             return Response({
-                'message': 'Usuario registrado correctamente',
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'nombre': nombre
+                'success': True,
+                'message': '¡Registro exitoso! Usuario creado y cuota activada.',
+                'data': {
+                    'user_id': result['user'].id,
+                    'username': result['user'].username,
+                    'cuota_id': result['cuota'].id,
+                    'plan_nombre': result['cuota'].plan_nombre,
+                    'fecha_vencimiento': result['cuota'].fecha_vencimiento,
+                    'movimiento_caja_id': result.get('movimiento_caja_id'),
+                    'historial_pago_id': result['historial_pago'].id
                 }
-            }, status=201)
-        
-    except Exception as e:
-        print(f"❌ Error en registro: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"❌ ERROR EN REGISTRO: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+            return Response({
+                'success': False,
+                'error': f'Error al procesar el registro: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        print(f"❌ ERRORES DE VALIDACIÓN: {serializer.errors}")
         return Response({
-            'error': f'Error al registrar: {str(e)}'
-        }, status=400)
-
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ========== GESTIÓN DE PROVEEDORES (CRUD COMPLETO) ==========

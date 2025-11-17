@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, Calendar, Dumbbell, CreditCard, Clock, TrendingUp, ArrowRight } from "lucide-react";
+import { LogOut, Calendar, Dumbbell, CreditCard, Clock, TrendingUp, ArrowRight, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "../api/api";
 
 const HomeSocio = () => {
@@ -16,6 +17,7 @@ const HomeSocio = () => {
   
   const [membresia, setMembresia] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -23,10 +25,17 @@ const HomeSocio = () => {
 
   const cargarDatos = async () => {
     try {
+      setLoading(true);
       const dataMembresia = await api.obtenerCuotaSocio();
       setMembresia(dataMembresia);
+      setError(null);
     } catch (error) {
       console.error("Error al cargar datos:", error);
+      if (error.response?.status === 404) {
+        setError("No tienes una cuota mensual activa");
+      } else {
+        setError("Error al cargar los datos de tu membresía");
+      }
     } finally {
       setLoading(false);
     }
@@ -50,6 +59,8 @@ const HomeSocio = () => {
   };
 
   const diasRestantes = membresia ? calcularDiasRestantes(membresia.fecha_vencimiento) : 0;
+  const planNombre = membresia?.plan?.nombre || membresia?.plan_name || "Sin plan";
+  const planPrecio = membresia?.plan?.precio || membresia?.plan_price || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -165,14 +176,20 @@ const HomeSocio = () => {
           <CardContent>
             {loading ? (
               <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                 <p className="text-muted-foreground">Cargando...</p>
               </div>
+            ) : error ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             ) : membresia ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
                   <div>
                     <p className="font-semibold text-green-700 dark:text-green-400">
-                      {membresia.plan_name}
+                      {planNombre}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Válida hasta {formatearFecha(membresia.fecha_vencimiento)}
@@ -189,7 +206,7 @@ const HomeSocio = () => {
                     <p className="text-xs text-muted-foreground">Días restantes</p>
                   </div>
                   <div className="p-3 bg-accent rounded-lg">
-                    <p className="text-2xl font-bold">${parseFloat(membresia.plan_price).toFixed(0)}</p>
+                    <p className="text-2xl font-bold">${parseFloat(planPrecio).toFixed(0)}</p>
                     <p className="text-xs text-muted-foreground">Próximo pago</p>
                   </div>
                 </div>
