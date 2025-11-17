@@ -49,27 +49,9 @@ export const SeccionTurnos = ({ mostrarBotonCrear = false }) => {
             <Calendar className="mr-2 h-5 w-5" />
             Ver Calendario de Turnos
           </Button>
-          
-          {mostrarBotonCrear && (
-            <Button 
-              onClick={() => navigate(`${getRutaTurnos()}?accion=crear`)}
-              variant="outline" 
-              size="lg"
-              className="border-cyan-600 text-cyan-700 hover:bg-cyan-50"
-            >
-              <CalendarPlus className="mr-2 h-5 w-5" />
-              Crear Cupo Manual
-            </Button>
-          )}
-        </div>
         
-        {mostrarBotonCrear && (
-          <div className="mt-4 p-4 bg-white rounded-lg border border-cyan-200">
-            <p className="text-sm text-gray-600">
-              Usá "Crear Cupo Manual" solo si necesitás agregar horarios extras.
-            </p>
-          </div>
-        )}
+        </div>
+      
       </CardContent>
     </Card>
   );
