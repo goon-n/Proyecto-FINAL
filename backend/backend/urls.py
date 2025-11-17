@@ -23,7 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/general/', include('api.urls')),
     path('api/caja/', include('movimiento_caja.urls')),
-    path('api/turnos/', include('turnos.urls')),   
+    path('api/turnos/', include('turnos.urls')), 
+    path('api/cuotas/', include('cuotas_mensuales.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
