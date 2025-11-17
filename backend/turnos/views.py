@@ -38,7 +38,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             return Turno.objects.all().order_by('hora_inicio') 
         
-        # Socios y no autenticados - ✅ CAMBIO: SOLICITUD -> DISPONIBLE
+        # Socios y no autenticados
         q_filter = Q(estado='DISPONIBLE', socio__isnull=True)
         
         if user.is_authenticated:
@@ -63,7 +63,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
             
         data = request.data.copy()
         data['socio'] = None 
-        data['estado'] = 'DISPONIBLE'  # ✅ Ya estaba bien
+        data['estado'] = 'DISPONIBLE'
         
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -112,23 +112,20 @@ class TurnoViewSet(viewsets.ModelViewSet):
             
             # Definir horarios según el día
             if es_sabado:
-                horarios = list(range(8, 13)) + list(range(17, 23))  # 8-12 y 17-22
+                horarios = list(range(8, 13)) + list(range(17, 23))
             else:
-                horarios = list(range(8, 23))  # 8-22
+                horarios = list(range(8, 23))
             
             # Crear turnos para cada hora
             for hora in horarios:
-                hora_inicio = timezone.make_aware(
-                    datetime.combine(fecha, time(hora, 0))
-                )
+                # ✅ SOLUCIÓN: Crear datetime naive y convertir con la timezone configurada
+                dt_naive = datetime.combine(fecha, time(hora, 0))
+                hora_inicio = timezone.make_aware(dt_naive, timezone.get_current_timezone())
                 
-                # Contar cupos existentes
+                # Contar cupos existentes en ese rango de 1 hora
                 cupos_existentes = Turno.objects.filter(
-                    hora_inicio__year=hora_inicio.year,
-                    hora_inicio__month=hora_inicio.month,
-                    hora_inicio__day=hora_inicio.day,
-                    hora_inicio__hour=hora_inicio.hour,
-                    hora_inicio__minute=0
+                    hora_inicio__gte=hora_inicio,
+                    hora_inicio__lt=hora_inicio + timedelta(hours=1)
                 ).count()
                 
                 cupos_a_crear = 10 - cupos_existentes
@@ -144,7 +141,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
                         
                         turno = Turno.objects.create(
                             hora_inicio=hora_con_segundos,
-                            estado='DISPONIBLE'  # ✅ Ya estaba bien
+                            estado='DISPONIBLE'
                         )
                         turnos_creados += 1
                     except Exception as e:
@@ -156,15 +153,12 @@ class TurnoViewSet(viewsets.ModelViewSet):
             # Bloquear horarios no disponibles del sábado (13-17)
             if es_sabado:
                 for hora in range(13, 17):
-                    hora_bloqueada = timezone.make_aware(
-                        datetime.combine(fecha, time(hora, 0))
-                    )
+                    dt_naive = datetime.combine(fecha, time(hora, 0))
+                    hora_bloqueada = timezone.make_aware(dt_naive, timezone.get_current_timezone())
                     
                     if not Turno.objects.filter(
-                        hora_inicio__year=hora_bloqueada.year,
-                        hora_inicio__month=hora_bloqueada.month,
-                        hora_inicio__day=hora_bloqueada.day,
-                        hora_inicio__hour=hora_bloqueada.hour,
+                        hora_inicio__gte=hora_bloqueada,
+                        hora_inicio__lt=hora_bloqueada + timedelta(hours=1)
                     ).exists():
                         try:
                             Turno.objects.create(
@@ -211,7 +205,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
                 hora_inicio__lte=fecha_fin
             )
         else:
-            # ✅ CAMBIO: SOLICITUD -> DISPONIBLE
             q_filter = Q(estado='DISPONIBLE', socio__isnull=True) | Q(estado='BLOQUEADO')
             if user.is_authenticated:
                 q_filter |= Q(socio=user, estado__in=['RESERVADO', 'CONFIRMADO'])
@@ -224,8 +217,10 @@ class TurnoViewSet(viewsets.ModelViewSet):
         # Agrupar por fecha y hora
         calendario_data = {}
         for turno in turnos.order_by('hora_inicio'):
-            fecha_key = turno.hora_inicio.strftime('%Y-%m-%d')
-            hora_key = turno.hora_inicio.strftime('%H:00')
+            # ✅ Convertir a hora local para agrupar correctamente
+            turno_local = timezone.localtime(turno.hora_inicio)
+            fecha_key = turno_local.strftime('%Y-%m-%d')
+            hora_key = turno_local.strftime('%H:00')
             
             if fecha_key not in calendario_data:
                 calendario_data[fecha_key] = {}
@@ -235,7 +230,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
                     'hora': hora_key,
                     'total_cupos': 0,
                     'cupos_disponibles': 0,
-                    'cupos_reservados': 0,  # ✅ AGREGADO para compatibilidad
+                    'cupos_reservados': 0,
                     'cupos_confirmados': 0,
                     'cupos_bloqueados': 0,
                     'turnos': []
@@ -244,7 +239,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
             # Contar cupos
             calendario_data[fecha_key][hora_key]['total_cupos'] += 1
             
-            # ✅ CAMBIO: SOLICITUD -> DISPONIBLE
             if turno.estado == 'DISPONIBLE':
                 calendario_data[fecha_key][hora_key]['cupos_disponibles'] += 1
             elif turno.estado == 'RESERVADO':
@@ -289,7 +283,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
                 'detail': 'Los administradores y entrenadores no pueden reservar turnos.'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # ✅ CAMBIO: SOLICITUD -> DISPONIBLE
         if turno.socio is not None or turno.estado != 'DISPONIBLE':
             return Response({
                 'detail': 'Cupo no disponible para reserva'
@@ -344,7 +337,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if turno.estado in ['RESERVADO', 'CONFIRMADO']:
-            # ✅ CAMBIO: CANCELADO -> DISPONIBLE
             turno.estado = 'DISPONIBLE'
             turno.socio = None
             turno.fecha_reserva = None

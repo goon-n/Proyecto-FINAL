@@ -42,7 +42,7 @@ const CalendarioTabla = ({ semanaInicio, calendarioData, user, onAbrirModal }) =
     };
 
     return (
-        // ✅ NUEVO: Bordes más gruesos en el contenedor
+        // Bordes más gruesos en el contenedor
         <div className="overflow-x-auto rounded-xl shadow-xl border-4 border-gray-400">
             <table className="w-full bg-white border-collapse">
                 <thead className="bg-gray-50">
