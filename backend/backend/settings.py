@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'api',
     'movimiento_caja',
     'turnos',
+    'cuotas_mensuales',
 ]
 
 MIDDLEWARE = [

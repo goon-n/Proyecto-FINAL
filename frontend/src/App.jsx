@@ -10,10 +10,12 @@ import GestionProveedores from "./pages/GestionProveedores";
 import GestionAccesorios from "./pages/GestionAccesorios";
 import CajaPage from "./pages/CajaPage";
 import GestionCompras from "./pages/GestionCompras";
+import ControlMembresias from "./pages/ControlMembresias";
 import AdminLayout from "./components/layout/AdminLayout";
 import { useAuth } from "./context/AuthContext";
 import TurnosPage from "./pages/TurnosPage";
 import Payment from "./pages/Payment";
+import MembresiaSocio from "./pages/MembresiaSocio";
 
 function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
@@ -57,6 +59,7 @@ export default function App() {
                   <Route path="compras" element={<GestionCompras />} />
                   <Route path="caja" element={<CajaPage />} />
                   <Route path="turnos" element={<TurnosPage userRole="admin" />} />
+                  <Route path="membresias" element={<ControlMembresias />} />
                 </Routes>
               </AdminLayout>
             </PrivateRoute>
@@ -75,13 +78,14 @@ export default function App() {
                   <Route path="accesorios" element={<GestionAccesorios />} />
                   <Route path="caja" element={<CajaPage />} />
                   <Route path="turnos" element={<TurnosPage userRole="entrenador" />} />
+                  <Route path="membresias" element={<ControlMembresias />} />
                 </Routes>
               </AdminLayout>
             </PrivateRoute>
           }
         />
         
-        {/* Ruta del Socio */}
+        {/* Rutas del Socio */}
         <Route
           path="/socio"
           element={
@@ -95,6 +99,14 @@ export default function App() {
           element={
             <PrivateRoute rolesPermitidos={["socio"]}>
               <TurnosPage userRole={"socio"} />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/socio/membresia"
+          element={
+            <PrivateRoute rolesPermitidos={["socio"]}>
+              <MembresiaSocio />
             </PrivateRoute>
           }
         />
