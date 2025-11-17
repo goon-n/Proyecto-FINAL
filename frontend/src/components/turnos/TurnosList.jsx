@@ -19,7 +19,7 @@ const TurnosList = ({ isStaff, onEditar, refreshKey }) => {
         try {
             const data = await getTurnos(); 
 
-            // 🚨 CORRECCIÓN allTurnos.filter is not a function: 
+            
             // Garantizamos que el estado es un array
             if (Array.isArray(data)) {
                 setAllTurnos(data);

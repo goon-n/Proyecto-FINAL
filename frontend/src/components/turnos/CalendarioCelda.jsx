@@ -45,7 +45,7 @@
                 };
             }
 
-            // ✅ USAR VALORES POR DEFECTO si no existen
+            // USAR VALORES POR DEFECTO si no existen
             const cupos_disponibles = horarioData.cupos_disponibles || 0;
             const total_cupos = horarioData.total_cupos || 10;
             const turnos = horarioData.turnos || [];
