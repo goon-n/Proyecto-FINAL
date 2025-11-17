@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LogOut, Calendar, Dumbbell, CreditCard, Clock } from "lucide-react";
-import TurnosList from "../components/turnos/TurnosList";
+import { SeccionTurnos } from "../components/shared/SeccionTurnos"; // ✨ AGREGAR ESTO
 
 const HomeSocio = () => {
   const { user, logout } = useAuth();
@@ -117,24 +117,8 @@ const HomeSocio = () => {
           </CardContent>
         </Card>
 
-        {/* Card de Reserva de Turno */}
-        <Card className="hover:shadow-lg transition-shadow border-2 border-primary">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl">Reservar Turno</CardTitle>
-            </div>
-            <CardDescription>
-              Reservá tu próxima clase o sesión de entrenamiento
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Aquí puede haber ya contenido fijo, pero queremos mostrar turnos reales */}
-            <TurnosList userRole={user.rol} />
-          </CardContent>
-        </Card>
-
-
+        {/* ✨ REEMPLAZAR toda esta Card por: */}
+        <SeccionTurnos mostrarBotonCrear={false} />
 
       </div>
     </div>

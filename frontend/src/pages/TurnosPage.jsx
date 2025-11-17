@@ -1,42 +1,52 @@
 // frontend/src/pages/TurnosPage.jsx
 
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Calendar, Plus, ArrowLeft } from "lucide-react";
-import { toast } from 'react-hot-toast'; 
-
-// Importación CORREGIDA y VERIFICADA
+import { Calendar, Plus, ArrowLeft, Zap, Home } from "lucide-react";
 import { useAuth } from "../context/AuthContext"; 
-
-// Ajuste en las importaciones para asegurar que usan la misma ruta relativa
+import GenerarTurnosSemana from "../components/turnos/GenerarTurnosSemana";
+import CalendarioTurnos from "../components/turnos/CalendarioTurnos"; 
+import TurnosEdit from "../components/turnos/TurnosEdit";
 import CrearTurno from "../components/turnos/CrearTurno";
-import TurnosList from "../components/turnos/TurnosList";
-import TurnosEdit from "../components/turnos/TurnosEdit"; // Si está junto a CrearTurno y TurnosList
 import { PageHeader } from "../components/shared/PageHeader";
 
-const TurnosPage = () => {
-    // Usar el hook de autenticación real
-    // Nota: Añadí 'isAuthenticated' aunque useAuth no lo retorna, el código funcionará con 'user'
+const TurnosPage = ({ userRole }) => {
     const { user } = useAuth(); 
-    
-    const isStaff = user?.is_staff || false; 
+    const navigate = useNavigate();
+    const isStaff = user?.rol === 'admin' || user?.rol === 'entrenador';
+    const isSocio = user?.rol === 'socio';
 
     const [vistaActual, setVistaActual] = useState("lista"); 
     const [turnoEditar, setTurnoEditar] = useState(null);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [mostrarGenerador, setMostrarGenerador] = useState(false);
 
-    // Handlers
     const volverALista = () => {
         setVistaActual("lista");
         setTurnoEditar(null);
+        setMostrarGenerador(false);
     };
-    const abrirFormularioAgregar = () => setVistaActual("agregar");
+    
+    const abrirFormularioAgregar = () => {
+        setVistaActual("agregar");
+        setMostrarGenerador(false);
+    };
+    
     const abrirFormularioEditar = (turno) => {
         setTurnoEditar(turno);
         setVistaActual("editar");
+        setMostrarGenerador(false);
     };
 
     const handleTurnoAccion = () => {
+        setRefreshKey(prev => prev + 1);
+        setMostrarGenerador(false);
         volverALista(); 
+    };
+
+    const volverAlInicio = () => {
+        navigate('/socio');
     };
 
     const getTitleConfig = () => {
@@ -55,8 +65,10 @@ const TurnosPage = () => {
                 };
             default:
                 return {
-                    title: "Reservar Mi Turno",
-                    subtitle: isStaff ? "Administra cupos y consulta reservas." : "Selecciona tu día y hora para reservar un cupo.",
+                    title: isStaff ? "Gestión de Turnos" : "Reservar Mi Turno",
+                    subtitle: isStaff 
+                        ? "Administra cupos y consulta reservas del gimnasio." 
+                        : "Selecciona tu día y hora para reservar un cupo.",
                     icon: Calendar
                 };
         }
@@ -71,7 +83,7 @@ const TurnosPage = () => {
                 descripcion={subtitle}
                 icon={TitleIcon}
             >
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                     {vistaActual !== "lista" && (
                         <Button 
                             variant="outline" 
@@ -82,31 +94,44 @@ const TurnosPage = () => {
                             Volver al Calendario
                         </Button>
                     )}
-                    {/* Solo el Staff puede crear cupos, y solo en la vista de lista */}
-                    {isStaff && vistaActual === "lista" && (
+                    
+                    {isSocio && (
                         <Button 
-                            onClick={abrirFormularioAgregar}
-                            className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700"
+                            onClick={volverAlInicio}
+                            variant="default"
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
                         >
-                            <Plus className="h-4 w-4" />
-                            Crear Cupo Manual
+                            <Home className="h-4 w-4" />
+                            Volver al Inicio
                         </Button>
                     )}
-                    {/* Opcional: Botón para Staff para ejecutar la generación masiva (solo si lo implementas en el frontend) */}
+                    
                     {isStaff && vistaActual === "lista" && (
-                        <Button 
-                            variant="secondary"
-                            onClick={() => toast.success("Ejecutando script de generación de cupos (Backend)")}
-                        >
-                            Generar Cupos (4 Semanas)
-                        </Button>
+                        <>
+                            <Button 
+                                onClick={() => setMostrarGenerador(!mostrarGenerador)}
+                                className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-lg"
+                            >
+                                <Zap className="h-4 w-4" />
+                                {mostrarGenerador ? 'Ocultar Generador' : 'Generar Semana Completa'}
+                            </Button>
+
+                            <Button 
+                                onClick={abrirFormularioAgregar}
+                                variant="outline"
+                                className="flex items-center gap-2 border-cyan-600 text-cyan-600 hover:bg-cyan-50"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Crear Cupo Manual
+                            </Button>
+                        </>
                     )}
                 </div>
             </PageHeader>
 
             <nav className="text-sm text-muted-foreground mb-4">
                 <span 
-                    className="cursor-pointer hover:text-primary" 
+                    className="cursor-pointer hover:text-primary transition-colors" 
                     onClick={volverALista}
                 >
                     Turnos
@@ -114,23 +139,30 @@ const TurnosPage = () => {
                 {vistaActual === "agregar" && " / Crear Cupo"}
                 {vistaActual === "editar" && " / Editar Turno"}
             </nav>
+
+            {/* 👇 Panel de generación de turnos (colapsable) */}
+            {isStaff && vistaActual === "lista" && mostrarGenerador && (
+                <div className="animate-in slide-in-from-top duration-300">
+                    <GenerarTurnosSemana onSuccess={handleTurnoAccion} />
+                </div>
+            )}
             
+            {/* Vista: Editar Turno (Solo Staff) */}
             {vistaActual === "editar" && turnoEditar && isStaff ? (
-                // Solo Staff puede ver y usar TurnosEdit
                 <TurnosEdit 
                     turno={turnoEditar}
                     onUpdate={handleTurnoAccion}
                     onCancel={volverALista}
                 />
             ) : vistaActual === "agregar" && isStaff ? (
-                // Solo Staff puede ver y usar CrearTurno
+                /* Vista: Crear Turno (Solo Staff) */
                 <CrearTurno 
-                    onTurnoCreado={handleTurnoAccion}
-                    onCancel={volverALista}
+                    onCreationSuccess={handleTurnoAccion}
                 />
             ) : (
-                // TurnosList es la vista principal para todos
-                <TurnosList 
+                /* Vista: Calendario de Turnos (Todos los usuarios) */
+                <CalendarioTurnos 
+                    key={refreshKey}
                     isStaff={isStaff}
                     onEditar={abrirFormularioEditar} 
                 />

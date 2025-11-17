@@ -1,13 +1,13 @@
 // frontend/src/pages/HomeAdmin.jsx
+
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { SeccionTurnos } from "../components/shared/SeccionTurnos";
 import { 
   LogOut, 
-  Calendar, 
   Users, 
   DollarSign, 
   CreditCard, 
@@ -16,7 +16,7 @@ import {
   FileText, 
   Truck, 
   Settings,
-  Box // <-- Importamos ícono para caja
+  Box
 } from "lucide-react";
 
 const HomeAdmin = () => {
@@ -56,30 +56,9 @@ const HomeAdmin = () => {
 
       {/* Grid de secciones */}
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Gestión de Turnos */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-cyan-500" />
-              <CardTitle className="text-2xl text-cyan-600">Gestión de Turnos</CardTitle>
-            </div>
-            <CardDescription>
-              Administrá los turnos y horarios de clases
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" size="lg">
-                <Calendar className="mr-2 h-4 w-4" />
-                Ver Todos los Turnos
-              </Button>
-              <Button variant="outline" size="lg">
-                <Calendar className="mr-2 h-4 w-4" />
-                Crear Nuevo Cupo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        
+        {/* ✨ REEMPLAZAR toda la Card de "Gestión de Turnos" por esto: */}
+        <SeccionTurnos mostrarBotonCrear={true} />
 
         {/* Tareas de Administración */}
         <Card>
@@ -138,23 +117,23 @@ const HomeAdmin = () => {
                 Asignar Rutinas
               </Button>
               <Button 
-                  onClick={() => navigate("/admin/proveedores")}
-                  variant="outline" 
-                  size="lg" 
-                  className="justify-start"
-                >
-                  <Truck className="mr-2 h-4 w-4" />
-                  Proveedores
-                </Button>
-               <Button 
-                  onClick={() => navigate("/admin/compras")}
-                  variant="outline"
-                  size="lg"
-                  className="justify-start"
-                >
-                  <DollarSign className="mr-2 h-4 w-4 text-lime-600" />
-                  Compras
-                </Button>
+                onClick={() => navigate("/admin/proveedores")}
+                variant="outline" 
+                size="lg" 
+                className="justify-start"
+              >
+                <Truck className="mr-2 h-4 w-4" />
+                Proveedores
+              </Button>
+              <Button 
+                onClick={() => navigate("/admin/compras")}
+                variant="outline"
+                size="lg"
+                className="justify-start"
+              >
+                <DollarSign className="mr-2 h-4 w-4 text-lime-600" />
+                Compras
+              </Button>
             </div>
           </CardContent>
         </Card>
