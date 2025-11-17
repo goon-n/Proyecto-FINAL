@@ -1,120 +1,269 @@
-// src/api/api.js
+// src/api/api.js - ACTUALIZADO PARA JWT
 
-// Base URL de tu backend Django
-const BASE_URL = "http://127.0.0.1:8000/api"; // Cambialo si tu backend está en otra URL
+import apiClient from "../services/authServices"; // Importar el cliente configurado con JWT
 
 const api = {
-  // ----- Usuarios existentes -----
-  listarUsuarios: async () => {
-    const res = await fetch(`${BASE_URL}/usuarios/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error al obtener usuarios");
-    return res.json();
+  // ----- Usuario Actual -----
+  obtenerUsuarioActual: async () => {
+    const response = await apiClient.get('/general/user/');
+    return response.data;
   },
 
-  crearUsuario: async (data) => {
-    const res = await fetch(`${BASE_URL}/usuarios/crear-usuario/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error al crear usuario");
-    return res.json();
+  // ----- Usuarios -----
+  listarUsuarios: async () => {
+    const response = await apiClient.get('/general/usuarios/');
+    return response.data;
+  },
+
+  listarUsuariosDesactivados: async () => {
+    const response = await apiClient.get('/general/usuarios/desactivados/');
+    return response.data;
+  },
+
+  desactivarUsuario: async (userId) => {
+    const response = await apiClient.delete(`/general/usuarios/${userId}/desactivar/`);
+    return response.data;
+  },
+
+  activarUsuario: async (userId) => {
+    const response = await apiClient.post(`/general/usuarios/${userId}/activar/`);
+    return response.data;
   },
 
   editarRolUsuario: async (userId, rol) => {
-    const res = await fetch(`${BASE_URL}/usuarios/${userId}/rol/`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ rol }),
-    });
-    if (!res.ok) throw new Error("Error al editar rol");
-    return res.json();
+    const response = await apiClient.patch(`/general/usuarios/${userId}/rol/`, { rol });
+    return response.data;
   },
 
-  eliminarUsuario: async (userId) => {
-    const res = await fetch(`${BASE_URL}/usuarios/${userId}/eliminar/`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al eliminar usuario");
-    return res.json();
+
+  crearUsuario: async (data) => {
+  const response = await apiClient.post('/general/usuarios/', data);
+  return response.data;
+
+},
+
+  cambiarContrasena: async (userId, data) => {
+  const response = await apiClient.patch(`/general/usuarios/${userId}/cambiar-contrasena/`, data);
+  return response.data;
+},
+  // ----- Proveedores -----
+  listarProveedoresActivos: async () => {
+    const response = await apiClient.get('/general/proveedores/activos/');
+    return response.data;
   },
 
-  // ----- Clases existentes -----
+  listarProveedoresDesactivados: async () => {
+    const response = await apiClient.get('/general/proveedores/desactivados/');
+    return response.data;
+  },
+
+  crearProveedor: async (data) => {
+    const response = await apiClient.post('/general/proveedores/crear/', data);
+    return response.data;
+  },
+
+  editarProveedor: async (proveedorId, data) => {
+    const response = await apiClient.put(`/general/proveedores/${proveedorId}/editar/`, data);
+    return response.data;
+  },
+
+  desactivarProveedor: async (proveedorId) => {
+    const response = await apiClient.delete(`/general/proveedores/${proveedorId}/desactivar/`);
+    return response.data;
+  },
+
+  activarProveedor: async (proveedorId) => {
+    const response = await apiClient.post(`/general/proveedores/${proveedorId}/activar/`);
+    return response.data;
+  },
+
+  // ----- Accesorios -----
+  listarAccesorios: async () => {
+    const response = await apiClient.get('/general/accesorios/');
+    return response.data;
+  },
+
+  crearAccesorio: async (data) => {
+    const response = await apiClient.post('/general/accesorios/', data);
+    return response.data;
+  },
+
+  editarAccesorio: async (accesorioId, data) => {
+    const response = await apiClient.put(`/general/accesorios/${accesorioId}/`, data);
+    return response.data;
+  },
+
+  eliminarAccesorio: async (accesorioId) => {
+    const response = await apiClient.delete(`/general/accesorios/${accesorioId}/`);
+    return response.data;
+  },
+
+  // ----- Compras -----
+  listarCompras: async (params) => {
+    const response = await apiClient.get('/general/compras/', { params });
+    return response.data;
+  },
+
+  crearCompra: async (data) => {
+    const response = await apiClient.post('/general/compras/', data);
+    return response.data;
+  },
+
+  eliminarCompraConStock: async (compraId) => {
+    const response = await apiClient.delete(`/general/compras/${compraId}/eliminar-con-stock/`);
+    return response.data;
+  },
+
+  estadisticasCompras: async () => {
+    const response = await apiClient.get('/general/compras/estadisticas/');
+    return response.data;
+  },
+
+  comprasPorProveedor: async (proveedorId) => {
+    const response = await apiClient.get(`/general/compras/proveedor/${proveedorId}/`);
+    return response.data;
+  },
+
+  // ----- Clases -----
   listarClases: async () => {
-    const res = await fetch(`${BASE_URL}/clases/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error al obtener clases");
-    return res.json();
+    const response = await apiClient.get('/general/clases/');
+    return response.data;
+  },
+
+  crearClase: async (data) => {
+    const response = await apiClient.post('/general/clases/', data);
+    return response.data;
+  },
+
+  editarClase: async (claseId, data) => {
+    const response = await apiClient.put(`/general/clases/${claseId}/editar/`, data);
+    return response.data;
+  },
+
+  eliminarClase: async (claseId) => {
+    const response = await apiClient.delete(`/general/clases/${claseId}/eliminar/`);
+    return response.data;
   },
 
   asignarSocio: async (claseId, socioId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/socios/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ socio_id: socioId }),
-    });
-    if (!res.ok) throw new Error("Error al asignar socio");
-    return res.json();
+    const response = await apiClient.post(`/general/clases/${claseId}/socios/`, { socio_id: socioId });
+    return response.data;
   },
 
   quitarSocio: async (claseId, socioId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/socios/${socioId}/`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al quitar socio");
-    return res.json();
+    const response = await apiClient.delete(`/general/clases/${claseId}/socios/${socioId}/`);
+    return response.data;
   },
 
   anotarseClase: async (claseId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/anotarse/`, {
-      method: "POST",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al anotarse a la clase");
-    return res.json();
+    const response = await apiClient.post(`/general/clases/${claseId}/anotarse/`);
+    return response.data;
   },
 
   desuscribirseClase: async (claseId) => {
-    const res = await fetch(`${BASE_URL}/clases/${claseId}/desuscribirse/`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (!res.ok) throw new Error("Error al desuscribirse de la clase");
-    return res.json();
+    const response = await apiClient.delete(`/general/clases/${claseId}/desuscribirse/`);
+    return response.data;
   },
 
-  // ----- NUEVOS: AUTH -----
-  register: async (data) => {
-    const res = await fetch(`${BASE_URL}/register/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error al registrar usuario");
-    return res.json();
+  sociosDisponibles: async (claseId) => {
+    const response = await apiClient.get(`/general/clases/${claseId}/socios/disponibles/`);
+    return response.data;
   },
 
-  login: async (data) => {
-    const res = await fetch(`${BASE_URL}/login/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Error en login");
-    return res.json();
+  // ----- Dashboard Socio -----
+  dashboardSocio: async () => {
+    const response = await apiClient.get('/general/dashboard/socio/');
+    return response.data;
   },
 
-  getProfile: async () => {
-    const res = await fetch(`${BASE_URL}/profile/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Error al obtener perfil");
-    return res.json();
+  // ----- Caja -----
+  listarCajas: async (params = {}) => {
+    const finalParams = {
+      page_size: 5,
+      ...params
+    };
+    const response = await apiClient.get('/caja/caja/', { params: finalParams });
+    return response.data;
+  },
+
+  cajaActual: async () => {
+    const response = await apiClient.get('/caja/caja/actual/');
+    return response.data;
+  },
+
+  abrirCaja: async (data) => {
+    const response = await apiClient.post('/caja/caja/', data);
+    return response.data;
+  },
+
+  cerrarCaja: async (cajaId, data) => {
+    const response = await apiClient.patch(`/caja/caja/${cajaId}/`, data);
+    return response.data;
+  },
+
+  listarMovimientos: async (cajaId) => {
+    const response = await apiClient.get('/caja/movimiento-caja/', {
+      params: { caja: cajaId }
+    });
+    return response.data;
+  },
+
+  crearMovimiento: async (data) => {
+    const response = await apiClient.post('/caja/movimiento-caja/', data);
+    return response.data;
+  },
+  listarTurnos: async () => {
+    const response = await apiClient.get('/turnos/turno/');
+    return response.data;
+  },
+
+  obtenerCalendarioTurnos: async (fechaInicio, fechaFin) => {
+    const response = await apiClient.get('/turnos/turno/calendario/', {
+      params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin }
+    });
+    return response.data;
+  },
+
+  reservarTurno: async (turnoId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/reservar/`);
+    return response.data;
+  },
+
+  confirmarTurno: async (turnoId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/confirmar/`);
+    return response.data;
+  },
+
+  cancelarTurno: async (turnoId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/cancelar/`);
+    return response.data;
+  },
+
+  crearTurno: async (data) => {
+    const response = await apiClient.post('/turnos/turno/', {
+      hora_inicio: data.hora_inicio
+    });
+    return response.data;
+  },
+
+  actualizarTurno: async (turnoId, data) => {
+    const response = await apiClient.patch(`/turnos/turno/${turnoId}/`, data);
+    return response.data;
+  },
+
+  eliminarTurno: async (turnoId) => {
+    const response = await apiClient.delete(`/turnos/turno/${turnoId}/`);
+    return response.data;
+  },
+
+  generarTurnosSemana: async (fechaInicio) => {
+    const response = await apiClient.post('/turnos/turno/generar_turnos_semana/', {
+      fecha_inicio: fechaInicio
+    });
+    return response.data;
   },
 };
 
 export default api;
+
+

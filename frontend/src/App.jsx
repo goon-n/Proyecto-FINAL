@@ -1,30 +1,33 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import LandingPage from "./components/LandingPage";
 import HomeAdmin from "./pages/HomeAdmin";
 import HomeEntrenador from "./pages/HomeEntrenador";
 import HomeSocio from "./pages/HomeSocio";
 import GestionUsuarios from "./pages/GestionUsuarios";
+import GestionProveedores from "./pages/GestionProveedores";
+import GestionAccesorios from "./pages/GestionAccesorios";
+import CajaPage from "./pages/CajaPage";
+import GestionCompras from "./pages/GestionCompras";
+import AdminLayout from "./components/layout/AdminLayout";
 import { useAuth } from "./context/AuthContext";
+import TurnosPage from "./pages/TurnosPage";
+import Payment from "./pages/Payment";
 
-// Componente para rutas privadas según rol
-function PrivateRoute({ children, rolPermitido }) {
+function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
-
-  console.log("PrivateRoute - User:", user, "Loading:", loading); // <-- DEBUG
 
   if (loading) {
     return <p className="text-white text-center mt-10">Cargando...</p>;
   }
   
   if (!user) {
-    console.log("No hay usuario, redirigiendo a login"); // <-- DEBUG
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
   
-  if (rolPermitido && user.rol !== rolPermitido) {
-    console.log(`Rol incorrecto. Esperado: ${rolPermitido}, Actual: ${user.rol}`); // <-- DEBUG
-    return <Navigate to="/" replace />;
+  if (rolesPermitidos && !rolesPermitidos.includes(user.rol)) {
+    return <Navigate to="/login" replace />;
   }
   
   return children;
@@ -35,33 +38,45 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Rutas públicas */}
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/payment" element={<Payment />} />
         
         {/* Rutas del Admin */}
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
-            <PrivateRoute rolPermitido="admin">
-              <HomeAdmin />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/admin/usuarios"
-          element={
-            <PrivateRoute rolPermitido="admin">
-              <GestionUsuarios />
+            <PrivateRoute rolesPermitidos={["admin"]}>
+              <AdminLayout>
+                <Routes>
+                  <Route index element={<HomeAdmin />} />
+                  <Route path="usuarios" element={<GestionUsuarios />} />
+                  <Route path="proveedores" element={<GestionProveedores />} />
+                  <Route path="accesorios" element={<GestionAccesorios />} />
+                  <Route path="compras" element={<GestionCompras />} />
+                  <Route path="caja" element={<CajaPage />} />
+                  <Route path="turnos" element={<TurnosPage userRole="admin" />} />
+                </Routes>
+              </AdminLayout>
             </PrivateRoute>
           }
         />
         
-        {/* Ruta del Entrenador */}
+        {/* Rutas del Entrenador */}
         <Route
-          path="/entrenador"
+          path="/entrenador/*"
           element={
-            <PrivateRoute rolPermitido="entrenador">
-              <HomeEntrenador />
+            <PrivateRoute rolesPermitidos={["entrenador"]}>
+              <AdminLayout>
+                <Routes>
+                  <Route index element={<HomeEntrenador />} />
+                  <Route path="usuarios" element={<GestionUsuarios />} />
+                  <Route path="accesorios" element={<GestionAccesorios />} />
+                  <Route path="caja" element={<CajaPage />} />
+                  <Route path="turnos" element={<TurnosPage userRole="entrenador" />} />
+                </Routes>
+              </AdminLayout>
             </PrivateRoute>
           }
         />
@@ -70,13 +85,20 @@ export default function App() {
         <Route
           path="/socio"
           element={
-            <PrivateRoute rolPermitido="socio">
+            <PrivateRoute rolesPermitidos={["socio"]}>
               <HomeSocio />
             </PrivateRoute>
           }
         />
+        <Route
+          path="/socio/turnos"
+          element={
+            <PrivateRoute rolesPermitidos={["socio"]}>
+              <TurnosPage userRole={"socio"} />
+            </PrivateRoute>
+          }
+        />
         
-        {/* Ruta por defecto - cualquier ruta no encontrada */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
