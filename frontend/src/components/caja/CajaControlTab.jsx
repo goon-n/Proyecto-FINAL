@@ -10,10 +10,11 @@ export default function CajaControlTab({
   handleSubmit, 
   guardando
 }) {
-  // Calcular efectivo esperado y transferencias esperadas
+  // Calcular efectivo esperado, transferencias esperadas y tarjetas esperadas
   const efectivoEsperado = Number(caja.efectivo_esperado || 0);
   const transferenciaEsperada = Number(caja.transferencia_esperada || 0);
-  const totalEsperado = efectivoEsperado + transferenciaEsperada;
+  const tarjetaEsperada = Number(caja.tarjeta_esperada || 0);  // 🔧 AGREGADO
+  const totalEsperado = efectivoEsperado + transferenciaEsperada + tarjetaEsperada;  // 🔧 MODIFICADO
   
   const montoContado = Number(caja.closing_counted_amount || 0);
   const diferenciaEfectivo = montoContado - efectivoEsperado;
@@ -110,6 +111,11 @@ export default function CajaControlTab({
                   <div className="flex justify-between">
                     <span>🏦 Transferencias:</span>
                     <span className="font-mono">${transferenciaEsperada.toFixed(2)}</span>
+                  </div>
+                  {/* 🔧 AGREGADO: Mostrar tarjetas */}
+                  <div className="flex justify-between">
+                    <span>💳 Tarjetas:</span>
+                    <span className="font-mono">${tarjetaEsperada.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold pt-2 border-t text-lg">
                     <span>💰 TOTAL GENERAL:</span>

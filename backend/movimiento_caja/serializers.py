@@ -6,7 +6,7 @@ from .models import Caja, MovimientoDeCaja
 class MovimientoDeCajaSerializer(serializers.ModelSerializer):
     creado_por_nombre = serializers.CharField(source='creado_por.user.username', read_only=True)
     
-    # ⭐ NUEVO: Mostrar info de la compra si existe
+    #  Mostrar info de la compra si existe
     compra_info = serializers.SerializerMethodField()
     
     class Meta:
@@ -14,7 +14,7 @@ class MovimientoDeCajaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'caja', 'tipo', 'monto', 'tipo_pago', 
             'descripcion', 'fecha', 'creado_por', 'creado_por_nombre',
-            'compra', 'compra_info'  # ⭐ Agregar estos campos
+            'compra', 'compra_info'  
         ]
         read_only_fields = ['creado_por', 'fecha']
     
@@ -50,13 +50,19 @@ class CajaSerializer(serializers.ModelSerializer):
         read_only=True
     )
     
-    # ⭐ NUEVO: Propiedades calculadas
+    #  Propiedades calculadas
     efectivo_esperado = serializers.DecimalField(
         max_digits=10, 
         decimal_places=2, 
         read_only=True
     )
     transferencia_esperada = serializers.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        read_only=True
+    )
+    
+    tarjeta_esperada = serializers.DecimalField(
         max_digits=10, 
         decimal_places=2, 
         read_only=True
@@ -70,6 +76,7 @@ class CajaSerializer(serializers.ModelSerializer):
             'empleado_cierre_nombre', 'fecha_cierre', 'estado',
             'closing_counted_amount', 'closing_system_amount',
             'difference_amount', 'notas',
-            'efectivo_esperado', 'transferencia_esperada'  # ⭐ Agregar estos
+            'efectivo_esperado', 'transferencia_esperada', 
+            'tarjeta_esperada'  # ⭐ Agregar este
         ]
         read_only_fields = ['empleado_apertura', 'fecha_apertura', 'empleado_cierre', 'fecha_cierre']

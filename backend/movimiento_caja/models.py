@@ -53,6 +53,17 @@ class Caja(models.Model):
             elif mov.tipo == "egreso":
                 total -= mov.monto
         return total
+    
+    @property
+    def tarjeta_esperada(self):
+        """Calcula el total de pagos con tarjeta"""
+        total = 0
+        for mov in self.movimientos.filter(tipo_pago='tarjeta'):
+            if mov.tipo == "ingreso":
+                total += mov.monto
+            elif mov.tipo == "egreso":
+                total -= mov.monto
+        return total  # 🔧 CORREGIDO: Estaba dentro del for
 
     def __str__(self):
         return f"Caja {self.id} ({self.estado})"
@@ -69,8 +80,10 @@ class Caja(models.Model):
 
     @property
     def difference_amount(self):
+        """Calcula la diferencia SOLO en efectivo físico"""
         if self.closing_counted_amount is not None:
-            return self.closing_system_amount - self.closing_counted_amount
+            # Comparar solo efectivo contado vs efectivo esperado
+            return self.closing_counted_amount - self.efectivo_esperado  
         return None
 
 class MovimientoDeCaja(models.Model):
@@ -81,10 +94,18 @@ class MovimientoDeCaja(models.Model):
         ('egreso', 'Egreso'),
         ('ingreso', 'Ingreso'),
     )
+    
+    #Choices para tipo_pago
+    TIPOS_PAGO = (
+        ('efectivo', 'Efectivo'),
+        ('transferencia', 'Transferencia'),
+        ('tarjeta', 'Tarjeta'),
+    )
+    
     caja = models.ForeignKey(Caja, related_name='movimientos', on_delete=models.CASCADE)
     tipo = models.CharField(max_length=10, choices=TIPOS)
     monto = models.DecimalField(max_digits=10, decimal_places=2)
-    tipo_pago = models.CharField(max_length=50, blank=True)
+    tipo_pago = models.CharField(max_length=50, choices=TIPOS_PAGO, blank=True)  # choices=TIPOS_PAGO
     descripcion = models.CharField(max_length=255, blank=True)
     fecha = models.DateTimeField(auto_now_add=True)
     creado_por = models.ForeignKey(
