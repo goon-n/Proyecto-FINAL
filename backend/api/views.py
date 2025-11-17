@@ -239,7 +239,13 @@ def listar_usuarios(request):
         try:
             # Crear usuario
             user = User.objects.create_user(username=username, password=password, email=email)
-            print(f"✅ Usuario creado: {user.id} - {user.username}")
+            
+            # Asignar is_staff=True si es admin o entrenador
+            if rol in ['admin', 'entrenador']:
+                user.is_staff = True
+                user.save()
+            
+            print(f"✅ Usuario creado: {user.id} - {user.username} - is_staff: {user.is_staff}")
             
             # Crear perfil con is_active=True explícitamente
             perfil = Perfil.objects.create(user=user, rol=rol, is_active=True)

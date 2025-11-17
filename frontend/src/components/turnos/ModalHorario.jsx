@@ -130,7 +130,7 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                     {cupos_disponibles > 0 && misTurnos.length === 0 && user && !isStaff && (
                         <button
                             onClick={() => {
-                                const turnoDisponible = turnos.find(t => t.estado === 'SOLICITUD' && !t.socio);
+                                const turnoDisponible = turnos.find(t => t.estado === 'DISPONIBLE' && !t.socio);
                                 if (turnoDisponible) {
                                     onAccion(turnoDisponible.id, 'reservar');
                                 }
@@ -156,7 +156,7 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                                         <div className="flex gap-3 items-center text-sm">
                                             <span className="font-mono text-gray-500">#{turno.id}</span>
                                             <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                                turno.estado === 'SOLICITUD' ? 'bg-blue-100 text-blue-800' :
+                                                turno.estado === 'DISPONIBLE' ? 'bg-blue-100 text-blue-800' :
                                                 turno.estado === 'RESERVADO' ? 'bg-yellow-100 text-yellow-800' :
                                                 turno.estado === 'CONFIRMADO' ? 'bg-green-100 text-green-800' :
                                                 'bg-gray-100 text-gray-800'
