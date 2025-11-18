@@ -276,6 +276,17 @@ class TurnoViewSet(viewsets.ModelViewSet):
         """Reserva Y confirma el turno directamente"""
         turno = self.get_object()
         user = request.user
+    
+        # 🔍 DEBUG
+        print("="*50)
+        print(f"🔍 Turno ID: {turno.id}")
+        print(f"🔍 Hora inicio: {turno.hora_inicio}")
+        print(f"🔍 Hora (hour): {turno.hora_inicio.hour}")
+        print(f"🔍 Minuto: {turno.hora_inicio.minute}")
+        print(f"🔍 Día semana: {turno.hora_inicio.weekday()}")
+        print(f"🔍 Estado: {turno.estado}")
+        print(f"🔍 Usuario: {user.username} (staff={user.is_staff})")
+        print("="*50)
         
         # Validar que el usuario NO sea staff
         if user.is_staff:
@@ -294,10 +305,17 @@ class TurnoViewSet(viewsets.ModelViewSet):
         turno.fecha_reserva = timezone.now()
         
         try:
+            print("🔄 Llamando a full_clean()...")
             turno.full_clean()
+            print("✅ full_clean() OK")
             turno.save()
+            print("✅ save() OK")
         except ValidationError as e:
-            return Response({'detail': e.messages}, status=status.HTTP_400_BAD_REQUEST)
+            print(f"❌ ValidationError: {e.message_dict}")
+            return Response({'detail': e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"❌ Exception: {type(e).__name__}: {str(e)}")
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
             
         return Response({
             'detail': 'Turno confirmado con éxito. Puedes cancelarlo hasta 1 hora antes.'
