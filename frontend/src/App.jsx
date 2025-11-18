@@ -16,19 +16,13 @@ import { useAuth } from "./context/AuthContext";
 import TurnosPage from "./pages/TurnosPage";
 import Payment from "./pages/Payment";
 import MembresiaSocio from "./pages/MembresiaSocio";
+import Perfil from "./pages/Perfil";
 
 function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg">Cargando...</p>
-        </div>
-      </div>
-    );
+    return <p className="text-white text-center mt-10">Cargando...</p>;
   }
   
   if (!user) {
@@ -105,7 +99,7 @@ export default function App() {
           path="/socio/turnos"
           element={
             <PrivateRoute rolesPermitidos={["socio"]}>
-              <TurnosPage userRole="socio" />
+              <TurnosPage userRole={"socio"} />
             </PrivateRoute>
           }
         />
@@ -118,7 +112,6 @@ export default function App() {
           }
         />
         
-        {/* Ruta 404 */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

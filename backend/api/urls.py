@@ -35,7 +35,9 @@ from .views import (
     compras_por_proveedor,
     eliminar_compra_con_stock,
     get_csrf,
-    register_with_payment
+    register_with_payment,
+    mi_perfil  # ← AGREGAR ESTA LÍNEA
+
 )
 
 router = DefaultRouter()
@@ -52,6 +54,8 @@ urlpatterns = [
     path('logout/', logout_view, name='logout'),
     path('register/', register_user, name='register'),
     path('user/', obtener_usuario_actual, name='user'),
+    path('perfil/', mi_perfil, name='mi-perfil'),  # ← AGREGAR ESTA LÍNEA
+
 
     # Gestión de usuarios (admin)
     path('usuarios/', listar_usuarios, name='listar-usuarios'),

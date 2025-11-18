@@ -9,6 +9,17 @@ const api = {
     return response.data;
   },
 
+  // ----- Perfil -----
+  obtenerMiPerfil: async () => {
+    const response = await apiClient.get('/general/perfil/');
+    return response.data;
+  },
+
+  actualizarMiPerfil: async (data) => {
+    const response = await apiClient.patch('/general/perfil/', data);
+    return response.data;
+  },
+
   // ----- Usuarios -----
   listarUsuarios: async () => {
     const response = await apiClient.get('/general/usuarios/');
@@ -45,14 +56,6 @@ const api = {
     return response.data;
   },
 
-  // ----- Membresías ----- ⭐ NUEVA SECCIÓN
-
-  // Solicitar renovación (SOCIO)
-  solicitarRenovacion: async (data) => {
-    const response = await apiClient.post('/cuotas/cuotas/solicitar_renovacion/', data);
-    return response.data;
-  },
-  
   // ----- Cuotas Mensuales -----
   // Planes
   listarPlanes: async () => {
