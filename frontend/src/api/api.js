@@ -96,6 +96,12 @@ const api = {
     return response.data;
   },
 
+  // Crear socio con cuota y pago en caja
+  crearCuotaConPago: async (data) => {
+    const response = await apiClient.post('/cuotas/cuotas/crear_con_pago/', data);
+    return response.data;
+  },
+
   renovarCuota: async (cuotaId, data) => {
     const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/renovar/`, data);
     return response.data;
