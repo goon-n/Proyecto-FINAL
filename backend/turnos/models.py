@@ -1,4 +1,3 @@
-
 # turnos/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -10,12 +9,12 @@ from datetime import timedelta, time
 User = get_user_model()
 
 ESTADO_CHOICES = (
-    ('DISPONIBLE', 'Cupo Disponible'),  # ✅ CAMBIO: SOLICITUD -> DISPONIBLE
+    ('DISPONIBLE', 'Cupo Disponible'),
     ('RESERVADO', 'Reservado - Pendiente de Confirmación'),
     ('CONFIRMADO', 'Confirmado'),
     ('CANCELADO', 'Cancelado/Liberado'),
     ('FINALIZADO', 'Finalizado'),
-    ('BLOQUEADO', 'Bloqueado'),  # ✅ NUEVO para sábados 13-17
+    ('BLOQUEADO', 'Bloqueado'),
 )
 
 class Turno(models.Model):
@@ -29,10 +28,10 @@ class Turno(models.Model):
     hora_inicio = models.DateTimeField()
     
     estado = models.CharField(
-    max_length=20, 
-    choices=ESTADO_CHOICES, 
-    default='DISPONIBLE'  # ✅ CAMBIO: SOLICITUD -> DISPONIBLE
-)
+        max_length=20, 
+        choices=ESTADO_CHOICES, 
+        default='DISPONIBLE'
+    )
     fecha_reserva = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -62,52 +61,68 @@ class Turno(models.Model):
     def clean(self):
         super().clean()
         
+        # ✅ Convertir a hora local antes de validar
+        hora_local = timezone.localtime(self.hora_inicio)
+        
         # Validar que no sea domingo
-        if self.hora_inicio.weekday() == 6:
+        if hora_local.weekday() == 6:
             raise ValidationError({
                 'hora_inicio': 'No se pueden crear turnos los domingos.'
             })
         
-        # ✅ NUEVO: Validar horarios según el día (sábados especiales)
-        hora = self.hora_inicio.time()
-        es_sabado = self.hora_inicio.weekday() == 5
+        # Usar hora_local para todas las validaciones
+        hora_int = hora_local.hour
+        minuto_int = hora_local.minute
+        es_sabado = hora_local.weekday() == 5
         
-        if es_sabado:
-            # Sábados: 8-13 y 17-22
-            if not ((time(8, 0) <= hora < time(13, 0)) or (time(17, 0) <= hora < time(23, 0))):
-                raise ValidationError({
-                    'hora_inicio': 'Los sábados los turnos son de 08:00 a 13:00 y de 17:00 a 22:00.'
-                })
-        else:
-            # Lunes a viernes: 8-22
-            if not (time(8, 0) <= hora < time(23, 0)):
-                raise ValidationError({
-                    'hora_inicio': 'Los turnos solo pueden ser entre las 08:00 y las 22:00.'
-                })
-        
-        # Validar que sea hora en punto (ignorando segundos)
-        if self.hora_inicio.minute != 0:
+        # Validar que sea hora en punto
+        if minuto_int != 0:
             raise ValidationError({
                 'hora_inicio': 'La hora de inicio debe ser una hora en punto (ej: 08:00, 09:00, etc.).'
             })
         
-        # Validar Solapamiento para el mismo socio
+        # Validar horarios según el día
+        if es_sabado:
+            # Sábados: 8-12 y 17-22
+            if not ((8 <= hora_int <= 12) or (17 <= hora_int <= 22)):
+                raise ValidationError({
+                    'hora_inicio': 'Los sábados los turnos son de 08:00 a 12:00 y de 17:00 a 22:00.'
+                })
+        else:
+            # Lunes a viernes: 8-22
+            if not (8 <= hora_int <= 22):
+                raise ValidationError({
+                    'hora_inicio': 'Los turnos solo pueden ser entre las 08:00 y las 22:00.'
+                })
+        
+        # ✅ CORREGIDO: Normalizar y validar solapamiento
         if self.socio and self.estado in ['RESERVADO', 'CONFIRMADO']:
+            # Normalizar a minutos (ignorar segundos/microsegundos)
+            nuevo_inicio = self.hora_inicio.replace(second=0, microsecond=0)
+            nuevo_fin = nuevo_inicio + timedelta(hours=1)
+            
+            # Buscar turnos del mismo socio que se solapen
             solapados = Turno.objects.filter(
                 socio=self.socio,
                 estado__in=['RESERVADO', 'CONFIRMADO']
-            ).filter(
-                Q(hora_inicio__lt=self.hora_fin) & 
-                Q(hora_inicio__gte=self.hora_inicio - timedelta(hours=1))
             )
-
+            
             if self.pk:
                 solapados = solapados.exclude(pk=self.pk)
-
-            if solapados.exists():
-                raise ValidationError({
-                    'socio': 'Ya tienes un turno confirmado o reservado que se solapa con este horario.'
-                })
+            
+            # Verificar manualmente cada turno
+            for turno_existente in solapados:
+                # Normalizar turno existente también
+                existente_inicio = turno_existente.hora_inicio.replace(second=0, microsecond=0)
+                existente_fin = existente_inicio + timedelta(hours=1)
+                
+                # Hay solapamiento SI:
+                # El nuevo empieza antes de que termine el existente Y
+                # El nuevo termina después de que empiece el existente
+                if nuevo_inicio < existente_fin and nuevo_fin > existente_inicio:
+                    raise ValidationError({
+                        'socio': 'Ya tienes un turno confirmado o reservado que se solapa con este horario.'
+                    })
         
     def save(self, *args, **kwargs):
         self.full_clean()
