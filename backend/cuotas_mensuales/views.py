@@ -220,6 +220,122 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             print(f"❌ Error al registrar en caja: {str(e)}")
             raise
     
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
+    def crear_con_pago(self, request):
+        """
+        🆕 Endpoint para crear cuota con pago y registro en caja
+        Usado por admin/entrenador al dar de alta un socio
+        """
+        # Verificar permisos
+        if not request.user.perfil.rol in ['admin', 'entrenador']:
+            return Response(
+                {'detail': 'No tienes permisos para esta acción'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validar datos requeridos
+        socio_id = request.data.get('socio')
+        plan_id = request.data.get('plan')
+        monto = request.data.get('monto')
+        metodo_pago = request.data.get('metodo_pago', 'efectivo')
+        tarjeta_ultimos_4 = request.data.get('tarjeta_ultimos_4', '')
+        
+        if not socio_id or not plan_id or not monto:
+            return Response(
+                {'error': 'Faltan datos obligatorios: socio, plan, monto'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Obtener socio y plan
+        try:
+            from django.contrib.auth.models import User
+            socio = User.objects.get(id=socio_id, perfil__rol='socio')
+            plan = Plan.objects.get(id=plan_id, activo=True)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'El socio no existe o no tiene rol de socio'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Plan.DoesNotExist:
+            return Response(
+                {'error': 'El plan no existe o no está activo'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Verificar caja abierta
+        caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
+        if not caja_abierta:
+            return Response(
+                {
+                    'error': 'No hay caja abierta',
+                    'detail': 'Debe haber una caja abierta para registrar pagos'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Crear cuota mensual
+        fecha_inicio = timezone.now().date()
+        fecha_vencimiento = fecha_inicio + timedelta(days=30)
+        
+        cuota = CuotaMensual.objects.create(
+            socio=socio,
+            plan=plan,
+            plan_nombre=plan.nombre,
+            plan_precio=plan.precio,
+            fecha_inicio=fecha_inicio,
+            fecha_vencimiento=fecha_vencimiento,
+            estado='activa',
+            tarjeta_ultimos_4=tarjeta_ultimos_4 if tarjeta_ultimos_4 else ''
+        )
+        
+        # Crear historial de pago
+        referencia = f"Alta de socio - {plan.nombre}"
+        if tarjeta_ultimos_4:
+            referencia += f" - Tarjeta **** {tarjeta_ultimos_4}"
+        
+        historial_pago = HistorialPago.objects.create(
+            cuota=cuota,
+            monto=monto,
+            metodo_pago=metodo_pago,
+            referencia=referencia
+        )
+        
+        # Registrar movimiento en caja
+        try:
+            descripcion_caja = f"Alta socio: {socio.username} - Plan: {plan.nombre}"
+            if tarjeta_ultimos_4:
+                descripcion_caja += f" - Tarjeta **** {tarjeta_ultimos_4}"
+            
+            MovimientoDeCaja.objects.create(
+                caja=caja_abierta,
+                tipo='ingreso',
+                monto=monto,
+                tipo_pago=metodo_pago,
+                descripcion=descripcion_caja,
+                creado_por=request.user.perfil
+            )
+            
+            return Response({
+                'success': True,
+                'detail': f'Cuota creada y pago registrado exitosamente',
+                'cuota_id': cuota.id,
+                'socio': socio.username,
+                'plan': plan.nombre,
+                'monto': float(monto),
+                'metodo_pago': metodo_pago
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"❌ Error al registrar en caja: {str(e)}")
+            # Eliminar cuota e historial si falla el registro en caja
+            historial_pago.delete()
+            cuota.delete()
+            return Response(
+                {'error': f'Error al registrar en caja: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def cuotas_activas(self, request):
         """Listar todas las cuotas activas (admin/entrenador)"""
