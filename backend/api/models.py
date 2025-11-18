@@ -71,7 +71,7 @@ class Perfil(models.Model):
         ('entrenador', 'Entrenador'),
         ('socio', 'Socio'),
     ]
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='socio')
     is_active = models.BooleanField(default=True)
     deactivate_at = models.DateTimeField(null=True, blank=True)

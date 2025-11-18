@@ -94,19 +94,26 @@ class CuotaMensual(models.Model):
         return f"{self.socio.username} - {self.plan_nombre} ({self.estado})"
     
     def save(self, *args, **kwargs):
-        # Guardar información del plan
-        if not self.plan_nombre:
+        """
+        Este método se ejecuta automáticamente antes de guardar en la base de datos
+        
+        Hace 3 cosas:
+        1. Guarda el nombre y precio del plan (para histórico)
+        2. Calcula la fecha de vencimiento si no existe (30 días después del inicio)
+        3. Llama al save() original para guardar en la base de datos
+        """
+        # 1. Guardar información del plan SI NO EXISTE
+        if not self.plan_nombre and self.plan:
             self.plan_nombre = self.plan.nombre
-        if not self.plan_precio:
+        if not self.plan_precio and self.plan:
             self.plan_precio = self.plan.precio
         
-        # Calcular fecha de vencimiento si no existe (30 días desde inicio)
-        if not self.fecha_vencimiento:
+        # 2. Calcular fecha de vencimiento si no existe
+        if not self.fecha_vencimiento and self.fecha_inicio:
+            from datetime import timedelta
             self.fecha_vencimiento = self.fecha_inicio + timedelta(days=30)
-        
-        # Actualizar estado automáticamente
-        self.actualizar_estado()
-        
+
+        # 3. Guardar en la base de datos
         super().save(*args, **kwargs)
     
     def actualizar_estado(self):

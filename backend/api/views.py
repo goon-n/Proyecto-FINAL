@@ -11,8 +11,7 @@ from django.contrib.auth import authenticate, login, logout
 from .models import Socio, Perfil, Clase, Proveedor, Accesorios, Compra, ItemCompra
 from .serializers import (
     CompraSerializer, ItemCompraSerializer, SocioSerializer,
-    ClaseSerializer, CustomUserSerializer, ProveedorSerializer, AccesoriosSerializer,
-    RegisterWithPaymentSerializer  # ← AGREGÁ ESTA LÍNEA
+    ClaseSerializer, CustomUserSerializer, ProveedorSerializer, AccesoriosSerializer
 )
 from django.utils import timezone
 from django.db.models import Q, Sum, Count, Avg
@@ -360,22 +359,54 @@ def cambiar_contrasena(request, user_id):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_with_payment(request):
-    """Registrar usuario, crear cuota, historial de pago y movimiento de caja"""
+    """
+    Registrar usuario, crear cuota, historial de pago y movimiento de caja
+    
+    Este endpoint:
+    1. Extrae los datos del usuario y plan desde request.data
+    2. Verifica que haya una caja abierta
+    3. Busca el plan en la base de datos
+    4. Crea el usuario con su perfil de socio
+    5. Crea la cuota mensual
+    6. Registra el pago en el historial
+    7. Crea el movimiento de ingreso en la caja
+    """
     from movimiento_caja.models import Caja, MovimientoDeCaja
     from cuotas_mensuales.models import Plan, CuotaMensual, HistorialPago
     from django.db import transaction
     from datetime import timedelta
     
-    serializer = RegisterWithPaymentSerializer(data=request.data)
+    # ✅ PASO 1: EXTRAER DATOS DEL REQUEST
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email', '')
+    nombre = request.data.get('nombre', '')
+    telefono = request.data.get('telefono', '')
+    plan_name = request.data.get('plan_name')
+    plan_price = request.data.get('plan_price')
+    card_last4 = request.data.get('card_last4', '')
     
-    # Validaciones
+    print(f"\n{'='*60}")
+    print(f"📝 DATOS RECIBIDOS:")
+    print(f"   Username: {username}")
+    print(f"   Email: {email}")
+    print(f"   Nombre: {nombre}")
+    print(f"   Plan: {plan_name}")
+    print(f"   Precio: {plan_price}")
+    print(f"{'='*60}\n")
+    
+    # ✅ PASO 2: VALIDACIONES
     if not username or not password:
-        return Response({'error': 'Faltan datos obligatorios'}, status=400)
+        return Response({
+            'error': 'Faltan datos obligatorios: username y password'
+        }, status=400)
     
     if User.objects.filter(username=username).exists():
-        return Response({'error': 'El usuario ya existe'}, status=400)
+        return Response({
+            'error': 'El usuario ya existe'
+        }, status=400)
     
-    # Verificar caja abierta
+    # ✅ PASO 3: VERIFICAR CAJA ABIERTA
     caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
     if not caja_abierta:
         return Response({
@@ -383,61 +414,89 @@ def register_with_payment(request):
             'detail': 'Debe haber una caja abierta para registrar nuevos socios. Contacte al administrador.'
         }, status=400)
     
-    # Buscar plan (si existe)
+    print(f"✅ Caja abierta encontrada: ID #{caja_abierta.id}")
+    
+    # ✅ PASO 4: BUSCAR EL PLAN
     plan = None
     if plan_name:
-        plan = Plan.objects.filter(nombre__iexact=plan_name, activo=True).first()
+        try:
+            # Buscar el plan por nombre (case insensitive) y que esté activo
+            plan = Plan.objects.get(nombre__iexact=plan_name, activo=True)
+            print(f"✅ Plan encontrado: {plan.nombre} - ${plan.precio}")
+        except Plan.DoesNotExist:
+            return Response({
+                'error': f'El plan "{plan_name}" no existe o no está disponible'
+            }, status=400)
+    else:
+        return Response({
+            'error': 'Debe especificar un plan'
+        }, status=400)
     
+    # ✅ PASO 5: CREAR TODO EN UNA TRANSACCIÓN ATÓMICA
     try:
         with transaction.atomic():
-            # 1. Crear usuario
+            # 5.1 - Crear usuario
             user = User.objects.create_user(
                 username=username, 
                 password=password, 
                 email=email,
                 first_name=nombre
             )
-            perfil = Perfil.objects.create(user=user, rol='socio')
+            print(f"✅ Usuario creado: {user.username} (ID: {user.id})")
             
-            # 2. Crear movimiento en caja
+            # 5.2 - Crear perfil de socio
+            perfil = Perfil.objects.create(user=user, rol='socio')
+            print(f"✅ Perfil creado con rol: {perfil.rol}")
+            
+            # 5.3 - Crear cuota mensual
+            fecha_inicio = timezone.now().date()
+            fecha_vencimiento = fecha_inicio + timedelta(days=30)
+            
+            cuota = CuotaMensual.objects.create(
+                socio=user,
+                plan=plan,
+                plan_nombre=plan.nombre,
+                plan_precio=plan.precio,
+                fecha_inicio=fecha_inicio,
+                fecha_vencimiento=fecha_vencimiento,
+                tarjeta_ultimos_4=card_last4[-4:] if card_last4 else '',
+                estado='activa'
+            )
+            print(f"✅ Cuota mensual creada: ID #{cuota.id}")
+            print(f"   Vencimiento: {cuota.fecha_vencimiento}")
+            
+            # 5.4 - Crear historial de pago
+            historial_pago = HistorialPago.objects.create(
+                cuota=cuota,
+                monto=plan.precio,  # Usar el precio del plan, no plan_price del request
+                metodo_pago='tarjeta',
+                referencia=f"Registro inicial - Tarjeta ****{card_last4[-4:] if card_last4 else '0000'}",
+                notas=f"Pago inicial del plan {plan.nombre}"
+            )
+            print(f"✅ Historial de pago creado: ID #{historial_pago.id}")
+            
+            # 5.5 - Crear movimiento en caja
             movimiento = MovimientoDeCaja.objects.create(
                 caja=caja_abierta,
                 tipo='ingreso',
-                monto=plan_price,
-                tipo_pago='tarjeta',
-                descripcion=f"Nuevo socio: {nombre} ({username}) - Plan: {plan_name}" + 
-                           (f" - Tarjeta *{card_last4}" if card_last4 else ""),
+                monto=plan.precio,
+                tipo_pago='transferencia',  # Tarjeta se registra como transferencia
+                descripcion=f"Nuevo socio: {nombre} ({username}) - Plan: {plan.nombre}" + 
+                           (f" - Tarjeta ****{card_last4[-4:]}" if card_last4 else ""),
                 creado_por=caja_abierta.empleado_apertura
             )
+            print(f"✅ Movimiento de caja creado: ID #{movimiento.id}")
             
-            # 3. Crear cuota mensual (si hay plan)
-            cuota = None
-            if plan:
-                fecha_inicio = timezone.now().date()
-                fecha_vencimiento = fecha_inicio + timedelta(days=30)
-                
-                cuota = CuotaMensual.objects.create(
-                    socio=user,
-                    plan=plan,
-                    plan_nombre=plan.nombre,
-                    plan_precio=plan.precio,
-                    fecha_inicio=fecha_inicio,
-                    fecha_vencimiento=fecha_vencimiento,
-                    tarjeta_ultimos_4=card_last4,
-                    estado='activa'
-                )
-                
-                # 4. Crear historial de pago
-                HistorialPago.objects.create(
-                    cuota=cuota,
-                    monto=plan_price,
-                    metodo_pago='tarjeta',
-                    referencia=f"Registro inicial - Mov. Caja #{movimiento.id}",
-                    movimiento_caja_id=movimiento.id
-                )
+            # 5.6 - Vincular movimiento con historial de pago
+            historial_pago.movimiento_caja_id = movimiento.id
+            historial_pago.save()
+            print(f"✅ Movimiento vinculado con historial de pago")
             
-            print(f"✅ Usuario {username} registrado - Cuota creada - Movimiento caja #{movimiento.id}")
+            print(f"\n{'='*60}")
+            print(f"✅ REGISTRO COMPLETADO EXITOSAMENTE")
+            print(f"{'='*60}\n")
             
+            # ✅ RETORNAR RESPUESTA EXITOSA
             return Response({
                 'message': 'Usuario registrado correctamente',
                 'user': {
@@ -446,19 +505,27 @@ def register_with_payment(request):
                     'email': user.email,
                     'nombre': nombre
                 },
-                'cuota_id': cuota.id if cuota else None,
+                'cuota': {
+                    'id': cuota.id,
+                    'plan': cuota.plan_nombre,
+                    'precio': str(cuota.plan_precio),
+                    'fecha_vencimiento': cuota.fecha_vencimiento.strftime('%Y-%m-%d')
+                },
                 'movimiento_caja_id': movimiento.id
             }, status=201)
         
     except Exception as e:
-        print(f"❌ Error en registro: {str(e)}")
+        print(f"\n{'='*60}")
+        print(f"❌ ERROR EN REGISTRO:")
+        print(f"{'='*60}")
+        print(f"{str(e)}")
         import traceback
         traceback.print_exc()
+        print(f"{'='*60}\n")
         
         return Response({
-            'success': False,
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            'error': f'Error al registrar usuario: {str(e)}'
+        }, status=500)
 
 
 # ========== GESTIÓN DE PROVEEDORES (CRUD COMPLETO) ==========

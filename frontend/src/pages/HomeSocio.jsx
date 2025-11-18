@@ -1,4 +1,4 @@
-// src/pages/HomeSocio.jsx - ACTUALIZADO
+// src/pages/HomeSocio.jsx
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -7,7 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, Calendar, Dumbbell, CreditCard, Clock, TrendingUp, ArrowRight, AlertCircle } from "lucide-react";
+import { 
+  LogOut, 
+  Calendar, 
+  Dumbbell, 
+  CreditCard, 
+  Clock, 
+  TrendingUp, 
+  ArrowRight, 
+  AlertCircle,
+  RefreshCw
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "../api/api";
 
@@ -58,9 +68,23 @@ const HomeSocio = () => {
     });
   };
 
+  const formatearPrecio = (precio) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0
+    }).format(precio || 0);
+  };
+
+  const puedeRenovar = () => {
+    if (!membresia) return false;
+    const diasRestantes = calcularDiasRestantes(membresia.fecha_vencimiento);
+    return diasRestantes <= 7 || membresia.estado === 'vencida';
+  };
+
   const diasRestantes = membresia ? calcularDiasRestantes(membresia.fecha_vencimiento) : 0;
-  const planNombre = membresia?.plan?.nombre || membresia?.plan_name || "Sin plan";
-  const planPrecio = membresia?.plan?.precio || membresia?.plan_price || 0;
+  const planNombre = membresia?.plan_info?.nombre || membresia?.plan_nombre || "Sin plan";
+  const planPrecio = membresia?.plan_info?.precio || membresia?.plan_precio || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -88,6 +112,33 @@ const HomeSocio = () => {
           </CardHeader>
         </Card>
       </div>
+
+      {/* Alerta de renovación */}
+      {membresia && puedeRenovar() && (
+        <div className="max-w-6xl mx-auto mb-6">
+          <Alert className={membresia.estado === 'vencida' ? 'border-red-500 bg-red-50' : 'border-orange-500 bg-orange-50'}>
+            <AlertCircle className={`h-4 w-4 ${membresia.estado === 'vencida' ? 'text-red-600' : 'text-orange-600'}`} />
+            <AlertDescription className={membresia.estado === 'vencida' ? 'text-red-800' : 'text-orange-800'}>
+              <div className="flex items-center justify-between">
+                <span>
+                  {membresia.estado === 'vencida' 
+                    ? '⚠️ Tu membresía ha vencido.' 
+                    : `⚠️ Tu membresía vence en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}.`
+                  }
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/socio/membresia")}
+                  className={membresia.estado === 'vencida' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Renovar ahora
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Grid de Cards */}
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -186,27 +237,57 @@ const HomeSocio = () => {
               </Alert>
             ) : membresia ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <div className={`flex items-center justify-between p-4 rounded-lg border ${
+                  membresia.estado === 'vencida' 
+                    ? 'bg-red-500/10 border-red-500/20' 
+                    : diasRestantes <= 7 
+                      ? 'bg-orange-500/10 border-orange-500/20'
+                      : 'bg-green-500/10 border-green-500/20'
+                }`}>
                   <div>
-                    <p className="font-semibold text-green-700 dark:text-green-400">
+                    <p className={`font-semibold ${
+                      membresia.estado === 'vencida' 
+                        ? 'text-red-700 dark:text-red-400' 
+                        : diasRestantes <= 7
+                          ? 'text-orange-700 dark:text-orange-400'
+                          : 'text-green-700 dark:text-green-400'
+                    }`}>
                       {planNombre}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Válida hasta {formatearFecha(membresia.fecha_vencimiento)}
+                      {membresia.estado === 'vencida' 
+                        ? `Venció el ${formatearFecha(membresia.fecha_vencimiento)}`
+                        : `Válida hasta ${formatearFecha(membresia.fecha_vencimiento)}`
+                      }
                     </p>
                   </div>
-                  <Badge className="bg-green-600">
-                    {membresia.estado === "activa" ? "Activa" : membresia.estado}
+                  <Badge className={
+                    membresia.estado === 'vencida' 
+                      ? 'bg-red-600' 
+                      : diasRestantes <= 7 
+                        ? 'bg-orange-600'
+                        : 'bg-green-600'
+                  }>
+                    {membresia.estado === 'vencida' 
+                      ? 'Vencida' 
+                      : membresia.estado === 'activa' 
+                        ? 'Activa' 
+                        : membresia.estado
+                    }
                   </Badge>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3 text-center">
                   <div className="p-3 bg-accent rounded-lg">
-                    <p className="text-2xl font-bold">{diasRestantes > 0 ? diasRestantes : 0}</p>
+                    <p className={`text-2xl font-bold ${
+                      diasRestantes <= 0 ? 'text-red-600' : diasRestantes <= 7 ? 'text-orange-600' : ''
+                    }`}>
+                      {diasRestantes > 0 ? diasRestantes : 0}
+                    </p>
                     <p className="text-xs text-muted-foreground">Días restantes</p>
                   </div>
                   <div className="p-3 bg-accent rounded-lg">
-                    <p className="text-2xl font-bold">${parseFloat(planPrecio).toFixed(0)}</p>
+                    <p className="text-2xl font-bold">{formatearPrecio(planPrecio)}</p>
                     <p className="text-xs text-muted-foreground">Próximo pago</p>
                   </div>
                 </div>

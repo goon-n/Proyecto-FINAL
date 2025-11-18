@@ -47,7 +47,12 @@ const api = {
 
   // ----- Membresías ----- ⭐ NUEVA SECCIÓN
 
-
+  // Solicitar renovación (SOCIO)
+  solicitarRenovacion: async (data) => {
+    const response = await apiClient.post('/cuotas/cuotas/solicitar_renovacion/', data);
+    return response.data;
+  },
+  
   // ----- Cuotas Mensuales -----
   // Planes
   listarPlanes: async () => {

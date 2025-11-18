@@ -82,11 +82,14 @@ class CuotaMensualCreateSerializer(serializers.ModelSerializer):
 class CuotaMensualSocioSerializer(serializers.ModelSerializer):
     """Serializer simplificado para que el socio vea su cuota"""
     dias_restantes = serializers.SerializerMethodField()
+    plan_info = PlanSerializer(source='plan', read_only=True)
     
     class Meta:
         model = CuotaMensual
         fields = [
             'id',
+            'plan',
+            'plan_info',
             'plan_nombre',
             'plan_precio',
             'fecha_inicio',
@@ -113,6 +116,7 @@ class HistorialPagoSerializer(serializers.ModelSerializer):
             'metodo_pago',
             'referencia',
             'notas',
+            'movimiento_caja_id',
             'created_at'
         ]
         read_only_fields = ['created_at']
@@ -125,10 +129,20 @@ class HistorialPagoSerializer(serializers.ModelSerializer):
 
 
 class RenovarCuotaSerializer(serializers.Serializer):
-    """Serializer para renovar una cuota"""
+    """Serializer para renovar una cuota (ADMIN/ENTRENADOR)"""
     fecha_vencimiento = serializers.DateField(required=False)
     monto = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     metodo_pago = serializers.ChoiceField(
         choices=['tarjeta', 'efectivo', 'transferencia'],
         default='tarjeta'
     )
+
+
+class SolicitudRenovacionSerializer(serializers.Serializer):
+    """Serializer para que el SOCIO renueve su cuota"""
+    plan_id = serializers.IntegerField(required=False, help_text="ID del nuevo plan (opcional)")
+    metodo_pago = serializers.ChoiceField(
+        choices=['tarjeta', 'efectivo', 'transferencia'],
+        default='tarjeta'
+    )
+    tarjeta_ultimos_4 = serializers.CharField(max_length=4, required=False, allow_blank=True)

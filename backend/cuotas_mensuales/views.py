@@ -16,7 +16,8 @@ from .serializers import (
     CuotaMensualCreateSerializer,
     CuotaMensualSocioSerializer,
     HistorialPagoSerializer,
-    RenovarCuotaSerializer
+    RenovarCuotaSerializer,
+    SolicitudRenovacionSerializer
 )
 from movimiento_caja.models import Caja, MovimientoDeCaja
 
@@ -64,6 +65,8 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             return CuotaMensualCreateSerializer
         elif self.action == 'mi_cuota':
             return CuotaMensualSocioSerializer
+        elif self.action == 'solicitar_renovacion':
+            return SolicitudRenovacionSerializer
         return CuotaMensualSerializer
     
     def get_queryset(self):
@@ -96,6 +99,127 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(cuota)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
+    def solicitar_renovacion(self, request):
+        """
+        🆕 Endpoint para que el SOCIO solicite renovación de su cuota
+        con posibilidad de cambiar de plan
+        """
+        # Verificar que el usuario es socio
+        if not request.user.groups.filter(name='socio').exists():
+            return Response(
+                {'detail': 'Solo los socios pueden solicitar renovación'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Obtener cuota actual del socio
+        cuota_actual = CuotaMensual.objects.filter(
+            socio=request.user,
+            estado__in=['activa', 'vencida']
+        ).order_by('-fecha_inicio').first()
+        
+        if not cuota_actual:
+            return Response(
+                {'detail': 'No tienes una cuota para renovar'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Obtener datos validados
+        nuevo_plan_id = serializer.validated_data.get('plan_id')
+        metodo_pago = serializer.validated_data.get('metodo_pago')
+        tarjeta_ultimos_4 = serializer.validated_data.get('tarjeta_ultimos_4', '')
+        
+        # Si no se especifica plan, usar el actual
+        if nuevo_plan_id:
+            try:
+                nuevo_plan = Plan.objects.get(id=nuevo_plan_id, activo=True)
+            except Plan.DoesNotExist:
+                return Response(
+                    {'detail': 'El plan seleccionado no existe o no está activo'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            nuevo_plan = cuota_actual.plan
+        
+        # Verificar si hay caja abierta
+        caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
+        if not caja_abierta:
+            return Response(
+                {
+                    'detail': 'El sistema de pagos no está disponible. Por favor, contacta con la administración.',
+                    'error': 'NO_CAJA_ABIERTA'
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        
+        # Cancelar la cuota actual
+        cuota_actual.estado = 'cancelada'
+        cuota_actual.save()
+        
+        # Crear nueva cuota
+        fecha_inicio = timezone.now().date()
+        fecha_vencimiento = fecha_inicio + timedelta(days=30)
+        
+        nueva_cuota = CuotaMensual.objects.create(
+            socio=request.user,
+            plan=nuevo_plan,
+            plan_nombre=nuevo_plan.nombre,
+            plan_precio=nuevo_plan.precio,
+            fecha_inicio=fecha_inicio,
+            fecha_vencimiento=fecha_vencimiento,
+            estado='activa',
+            tarjeta_ultimos_4=tarjeta_ultimos_4
+        )
+        
+        # Registrar el pago en historial
+        historial_pago = HistorialPago.objects.create(
+            cuota=nueva_cuota,
+            monto=nuevo_plan.precio,
+            metodo_pago=metodo_pago,
+            referencia=f"Renovación - {metodo_pago} {'****' + tarjeta_ultimos_4 if tarjeta_ultimos_4 else ''}",
+            notas=f"Renovación autogestionada - Plan anterior: {cuota_actual.plan_nombre}"
+        )
+        
+        # Registrar en caja
+        try:
+            tipo_pago_caja = 'efectivo' if metodo_pago == 'efectivo' else 'transferencia'
+            
+            movimiento = MovimientoDeCaja.objects.create(
+                caja=caja_abierta,
+                tipo='ingreso',
+                monto=nuevo_plan.precio,
+                tipo_pago=tipo_pago_caja,
+                descripcion=f"Renovación cuota (autogestionada) - {request.user.username} - {nuevo_plan.nombre}",
+                creado_por=request.user.perfil
+            )
+            
+            # Vincular movimiento con historial
+            historial_pago.movimiento_caja_id = movimiento.id
+            historial_pago.save()
+            
+            cambio_plan = nuevo_plan.id != cuota_actual.plan.id
+            mensaje = '¡Renovación exitosa!'
+            if cambio_plan:
+                mensaje += f' Has cambiado de {cuota_actual.plan_nombre} a {nuevo_plan.nombre}'
+            
+            return Response({
+                'success': True,
+                'detail': mensaje,
+                'cuota': CuotaMensualSocioSerializer(nueva_cuota).data,
+                'cambio_plan': cambio_plan,
+                'plan_anterior': cuota_actual.plan_nombre,
+                'plan_nuevo': nuevo_plan.nombre,
+                'monto': float(nuevo_plan.precio)
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"❌ Error al registrar en caja: {str(e)}")
+            raise
+    
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def cuotas_activas(self, request):
         """Listar todas las cuotas activas (admin/entrenador)"""
@@ -126,7 +250,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def renovar(self, request, pk=None):
         """
-        Renovar una cuota mensual Y registrar el pago en caja
+        Renovar una cuota mensual Y registrar el pago en caja (ADMIN/ENTRENADOR)
         """
         cuota = self.get_object()
         
@@ -168,7 +292,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             notas=f"Renovado por {request.user.username}"
         )
         
-        # 🔥 REGISTRAR EN CAJA
+        # REGISTRAR EN CAJA
         try:
             # Determinar tipo de pago para caja
             tipo_pago_caja = 'efectivo' if metodo_pago == 'efectivo' else 'transferencia'
@@ -196,9 +320,8 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             })
                 
         except Exception as e:
-            # Si falla la creación del movimiento, revertir todo
             print(f"❌ Error al crear movimiento de caja: {str(e)}")
-            raise  # Esto hará rollback de la transacción completa
+            raise
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def suspender(self, request, pk=None):
