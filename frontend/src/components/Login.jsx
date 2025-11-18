@@ -1,5 +1,4 @@
 // src/components/Login.jsx - CON JWT Y SHADCN/UI
-
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
