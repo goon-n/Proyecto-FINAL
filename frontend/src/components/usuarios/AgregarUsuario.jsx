@@ -9,14 +9,18 @@ import { UserPlus, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../api/api";
 
-export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
+export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador, soloStaff, soloSocios }) => {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  
+  // Determinar rol por defecto según la sección
+  const rolPorDefecto = soloStaff ? "admin" : "socio";
+  
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     email: "",
-    rol: "socio"
+    rol: rolPorDefecto
   });
 
   const handleChange = (e) => {
@@ -51,6 +55,10 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
       
       if (esEntrenador) {
         toast.success("✅ Socio creado exitosamente. Puede iniciar sesión con las credenciales proporcionadas.");
+      } else if (soloStaff) {
+        toast.success("✅ Usuario del sistema creado exitosamente");
+      } else if (soloSocios) {
+        toast.success("✅ Socio creado exitosamente");
       } else {
         toast.success("✅ Usuario creado exitosamente");
       }
@@ -59,7 +67,7 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
         username: "",
         password: "",
         email: "",
-        rol: "socio"
+        rol: rolPorDefecto
       });
       setMostrarFormulario(false);
       if (onUsuarioCreado) onUsuarioCreado();
@@ -78,7 +86,13 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
           <div className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-green-600" />
             <CardTitle>
-              {esEntrenador ? "Agregar Nuevo Socio" : "Agregar Nuevo Usuario"}
+              {esEntrenador 
+                ? "Agregar Nuevo Socio" 
+                : soloStaff 
+                  ? "Agregar Usuario del Sistema"
+                  : soloSocios
+                    ? "Agregar Nuevo Socio"
+                    : "Agregar Nuevo Usuario"}
             </CardTitle>
           </div>
           <Button
@@ -143,12 +157,24 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
 
               <div>
                 <Label htmlFor="rol">Rol *</Label>
-                {esEntrenador ? (
+                {esEntrenador || soloSocios ? (
                   <Input
                     value="Socio"
                     disabled
                     className="bg-gray-100"
                   />
+                ) : soloStaff ? (
+                  <select
+                    id="rol"
+                    name="rol"
+                    value={formData.rol}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    disabled={guardando}
+                  >
+                    <option value="admin">Administrador</option>
+                    <option value="entrenador">Entrenador</option>
+                  </select>
                 ) : (
                   <select
                     id="rol"
@@ -176,7 +202,7 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
                     username: "",
                     password: "",
                     email: "",
-                    rol: "socio"
+                    rol: rolPorDefecto
                   });
                 }}
                 disabled={guardando}
@@ -184,7 +210,13 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador }) => {
                 Cancelar
               </Button>
               <Button type="submit" disabled={guardando}>
-                {guardando ? "Creando..." : esEntrenador ? "Crear Socio" : "Crear Usuario"}
+                {guardando 
+                  ? "Creando..." 
+                  : esEntrenador || soloSocios
+                    ? "Crear Socio" 
+                    : soloStaff
+                      ? "Crear Usuario"
+                      : "Crear Usuario"}
               </Button>
             </div>
           </form>
