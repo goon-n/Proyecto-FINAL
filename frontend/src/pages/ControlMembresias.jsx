@@ -1,8 +1,8 @@
-// src/pages/ControlMembresias.jsx
+// src/pages/ControlMembresias.jsx - ARCHIVO COMPLETO
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import toast, { Toaster } from "react-hot-toast"; // Importar Toaster y toast
+import toast, { Toaster } from "react-hot-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,17 +49,14 @@ import {
   User,
   Filter,
   Download,
-  MoreHorizontal, // Icono para el menú
-  RefreshCw,      // Icono para renovar
-  Ban,            // Icono para suspender
-  Loader2,        // Icono de carga
-  DollarSign
+  MoreHorizontal,
+  RefreshCw,
+  Ban,
+  Loader2
 } from "lucide-react";
 import api from "../api/api";
 
-// #region --- Componente Modal de Renovación para Admin ---
-// (He creado un nuevo modal simple para el admin)
-
+// Modal de Renovación para Admin
 const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [metodoPago, setMetodoPago] = useState("efectivo");
@@ -79,14 +76,14 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
     try {
       const data = {
         metodo_pago: metodoPago,
-        monto: cuota.plan_price || cuota.plan?.precio
+        monto: cuota.plan_price || cuota.plan_precio
       };
       
-      // Asumo que tienes esta función en tu api.js
       await api.renovarCuota(cuota.id, data);
       
       toast.success(`Membresía de ${cuota.socio_username} renovada exitosamente.`);
-      onSuccess(); // Llama a onSuccess para recargar los datos
+      onSuccess();
+      onClose();
       
     } catch (error) {
       console.error("Error al renovar cuota:", error);
@@ -115,12 +112,12 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
             <CardContent className="pt-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Plan:</span>
-                <span className="font-semibold">{cuota.plan_name || cuota.plan?.nombre}</span>
+                <span className="font-semibold">{cuota.plan_name}</span>
               </div>
               <div className="flex justify-between text-lg">
                 <span className="text-muted-foreground">Monto a Pagar:</span>
                 <span className="font-bold text-green-600">
-                  {formatearPrecio(cuota.plan_price || cuota.plan?.precio)}
+                  {formatearPrecio(cuota.plan_price)}
                 </span>
               </div>
             </CardContent>
@@ -128,7 +125,7 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
           
           {/* Método de Pago */}
           <div className="space-y-2">
-            <Label htmlFor="metodo-pago">Método de Pago (Registrado por Admin)</Label>
+            <Label htmlFor="metodo-pago">Método de Pago</Label>
             <Select value={metodoPago} onValueChange={setMetodoPago}>
               <SelectTrigger id="metodo-pago">
                 <SelectValue placeholder="Seleccionar método" />
@@ -148,18 +145,22 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
           </Button>
           <Button onClick={handleRenovar} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
             {loading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Procesando...
+              </>
             ) : (
-              <CheckCircle className="mr-2 h-4 w-4" />
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Confirmar Pago y Renovar
+              </>
             )}
-            Confirmar Pago y Renovar
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-// #endregion
 
 const ControlMembresias = () => {
   const navigate = useNavigate();
@@ -170,7 +171,6 @@ const ControlMembresias = () => {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
 
-  // Estado para el modal
   const [modalAbierto, setModalAbierto] = useState(false);
   const [cuotaSeleccionada, setCuotaSeleccionada] = useState(null);
   
@@ -206,11 +206,9 @@ const ControlMembresias = () => {
           ...cuota,
           diasRestantes,
           estadoCalculado,
-          // Aseguramos que los datos del plan y socio estén en el objeto
-          plan_name: cuota.plan?.nombre || cuota.plan_nombre,
-          plan_price: cuota.plan?.precio || cuota.plan_precio,
-          socio_username: cuota.socio?.username || cuota.socio_username,
-          socio_email: cuota.socio?.email || cuota.socio_email,
+          // ✅ Usar los nombres correctos del serializer
+          plan_name: cuota.plan_info?.nombre || cuota.plan_nombre,
+          plan_price: cuota.plan_info?.precio || cuota.plan_precio,
         };
       });
       
@@ -229,7 +227,6 @@ const ControlMembresias = () => {
     const hoy = new Date();
     const vencimiento = new Date(fechaVencimiento);
     const diferencia = vencimiento - hoy;
-    // Redondear hacia arriba para los días
     return Math.ceil(diferencia / (1000 * 60 * 60 * 24));
   };
 
@@ -321,7 +318,6 @@ const ControlMembresias = () => {
     toast.error("Exportación a Excel aún no implementada.");
   };
 
-  // --- Handlers para el Modal ---
   const handleAbrirModal = (cuota) => {
     setCuotaSeleccionada(cuota);
     setModalAbierto(true);
@@ -329,30 +325,25 @@ const ControlMembresias = () => {
 
   const handleCerrarModal = () => {
     setModalAbierto(false);
-    // Retrasar el reseteo para que el modal se cierre suavemente
     setTimeout(() => setCuotaSeleccionada(null), 300);
   };
 
   const handleRenovacionExitosa = () => {
     handleCerrarModal();
-    cargarCuotas(); // Recargar toda la lista
+    cargarCuotas();
   };
   
-  // --- Handlers para acciones rápidas ---
-  const handleSuspender = (cuotaId) => {
-    toast.error(`Función "Suspender" (ID: ${cuotaId}) no implementada.`);
-    // Lógica futura:
-    // api.suspenderCuota(cuotaId).then(cargarCuotas);
+  const handleSuspender = async (cuotaId) => {
+    try {
+      await api.suspenderCuota(cuotaId);
+      toast.success("Cuota suspendida correctamente");
+      cargarCuotas();
+    } catch (error) {
+      toast.error("Error al suspender la cuota");
+    }
   };
 
-  const handleCancelar = (cuotaId) => {
-    toast.error(`Función "Cancelar" (ID: ${cuotaId}) no implementada.`);
-    // Lógica futura:
-    // api.cancelarCuota(cuotaId).then(cargarCuotas);
-  };
-
-
-  if (loading && cuotas.length === 0) { // Mostrar solo en carga inicial
+  if (loading && cuotas.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
@@ -401,7 +392,7 @@ const ControlMembresias = () => {
           </CardHeader>
         </Card>
 
-        {/* Estadísticas */}
+        {/* Estadísticas - 4 CARDS SIN DUPLICADOS */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
@@ -423,13 +414,12 @@ const ControlMembresias = () => {
             </CardContent>
           </Card>
 
-          {/* ESTO ES LO QUE TIENES QUE BORRAR (Líneas 439-444 aprox) */}
-          <Card className="border-red-200 bg-red-50">
+          <Card className="border-yellow-200 bg-yellow-50">
             <CardContent className="pt-6">
               <div className="text-center">
-                <AlertCircle className="h-8 w-8 mx-auto text-red-600 mb-2" />
-                <p className="text-3xl font-bold text-red-600">{stats.vencidas}</p>
-                <p className="text-sm text-red-700">Vencidas</p>
+                <AlertCircle className="h-8 w-8 mx-auto text-yellow-600 mb-2" />
+                <p className="text-3xl font-bold text-yellow-600">{stats.porVencer}</p>
+                <p className="text-sm text-yellow-700">Por Vencer</p>
               </div>
             </CardContent>
           </Card>
@@ -485,7 +475,7 @@ const ControlMembresias = () => {
           </CardHeader>
           <CardContent>
             {loading && cuotas.length > 0 && (
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Actualizando...
               </div>
@@ -552,7 +542,6 @@ const ControlMembresias = () => {
                           {formatearPrecio(cuota.plan_price)}
                         </TableCell>
                         <TableCell className="text-center">
-                          {/* --- MENÚ DE ACCIONES --- */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
@@ -576,7 +565,6 @@ const ControlMembresias = () => {
                                 <Ban className="mr-2 h-4 w-4" />
                                 Suspender
                               </DropdownMenuItem>
-                              {/* Agrega más acciones si es necesario */}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -590,7 +578,7 @@ const ControlMembresias = () => {
         </Card>
       </div>
 
-      {/* Renderizar el modal */}
+      {/* Modal */}
       {cuotaSeleccionada && (
         <ModalRenovacionAdmin
           open={modalAbierto}

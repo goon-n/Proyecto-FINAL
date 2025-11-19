@@ -109,6 +109,7 @@ class CompraSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         items_data = validated_data.pop('items')
+        validated_data['total'] = 0  # Inicializar total en 0
         compra = Compra.objects.create(**validated_data)
         
         total = 0

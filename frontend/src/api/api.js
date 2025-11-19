@@ -99,12 +99,13 @@ const api = {
     return response.data;
   },
 
-  // Crear socio con cuota y pago en caja
-  crearCuotaConPago: async (data) => {
-    const response = await apiClient.post('/cuotas/cuotas/crear_con_pago/', data);
+  // Renovación desde el socio (autogestionada)
+  solicitarRenovacion: async (data) => {
+    const response = await apiClient.post('/cuotas/cuotas/solicitar_renovacion/', data);
     return response.data;
   },
 
+  // Renovación desde admin/entrenador
   renovarCuota: async (cuotaId, data) => {
     const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/renovar/`, data);
     return response.data;

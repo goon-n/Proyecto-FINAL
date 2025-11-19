@@ -9,6 +9,8 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta, datetime, time
 from backend.permissions import IsStaffUser
+from rest_framework.permissions import IsAuthenticated
+
 
 class TurnoViewSet(viewsets.ModelViewSet):
     
@@ -366,3 +368,10 @@ class TurnoViewSet(viewsets.ModelViewSet):
         return Response({
             'detail': 'No se puede cancelar este turno'
         }, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'], url_path='mis_turnos', permission_classes=[IsAuthenticated])
+    def mis_turnos(self, request):
+        """Devuelve los turnos del usuario autenticado"""
+        turnos = Turno.objects.filter(socio=request.user).order_by('hora_inicio')
+        serializer = self.get_serializer(turnos, many=True)
+        return Response(serializer.data)

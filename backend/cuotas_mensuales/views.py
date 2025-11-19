@@ -103,11 +103,11 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def solicitar_renovacion(self, request):
         """
-        🆕 Endpoint para que el SOCIO solicite renovación de su cuota
+        Endpoint para que el SOCIO solicite renovación de su cuota
         con posibilidad de cambiar de plan
         """
         # Verificar que el usuario es socio
-        if not request.user.groups.filter(name='socio').exists():
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'socio':
             return Response(
                 {'detail': 'Solo los socios pueden solicitar renovación'},
                 status=status.HTTP_403_FORBIDDEN
@@ -125,13 +125,10 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Obtener datos validados
-        nuevo_plan_id = serializer.validated_data.get('plan_id')
-        metodo_pago = serializer.validated_data.get('metodo_pago')
-        tarjeta_ultimos_4 = serializer.validated_data.get('tarjeta_ultimos_4', '')
+        # Obtener datos del request
+        nuevo_plan_id = request.data.get('plan_id')
+        metodo_pago = request.data.get('metodo_pago', 'tarjeta')
+        tarjeta_ultimos_4 = request.data.get('tarjeta_ultimos_4', '')
         
         # Si no se especifica plan, usar el actual
         if nuevo_plan_id:
@@ -146,6 +143,8 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             nuevo_plan = cuota_actual.plan
         
         # Verificar si hay caja abierta
+        from movimiento_caja.models import Caja, MovimientoDeCaja
+        
         caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
         if not caja_abierta:
             return Response(
@@ -172,7 +171,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             fecha_inicio=fecha_inicio,
             fecha_vencimiento=fecha_vencimiento,
             estado='activa',
-            tarjeta_ultimos_4=tarjeta_ultimos_4
+            tarjeta_ultimos_4=tarjeta_ultimos_4[-4:] if tarjeta_ultimos_4 else ''
         )
         
         # Registrar el pago en historial
@@ -180,7 +179,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             cuota=nueva_cuota,
             monto=nuevo_plan.precio,
             metodo_pago=metodo_pago,
-            referencia=f"Renovación - {metodo_pago} {'****' + tarjeta_ultimos_4 if tarjeta_ultimos_4 else ''}",
+            referencia=f"Renovación - {metodo_pago} {'****' + tarjeta_ultimos_4[-4:] if tarjeta_ultimos_4 else ''}",
             notas=f"Renovación autogestionada - Plan anterior: {cuota_actual.plan_nombre}"
         )
         

@@ -17,6 +17,7 @@ import TurnosPage from "./pages/TurnosPage";
 import Payment from "./pages/Payment";
 import MembresiaSocio from "./pages/MembresiaSocio";
 import Perfil from "./pages/Perfil";
+import MisTurnosResumen from "./components/turnos/MisTurnosResumen";
 
 function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
@@ -61,6 +62,7 @@ export default function App() {
                   <Route path="caja" element={<CajaPage />} />
                   <Route path="turnos" element={<TurnosPage userRole="admin" />} />
                   <Route path="membresias" element={<ControlMembresias />} />
+                  <Route path="perfil" element={<Perfil />} />
                 </Routes>
               </AdminLayout>
             </PrivateRoute>
@@ -80,6 +82,7 @@ export default function App() {
                   <Route path="caja" element={<CajaPage />} />
                   <Route path="turnos" element={<TurnosPage userRole="entrenador" />} />
                   <Route path="membresias" element={<ControlMembresias />} />
+                  <Route path="perfil" element={<Perfil />} />
                 </Routes>
               </AdminLayout>
             </PrivateRoute>
@@ -111,7 +114,23 @@ export default function App() {
             </PrivateRoute>
           }
         />
-        
+        <Route
+          path="/socio/perfil"
+          element={
+            <PrivateRoute rolesPermitidos={["socio"]}>
+              <Perfil />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/socio/mis-turnos"
+          element={
+            <PrivateRoute rolesPermitidos={["socio"]}>
+              <MisTurnosResumen />
+            </PrivateRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

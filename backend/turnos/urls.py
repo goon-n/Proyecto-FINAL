@@ -9,4 +9,5 @@ router.register(r'turno', TurnoViewSet, basename='turno')  # 👈 CAMBIAR A SING
 
 urlpatterns = [
     path('', include(router.urls)),
+    
 ]
