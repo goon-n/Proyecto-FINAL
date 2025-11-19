@@ -1,5 +1,3 @@
-// src/pages/HomeSocio.jsx
-
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +14,9 @@ import {
   TrendingUp, 
   ArrowRight, 
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  UserCircle,
+  ListChecks
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "../api/api";
@@ -99,6 +99,26 @@ const HomeSocio = () => {
               <CardDescription className="text-lg mt-2">
                 Bienvenido a tu panel de socio
               </CardDescription>
+              <div className="flex gap-2 mt-4">
+                {/* BOTÓN DE PERFIL */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(perfil) => navigate("/perfil")}
+                >
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  Ver perfil
+                </Button>
+                {/* BOTÓN MIS TURNOS */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/socio/mis-turnos")}
+                >
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  Mis turnos
+                </Button>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <Badge variant="default" className="text-base px-4 py-2">

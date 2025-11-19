@@ -1,4 +1,4 @@
-# cuotas_mensuales/serializers.py
+# cuotas_mensuales/serializers.py - ARCHIVO COMPLETO CORREGIDO
 
 from rest_framework import serializers
 from .models import Plan, CuotaMensual, HistorialPago
@@ -129,20 +129,39 @@ class HistorialPagoSerializer(serializers.ModelSerializer):
 
 
 class RenovarCuotaSerializer(serializers.Serializer):
-    """Serializer para renovar una cuota (ADMIN/ENTRENADOR)"""
-    fecha_vencimiento = serializers.DateField(required=False)
-    monto = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    """
+    Serializer para renovar una cuota (ADMIN/ENTRENADOR)
+    Acepta plan_id para permitir el cambio de plan y referencia para el comprobante.
+    """
+    # 🟢 AÑADIDO: Para permitir el cambio de plan
+    plan_id = serializers.IntegerField(required=False, help_text="ID del nuevo plan (opcional)") 
+    
+    # Campo que era opcional en la vista anterior, pero la nueva lógica lo gestiona
+    fecha_vencimiento = serializers.DateField(required=False) 
+    
+    # Monto es requerido, aunque se pueda calcular en el backend, es mejor enviarlo
+    monto = serializers.DecimalField(max_digits=10, decimal_places=2, required=True) 
+    
     metodo_pago = serializers.ChoiceField(
         choices=['tarjeta', 'efectivo', 'transferencia'],
-        default='tarjeta'
+        default='efectivo' # Admin/Entrenador inicia con 'efectivo'
     )
+    
+    # 🟢 AÑADIDO: Para el comprobante de pago o últimos 4 de tarjeta
+    referencia = serializers.CharField(max_length=100, required=False, allow_blank=True) 
 
 
 class SolicitudRenovacionSerializer(serializers.Serializer):
-    """Serializer para que el SOCIO renueve su cuota"""
+    """
+    Serializer para que el SOCIO renueve su cuota.
+    El método de pago siempre es tarjeta, aunque se acepta como ChoiceField.
+    """
     plan_id = serializers.IntegerField(required=False, help_text="ID del nuevo plan (opcional)")
+    
     metodo_pago = serializers.ChoiceField(
         choices=['tarjeta', 'efectivo', 'transferencia'],
         default='tarjeta'
     )
-    tarjeta_ultimos_4 = serializers.CharField(max_length=4, required=False, allow_blank=True)
+    
+    # 🟢 AJUSTADO: Se requiere para el registro en historial y se usa como 'referencia' en la vista
+    tarjeta_ultimos_4 = serializers.CharField(max_length=4, required=True, allow_blank=False)

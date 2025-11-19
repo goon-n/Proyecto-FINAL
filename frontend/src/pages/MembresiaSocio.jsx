@@ -1,4 +1,4 @@
-// src/pages/MembresiaSocio.jsx
+// src/pages/MembresiaSocio.jsx - ARCHIVO COMPLETO
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -48,18 +48,15 @@ const MembresiaSocio = () => {
         const pagosData = await api.miHistorialPagos();
         setHistorialPagos(pagosData || []);
       } catch (errorPagos) {
-        console.log("No hay historial de pagos");
         setHistorialPagos([]);
       }
       
       setError(null);
     } catch (error) {
       if (error.response?.status === 404) {
-        console.log("No hay cuota activa");
         setCuotaMensual(null);
         setError("No tienes una membresía activa");
       } else {
-        console.error("Error al cargar membresía:", error);
         setError("Error al cargar la información de tu membresía");
       }
     } finally {
@@ -68,16 +65,23 @@ const MembresiaSocio = () => {
   };
 
   const handleRenovacionExitosa = () => {
-    // Recargar datos después de renovar
     cargarDatos();
+    setMostrarModalRenovacion(false);
   };
 
   const calcularDiasRestantes = (fechaVencimiento) => {
-    if (!fechaVencimiento) return 0;
+    if (!fechaVencimiento) {
+      return 0;
+    }
+    
     const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
     const vencimiento = new Date(fechaVencimiento);
+    vencimiento.setHours(0, 0, 0, 0);
     const diferencia = vencimiento - hoy;
-    return Math.ceil(diferencia / (1000 * 60 * 60 * 24));
+    const dias = Math.ceil(diferencia / (1000 * 60 * 60 * 24));
+    
+    return dias;
   };
 
   const formatearFecha = (fecha) => {
@@ -111,10 +115,15 @@ const MembresiaSocio = () => {
   };
 
   const puedeRenovar = () => {
-    if (!cuotaMensual) return false;
+    if (!cuotaMensual) {
+      return false;
+    }
+    
     const diasRestantes = calcularDiasRestantes(cuotaMensual.fecha_vencimiento);
-    // Permitir renovación si faltan 7 días o menos, o si ya venció
-    return diasRestantes <= 7 || cuotaMensual.estado === 'vencida';
+    const puedeRenovarPorDias = diasRestantes <= 7;
+    const estaVencida = cuotaMensual.estado === 'vencida';
+    
+    return puedeRenovarPorDias || estaVencida;
   };
 
   if (loading) {
@@ -183,12 +192,13 @@ const MembresiaSocio = () => {
 
   const diasRestantes = calcularDiasRestantes(cuotaMensual.fecha_vencimiento);
   const estadoBadge = getEstadoBadge(cuotaMensual.estado, diasRestantes);
+  const mostrarBotonRenovar = puedeRenovar();
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
           <Button 
             onClick={() => navigate("/socio")} 
             variant="outline"
@@ -198,9 +208,11 @@ const MembresiaSocio = () => {
           </Button>
 
           {/* Botón de Renovar */}
-          {puedeRenovar() && (
+          {mostrarBotonRenovar && (
             <Button 
-              onClick={() => setMostrarModalRenovacion(true)}
+              onClick={() => {
+                setMostrarModalRenovacion(true);
+              }}
               className="bg-blue-600 hover:bg-blue-700"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -212,14 +224,14 @@ const MembresiaSocio = () => {
         {/* Título */}
         <Card className="mb-6">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <CardTitle className="text-3xl font-bold flex items-center gap-2">
                   <CreditCard className="h-8 w-8 text-primary" />
                   Mi Membresía
                 </CardTitle>
                 <CardDescription className="text-lg mt-2">
-                  Plan: {cuotaMensual.plan_nombre || 'N/A'}
+                  Plan: {cuotaMensual.plan_nombre || cuotaMensual.plan_info?.nombre || 'N/A'}
                 </CardDescription>
               </div>
               <Badge className={estadoBadge.className}>
@@ -234,14 +246,16 @@ const MembresiaSocio = () => {
           <Alert className="mb-6 border-orange-600 bg-orange-50">
             <AlertTriangle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-800">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <span>
-                  Tu membresía vence en {diasRestantes} {diasRestantes === 1 ? "día" : "días"}. 
+                  ⚠️ Tu membresía vence en <strong>{diasRestantes}</strong> {diasRestantes === 1 ? "día" : "días"}. 
                 </span>
                 <Button
                   size="sm"
-                  onClick={() => setMostrarModalRenovacion(true)}
-                  className="bg-orange-600 hover:bg-orange-700 ml-4"
+                  onClick={() => {
+                    setMostrarModalRenovacion(true);
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700"
                 >
                   Renovar ahora
                 </Button>
@@ -255,13 +269,14 @@ const MembresiaSocio = () => {
           <Alert variant="destructive" className="mb-6">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              <div className="flex items-center justify-between">
-                <span>Tu membresía ha vencido.</span>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <span>❌ Tu membresía ha vencido.</span>
                 <Button
                   size="sm"
-                  onClick={() => setMostrarModalRenovacion(true)}
+                  onClick={() => {
+                    setMostrarModalRenovacion(true);
+                  }}
                   variant="secondary"
-                  className="ml-4"
                 >
                   Renovar ahora
                 </Button>
@@ -284,14 +299,14 @@ const MembresiaSocio = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Tipo de Plan</p>
                 <p className="text-xl font-semibold">
-                  {cuotaMensual.plan_nombre}
+                  {cuotaMensual.plan_nombre || cuotaMensual.plan_info?.nombre}
                 </p>
               </div>
               <Separator />
               <div>
                 <p className="text-sm text-muted-foreground">Precio Mensual</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatearPrecio(cuotaMensual.plan_precio)}
+                  {formatearPrecio(cuotaMensual.plan_precio || cuotaMensual.plan_info?.precio)}
                 </p>
               </div>
             </CardContent>
@@ -358,7 +373,7 @@ const MembresiaSocio = () => {
                   Próximo Pago
                 </p>
                 <p className="text-lg font-semibold text-purple-700 mt-1">
-                  {formatearPrecio(cuotaMensual.plan_precio)}
+                  {formatearPrecio(cuotaMensual.plan_precio || cuotaMensual.plan_info?.precio)}
                 </p>
               </div>
             </div>
@@ -406,12 +421,16 @@ const MembresiaSocio = () => {
       </div>
 
       {/* Modal de Renovación */}
-      <RenovarMembresia
-        open={mostrarModalRenovacion}
-        onClose={() => setMostrarModalRenovacion(false)}
-        cuotaActual={cuotaMensual}
-        onSuccess={handleRenovacionExitosa}
-      />
+      {cuotaMensual && (
+        <RenovarMembresia
+          open={mostrarModalRenovacion}
+          onClose={() => {
+            setMostrarModalRenovacion(false);
+          }}
+          cuotaActual={cuotaMensual}
+          onSuccess={handleRenovacionExitosa}
+        />
+      )}
     </div>
   );
 };

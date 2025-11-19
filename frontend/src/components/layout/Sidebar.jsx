@@ -1,15 +1,16 @@
-// src/components/layout/Sidebar.jsx
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Home, 
+  User,
   Users, 
   ShoppingBag, 
   DollarSign, 
   ShoppingCart, 
   Package,
-  Calendar, // 👈 NUEVO ÍCONO
+  Calendar,
+  CreditCard, // 👈 AÑADIDO
   LogOut,
   X
 } from "lucide-react";
@@ -43,7 +44,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       roles: ['admin', 'entrenador']
     },
     {
-      name: "Turnos", // 👈 NUEVO
+      name: "Membresías", // 👈 AÑADIDO
+      path: `${basePath}/membresias`,
+      icon: CreditCard,
+      roles: ['admin', 'entrenador']
+    },
+    {
+      name: "Turnos",
       path: `${basePath}/turnos`,
       icon: Calendar,
       roles: ['admin', 'entrenador']
@@ -55,22 +62,28 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       roles: ['admin', 'entrenador']
     },
     {
-      name: "Proveedores",
-      path: `${basePath}/proveedores`,
-      icon: ShoppingBag,
-      roles: ['admin'] // Solo admin
-    },
-    {
       name: "Accesorios",
       path: `${basePath}/accesorios`,
       icon: Package,
       roles: ['admin', 'entrenador']
     },
     {
+      name: "Proveedores",
+      path: `${basePath}/proveedores`,
+      icon: ShoppingBag,
+      roles: ['admin'] // Solo admin
+    },
+    {
       name: "Compras",
       path: `${basePath}/compras`,
       icon: ShoppingCart,
       roles: ['admin'] // Solo admin
+    },
+    {
+      name: "Mi Perfil", // 👈 ARREGLADO
+      icon: User,
+      path: `${basePath}/perfil`, // Ruta corregida
+      roles: ['admin', 'entrenador'] // Roles añadidos
     },
   ];
 

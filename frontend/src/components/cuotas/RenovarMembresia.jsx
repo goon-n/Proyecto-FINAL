@@ -1,55 +1,67 @@
-// src/components/cuotas/RenovarMembresia.jsx
+// src/components/cuotas/RenovarMembresia.jsx - CÓDIGO COMPLETO Y CORREGIDO PARA SOCIO
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   CreditCard, 
   CheckCircle, 
   Loader2, 
   AlertCircle,
-  TrendingUp,
-  DollarSign
+  Info,
+  TrendingUp 
 } from "lucide-react";
 import api from "../../api/api";
 import toast from "react-hot-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 
 const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
-  const [planes, setPlanes] = useState([]);
-  const [planSeleccionado, setPlanSeleccionado] = useState(null);
-  const [metodoPago, setMetodoPago] = useState("tarjeta");
   const [tarjetaNumero, setTarjetaNumero] = useState("");
+  const [tarjetaTitular, setTarjetaTitular] = useState("");
+  const [tarjetaVencimiento, setTarjetaVencimiento] = useState("");
+  const [tarjetaCVV, setTarjetaCVV] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingPlanes, setLoadingPlanes] = useState(true);
+  const [errorPlanes, setErrorPlanes] = useState(null); 
+  
+  // Estados para la selección de plan
+  const [planes, setPlanes] = useState([]);
+  const planActualId = cuotaActual?.plan || cuotaActual?.plan_info?.id;
+  const [planSeleccionadoId, setPlanSeleccionadoId] = useState(planActualId);
 
   useEffect(() => {
     if (open) {
-      cargarPlanes();
-      // Por defecto, seleccionar el plan actual
-      if (cuotaActual?.plan) {
-        setPlanSeleccionado(cuotaActual.plan);
-      }
-    }
-  }, [open, cuotaActual]);
+      // Cargar planes activos
+      const fetchPlanes = async () => {
+        try {
+          const data = await api.listarPlanesActivos();
+          setPlanes(data);
+          setErrorPlanes(null);
+        } catch (err) {
+          console.error("Error al cargar planes:", err);
+          setErrorPlanes("No se pudieron cargar los planes disponibles para el cambio.");
+        }
+      };
 
-  const cargarPlanes = async () => {
-    try {
-      setLoadingPlanes(true);
-      const data = await api.listarPlanesActivos();
-      setPlanes(data);
-    } catch (error) {
-      console.error("Error al cargar planes:", error);
-      toast.error("Error al cargar los planes disponibles");
-    } finally {
-      setLoadingPlanes(false);
+      fetchPlanes();
+      setPlanSeleccionadoId(planActualId); 
+      // Reset form cuando se abre el modal
+      setTarjetaNumero("");
+      setTarjetaTitular("");
+      setTarjetaVencimiento("");
+      setTarjetaCVV("");
     }
-  };
+  }, [open, planActualId]);
 
   const formatCardNumber = (value) => {
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
@@ -68,42 +80,57 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
     }
   };
 
+  const formatExpiry = (value) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return v.slice(0, 2) + '/' + v.slice(2, 4);
+    }
+    return v;
+  };
+
+  const planElegido = planes.find(p => p.id === planSeleccionadoId) || cuotaActual.plan_info;
+  const precioFinal = planElegido?.precio || cuotaActual.plan_precio;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!planSeleccionado) {
-      toast.error("Debes seleccionar un plan");
+    // Validaciones
+    const numeroLimpio = tarjetaNumero.replace(/\s/g, '');
+    if (numeroLimpio.length !== 16) {
+      toast.error("El número de tarjeta debe tener 16 dígitos");
       return;
     }
-
-    if (metodoPago === "tarjeta" && tarjetaNumero.replace(/\s/g, '').length !== 16) {
-      toast.error("El número de tarjeta debe tener 16 dígitos");
+    if (!tarjetaTitular.trim()) {
+      toast.error("Debes ingresar el nombre del titular");
+      return;
+    }
+    if (tarjetaVencimiento.length !== 5) {
+      toast.error("Formato de vencimiento inválido (MM/AA)");
+      return;
+    }
+    if (tarjetaCVV.length !== 3 && tarjetaCVV.length !== 4) {
+      toast.error("El CVV debe tener 3 o 4 dígitos");
       return;
     }
 
     setLoading(true);
 
     try {
-      const ultimos4 = metodoPago === "tarjeta" 
-        ? tarjetaNumero.replace(/\s/g, '').slice(-4) 
-        : '';
+      const ultimos4 = numeroLimpio.slice(-4);
+      const isPlanChanged = planSeleccionadoId !== planActualId;
 
       const data = {
-        plan_id: planSeleccionado,
-        metodo_pago: metodoPago,
-        tarjeta_ultimos_4: ultimos4
+        metodo_pago: 'tarjeta', // Restricción de Socio
+        tarjeta_ultimos_4: ultimos4, // Se envía como referencia
+        ...(isPlanChanged && { plan_id: planSeleccionadoId }) // Envío del nuevo plan
       };
 
-      const response = await api.solicitarRenovacion(data);
+      console.log("📤 Enviando renovación (Socio - Tarjeta):", data);
+
+      const response = await api.solicitarRenovacion(data); 
 
       toast.success(response.detail || "¡Renovación exitosa!");
       
-      if (response.cambio_plan) {
-        toast.success(`Has cambiado de ${response.plan_anterior} a ${response.plan_nuevo}`, {
-          duration: 5000
-        });
-      }
-
       onSuccess && onSuccess(response);
       onClose();
     } catch (error) {
@@ -115,10 +142,6 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
     }
   };
 
-  const planActualId = cuotaActual?.plan;
-  const planSeleccionadoData = planes.find(p => p.id === planSeleccionado);
-  const esCambioPlan = planSeleccionado && planSeleccionado !== planActualId;
-
   const formatearPrecio = (precio) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -127,195 +150,155 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
     }).format(precio || 0);
   };
 
+  if (!cuotaActual) return null;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             <CreditCard className="h-6 w-6 text-blue-600" />
-            Renovar Membresía
+            Renovar Membresía y Cambiar Plan
           </DialogTitle>
           <DialogDescription>
-            Elige tu plan y método de pago para renovar tu membresía
+             Renueva tu plan actual o selecciona uno nuevo.
           </DialogDescription>
+          {/* ^^^^^^ ESTA ETIQUETA DE CIERRE ESTABA MAL ESCRITA */}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-          {/* Selección de Plan */}
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold">Selecciona tu plan</Label>
-            
-            {loadingPlanes ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              </div>
+          
+          {/* Selector de Plan */}
+          <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold flex items-center gap-2 text-blue-800">
+                <TrendingUp className="h-5 w-5"/>
+                Selección de Plan
+            </h3>
+            {errorPlanes ? (
+                 <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{errorPlanes}</AlertDescription>
+                </Alert>
             ) : (
-              <RadioGroup
-                value={planSeleccionado?.toString()}
-                onValueChange={(value) => setPlanSeleccionado(parseInt(value))}
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {planes.map((plan) => {
-                    const esActual = plan.id === planActualId;
-                    const esSeleccionado = plan.id === planSeleccionado;
-
-                    return (
-                      <Card 
-                        key={plan.id}
-                        className={`cursor-pointer transition-all ${
-                          esSeleccionado 
-                            ? 'border-2 border-blue-600 shadow-lg' 
-                            : 'border-2 border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => setPlanSeleccionado(plan.id)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <RadioGroupItem value={plan.id.toString()} id={`plan-${plan.id}`} />
-                                <h3 className="font-bold text-lg">{plan.nombre}</h3>
-                              </div>
-                              <p className="text-sm text-gray-600">{plan.frecuencia}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-blue-600">
-                                {formatearPrecio(plan.precio)}
-                              </p>
-                              <p className="text-xs text-gray-500">por mes</p>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {esActual && (
-                              <Badge className="bg-green-100 text-green-700 border-green-300">
-                                Plan Actual
-                              </Badge>
-                            )}
-                            {plan.es_popular && (
-                              <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">
-                                ⭐ Popular
-                              </Badge>
-                            )}
-                          </div>
-
-                          {plan.features && plan.features.length > 0 && (
-                            <ul className="space-y-1">
-                              {plan.features.slice(0, 3).map((feature, idx) => (
-                                <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </RadioGroup>
+                <Select 
+                    value={String(planSeleccionadoId)} 
+                    onValueChange={(value) => setPlanSeleccionadoId(Number(value))}
+                    disabled={loading || planes.length === 0}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {planes.map((plan) => (
+                            <SelectItem key={plan.id} value={String(plan.id)}>
+                                {plan.nombre} - {formatearPrecio(plan.precio)}
+                                {plan.id === planActualId && " (Actual)"}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             )}
+            
           </div>
 
-          {/* Alerta de cambio de plan */}
-          {esCambioPlan && (
-            <Alert className="bg-blue-50 border-blue-200">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                Vas a cambiar tu plan de <strong>{cuotaActual?.plan_nombre}</strong> a{" "}
-                <strong>{planSeleccionadoData?.nombre}</strong>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Método de Pago */}
+          {/* Datos de la Tarjeta */}
           <div className="space-y-4">
-            <Label className="text-lg font-semibold">Método de pago</Label>
-            
-            <RadioGroup value={metodoPago} onValueChange={setMetodoPago}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card 
-                  className={`cursor-pointer ${metodoPago === 'tarjeta' ? 'border-2 border-blue-600' : 'border-2 border-gray-200'}`}
-                  onClick={() => setMetodoPago('tarjeta')}
-                >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <RadioGroupItem value="tarjeta" id="tarjeta" />
-                    <Label htmlFor="tarjeta" className="cursor-pointer flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      Tarjeta
-                    </Label>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className={`cursor-pointer ${metodoPago === 'transferencia' ? 'border-2 border-blue-600' : 'border-2 border-gray-200'}`}
-                  onClick={() => setMetodoPago('transferencia')}
-                >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <RadioGroupItem value="transferencia" id="transferencia" />
-                    <Label htmlFor="transferencia" className="cursor-pointer flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      Transferencia
-                    </Label>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className={`cursor-pointer ${metodoPago === 'efectivo' ? 'border-2 border-blue-600' : 'border-2 border-gray-200'}`}
-                  onClick={() => setMetodoPago('efectivo')}
-                >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <RadioGroupItem value="efectivo" id="efectivo" />
-                    <Label htmlFor="efectivo" className="cursor-pointer flex items-center gap-2">
-                      💵 Efectivo
-                    </Label>
-                  </CardContent>
-                </Card>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-blue-600" />
+              Datos de la Tarjeta (Único método permitido)
+            </h3>
+            <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+              {/* Número de Tarjeta */}
+              <div>
+                <Label htmlFor="numero-tarjeta">Número de Tarjeta *</Label>
+                <Input
+                  id="numero-tarjeta"
+                  type="text"
+                  placeholder="1234 5678 9012 3456"
+                  value={tarjetaNumero}
+                  onChange={(e) => setTarjetaNumero(formatCardNumber(e.target.value))}
+                  maxLength="19"
+                  required
+                  className="text-lg tracking-wider"
+                />
               </div>
-            </RadioGroup>
 
-            {/* Campos de tarjeta */}
-            {metodoPago === "tarjeta" && (
-              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+              {/* Titular */}
+              <div>
+                <Label htmlFor="titular">Nombre del Titular *</Label>
+                <Input
+                  id="titular"
+                  type="text"
+                  placeholder="JUAN PEREZ"
+                  value={tarjetaTitular}
+                  onChange={(e) => setTarjetaTitular(e.target.value.toUpperCase())}
+                  required
+                />
+              </div>
+
+              {/* Vencimiento y CVV */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="numero-tarjeta">Número de tarjeta</Label>
+                  <Label htmlFor="vencimiento">Vencimiento (MM/AA) *</Label>
                   <Input
-                    id="numero-tarjeta"
+                    id="vencimiento"
                     type="text"
-                    placeholder="1234 5678 9012 3456"
-                    value={tarjetaNumero}
-                    onChange={(e) => setTarjetaNumero(formatCardNumber(e.target.value))}
-                    maxLength="19"
-                    required={metodoPago === "tarjeta"}
+                    placeholder="12/25"
+                    value={tarjetaVencimiento}
+                    onChange={(e) => setTarjetaVencimiento(formatExpiry(e.target.value))}
+                    maxLength="5"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="cvv">CVV *</Label>
+                  <Input
+                    id="cvv"
+                    type="text"
+                    placeholder="123"
+                    value={tarjetaCVV}
+                    onChange={(e) => setTarjetaCVV(e.target.value.replace(/\D/g, ''))}
+                    maxLength="4"
+                    required
                   />
                 </div>
               </div>
-            )}
+
+              <Alert className="bg-yellow-50 border-yellow-200">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800 text-sm">
+                  🔒 Tus datos están seguros. No almacenamos información completa de tarjetas.
+                </AlertDescription>
+              </Alert>
+            </div>
           </div>
 
-          {/* Resumen */}
-          {planSeleccionadoData && (
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="p-4">
-                <h4 className="font-semibold mb-2">Resumen de renovación</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Plan seleccionado:</span>
-                    <span className="font-semibold">{planSeleccionadoData.nombre}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Método de pago:</span>
-                    <span className="font-semibold capitalize">{metodoPago}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
-                    <span>Total a pagar:</span>
-                    <span className="text-blue-600">{formatearPrecio(planSeleccionadoData.precio)}</span>
-                  </div>
+          {/* Resumen del Pago */}
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <h4 className="font-semibold mb-3">Resumen de Renovación</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Plan:</span>
+                  <span className="font-semibold">{planElegido?.nombre || 'N/A'}</span>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="flex justify-between">
+                  <span>Método de pago:</span>
+                  <span className="font-semibold flex items-center gap-1">
+                    <CreditCard className="h-4 w-4" />
+                    Tarjeta
+                  </span>
+                </div>
+                <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                  <span>Total a pagar:</span>
+                  <span className="text-blue-600">
+                    {formatearPrecio(precioFinal)}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Botones */}
           <div className="flex gap-4 pt-4">
@@ -330,7 +313,7 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
             </Button>
             <Button
               type="submit"
-              disabled={loading || !planSeleccionado}
+              disabled={loading}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
               {loading ? (
@@ -341,7 +324,7 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
               ) : (
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Confirmar Renovación
+                  Confirmar Pago
                 </>
               )}
             </Button>

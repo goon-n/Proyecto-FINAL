@@ -787,3 +787,61 @@ def eliminar_compra_con_stock(request, compra_id):
     
     compra.delete()
     return Response({'detail': 'Compra eliminada y stock actualizado'}, status=200)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def mi_perfil(request):
+    """
+    GET: Obtener datos del perfil del usuario actual
+    PATCH: Actualizar datos del perfil del usuario actual
+    """
+    user = request.user
+    
+    if request.method == 'GET':
+        # Obtener datos del usuario
+        data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'rol': user.perfil.rol if hasattr(user, 'perfil') else 'socio',
+            'date_joined': user.date_joined,
+            'is_active': user.perfil.is_active if hasattr(user, 'perfil') else True
+        }
+        return Response(data, status=200)
+    
+    elif request.method == 'PATCH':
+        # Actualizar datos del usuario
+        email = request.data.get('email')
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        
+        # Validar email único si se está cambiando
+        if email and email != user.email:
+            if User.objects.filter(email=email).exists():
+                return Response({
+                    'error': 'Este email ya está en uso por otro usuario'
+                }, status=400)
+            user.email = email
+        
+        # Actualizar nombre y apellido
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
+        
+        user.save()
+        
+        return Response({
+            'message': 'Perfil actualizado correctamente',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'rol': user.perfil.rol if hasattr(user, 'perfil') else 'socio'
+            }
+        }, status=200)
