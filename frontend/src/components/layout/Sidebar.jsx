@@ -44,7 +44,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       roles: ['admin', 'entrenador']
     },
     {
-      name: "Membresías", // 👈 AÑADIDO
+      name: "Cuotas", // 
       path: `${basePath}/membresias`,
       icon: CreditCard,
       roles: ['admin', 'entrenador']

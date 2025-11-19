@@ -244,9 +244,9 @@ const HomeEntrenador = () => {
                 <div className="flex items-start gap-3 w-full">
                   <CreditCard className="h-5 w-5 text-purple-600 mt-0.5" />
                   <div className="text-left">
-                    <div className="font-semibold">Membresías</div>
+                    <div className="font-semibold">Cuotas</div>
                     <div className="text-xs text-muted-foreground">
-                      Control de pagos
+                      Gestion de pagos
                     </div>
                   </div>
                 </div>

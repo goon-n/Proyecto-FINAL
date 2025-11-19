@@ -480,9 +480,9 @@ def register_with_payment(request):
                 caja=caja_abierta,
                 tipo='ingreso',
                 monto=plan.precio,
-                tipo_pago='transferencia',  # Tarjeta se registra como transferencia
+                tipo_pago='tarjeta', 
                 descripcion=f"Nuevo socio: {nombre} ({username}) - Plan: {plan.nombre}" + 
-                           (f" - Tarjeta ****{card_last4[-4:]}" if card_last4 else ""),
+                        (f" - Tarjeta ****{card_last4[-4:]}" if card_last4 else ""),
                 creado_por=caja_abierta.empleado_apertura
             )
             print(f"✅ Movimiento de caja creado: ID #{movimiento.id}")

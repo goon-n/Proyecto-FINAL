@@ -124,28 +124,29 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
   const procesarCreacionSocio = async (datosTarjeta = null) => {
     setGuardando(true);
     try {
-      // Primero crear el usuario con rol socio
+      // 1. Crear el usuario
       const usuarioData = {
         username: formData.username,
         password: formData.password,
-        email: formData.email,
-        rol: "socio"
+        email: formData.email
       };
       
+      console.log("📤 Creando usuario:", usuarioData);
       const usuarioCreado = await api.crearUsuario(usuarioData);
+      console.log("✅ Usuario creado:", usuarioCreado);
       
-      // Luego crear la cuota mensual con el pago
+      // 2. Crear la cuota mensual con el pago
       const cuotaData = {
         socio: usuarioCreado.user.id,
-        plan: formData.plan_id,
+        plan: parseInt(formData.plan_id),
+        monto: parseFloat(formData.monto_pago),
         metodo_pago: formData.metodo_pago,
-        monto: formData.monto_pago,
-        nombre_completo: formData.nombre,
-        telefono: formData.telefono,
         ...(datosTarjeta && { tarjeta_ultimos_4: datosTarjeta.ultimos4 })
       };
       
-      await api.crearCuotaConPago(cuotaData);
+      console.log("📤 Creando cuota con pago:", cuotaData);
+      const cuotaResponse = await api.crearCuotaConPago(cuotaData);
+      console.log("✅ Cuota creada:", cuotaResponse);
       
       const mensajeTarjeta = datosTarjeta ? ` - Tarjeta **** ${datosTarjeta.ultimos4}` : '';
       toast.success(`✅ Socio ${formData.nombre} creado con membresía ${planSeleccionado?.nombre}${mensajeTarjeta}`);
@@ -168,6 +169,8 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
       if (onSocioCreado) onSocioCreado();
       
     } catch (error) {
+      console.error("❌ Error completo:", error);
+      console.error("❌ Response data:", error.response?.data);
       const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.message;
       toast.error("❌ " + errorMsg);
     } finally {

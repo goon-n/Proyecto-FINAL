@@ -1,4 +1,4 @@
-// src/pages/ControlMembresias.jsx - CÓDIGO COMPLETO Y CORREGIDO PARA ADMIN/ENTRENADOR
+// src/pages/ControlMembresias.jsx - CÓDIGO CORREGIDO FINAL
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -30,14 +30,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { 
   ArrowLeft, 
@@ -49,9 +41,7 @@ import {
   User,
   Filter,
   Download,
-  MoreHorizontal,
   RefreshCw,
-  Ban,
   Loader2,
   TrendingUp,
   Wallet,
@@ -74,7 +64,6 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
   useEffect(() => {
     if (open && cuota) {
       cargarPlanes();
-      // Por defecto, mantener el plan actual
       setPlanSeleccionadoId(cuota.plan);
       setCambioPlan(false);
       setErrorModal(null);
@@ -129,28 +118,27 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
 
     try {
       const data = {
-        metodo_pago: metodoPago, // Pago flexible (efectivo, tarjeta, transferencia)
+        metodo_pago: metodoPago,
         monto: montoAPagar,
-        ...(esCambioPlan && { plan_id: planSeleccionadoId }), // Envío de plan_id
-        referencia: referencia // Envío de referencia
+        ...(esCambioPlan && { plan_id: planSeleccionadoId }),
+        referencia: referencia
       };
 
       console.log("📤 Enviando renovación (Admin/Coach):", data);
       
-      // Usamos el endpoint del Admin/Entrenador: renovar(pk)
       await api.renovarCuota(cuota.id, data);
       
       const planFinalNombre = esCambioPlan ? planNuevo.nombre : cuota.plan_nombre;
 
       toast.success(`Cuota de ${cuota.socio_username} renovada. Plan: ${planFinalNombre}.`);
       
-      onSuccess();
+      // ✅ CRÍTICO: Cerrar modal Y recargar en paralelo
       onClose();
+      onSuccess();
       
     } catch (error) {
       console.error("❌ Error al renovar cuota:", error);
       setErrorModal(error.response?.data?.detail || "Error al renovar la cuota mensual");
-    } finally {
       setLoading(false);
     }
   };
@@ -199,7 +187,7 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
             </Button>
           </div>
 
-          {/* Selector de Plan (solo si cambioPlan = true) */}
+          {/* Selector de Plan */}
           {cambioPlan && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Seleccionar nuevo plan</Label>
@@ -267,17 +255,17 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
                 </SelectItem>
                 <SelectItem value="transferencia">
                     <Landmark className="inline h-4 w-4 mr-2" />
-                    💳 Transferencia
+                    🏦 Transferencia
                 </SelectItem>
                 <SelectItem value="tarjeta">
                     <CreditCard className="inline h-4 w-4 mr-2" />
-                    🏦 Tarjeta
+                    💳 Tarjeta
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
           
-          {/* Campo de Referencia (Condicional) */}
+          {/* Campo de Referencia */}
           {(metodoPago === 'tarjeta' || metodoPago === 'transferencia') && (
             <div className="space-y-2">
                 <Label htmlFor="referencia" className="text-base font-semibold">
@@ -347,7 +335,11 @@ const ControlMembresias = () => {
   const cargarCuotas = async () => {
     setLoading(true);
     try {
+      // ✅ AÑADIR timestamp para evitar cache
+      const timestamp = new Date().getTime();
       const cuotasData = await api.listarCuotas();
+      
+      console.log("📊 Total cuotas recibidas:", cuotasData.length);
       
       if (!Array.isArray(cuotasData)) {
         toast.error("Error en el formato de datos");
@@ -355,11 +347,33 @@ const ControlMembresias = () => {
         return;
       }
       
-      const cuotasEnriquecidas = cuotasData.map(cuota => {
+      // ✅ Filtrar para mostrar solo la cuota más reciente de cada socio
+      const cuotasPorSocio = {};
+      cuotasData.forEach(cuota => {
+        const socioId = cuota.socio;
+        const fechaInicio = new Date(cuota.fecha_inicio);
+        
+        if (!cuotasPorSocio[socioId]) {
+          cuotasPorSocio[socioId] = cuota;
+        } else {
+          const fechaExistente = new Date(cuotasPorSocio[socioId].fecha_inicio);
+          if (fechaInicio > fechaExistente) {
+            console.log(`🔄 Reemplazando cuota de ${cuota.socio_username}: ID ${cuotasPorSocio[socioId].id} por ID ${cuota.id}`);
+            cuotasPorSocio[socioId] = cuota;
+          }
+        }
+      });
+      
+      // Convertir el objeto a array con solo las cuotas más recientes
+      const cuotasMasRecientes = Object.values(cuotasPorSocio);
+      
+      console.log("✅ Cuotas filtradas (más recientes):", cuotasMasRecientes.length);
+      
+      const cuotasEnriquecidas = cuotasMasRecientes.map(cuota => {
         const diasRestantes = calcularDiasRestantes(cuota.fecha_vencimiento);
         let estadoCalculado = cuota.estado;
         
-        if (cuota.estado === 'activa' && diasRestantes <= 7 && diasRestantes > 0) {
+        if (cuota.estado === 'activa' && diasRestantes <= 5 && diasRestantes > 0) {
           estadoCalculado = 'porVencer';
         }
         
@@ -437,11 +451,6 @@ const ControlMembresias = () => {
         label: "Vencida", 
         icon: AlertCircle,
         className: "bg-red-600 hover:bg-red-700"
-      },
-      suspendida: {
-        label: "Suspendida",
-        icon: Ban,
-        className: "bg-gray-600 hover:bg-gray-700"
       }
     };
     
@@ -488,19 +497,13 @@ const ControlMembresias = () => {
   };
 
   const handleRenovacionExitosa = () => {
-    handleCerrarModal();
+    // ✅ CRÍTICO: Recargar inmediatamente
+    console.log("🔄 Renovación exitosa, recargando cuotas...");
     cargarCuotas();
   };
-  
-  const handleSuspender = async (cuotaId) => {
-    try {
-      await api.suspenderCuota(cuotaId);
-      toast.success("Cuota suspendida correctamente");
-      cargarCuotas();
-    } catch (error) {
-      console.error("Error al suspender:", error);
-      toast.error(error.response?.data?.detail || "Error al suspender la cuota");
-    }
+
+  const puedeRenovar = (cuota) => {
+    return cuota.estado === 'vencida';
   };
 
   if (loading && cuotas.length === 0) {
@@ -619,7 +622,6 @@ const ControlMembresias = () => {
                   <SelectItem value="activa">Activas</SelectItem>
                   <SelectItem value="porVencer">Por Vencer</SelectItem>
                   <SelectItem value="vencida">Vencidas</SelectItem>
-                  <SelectItem value="suspendida">Suspendidas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -690,12 +692,12 @@ const ControlMembresias = () => {
                           <span className={`font-semibold ${
                             cuota.diasRestantes <= 0 
                               ? 'text-red-600' 
-                              : cuota.diasRestantes <= 7 
+                              : cuota.diasRestantes <= 5
                                 ? 'text-yellow-600' 
                                 : 'text-green-600'
                           }`}>
                             {cuota.diasRestantes <= 0 
-                              ? `Vencida (hace ${Math.abs(cuota.diasRestantes - 1)} días)`
+                              ? `Vencida (hace ${Math.abs(cuota.diasRestantes)} días)`
                               : `${cuota.diasRestantes} días`
                             }
                           </span>
@@ -704,31 +706,20 @@ const ControlMembresias = () => {
                           {formatearPrecio(cuota.plan_precio || cuota.plan_info?.precio)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleAbrirModal(cuota)}
-                                className="text-blue-600"
-                              >
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Renovar / Cambiar Plan
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleSuspender(cuota.id)}
-                                className="text-orange-600"
-                              >
-                                <Ban className="mr-2 h-4 w-4" />
-                                Suspender
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {puedeRenovar(cuota) ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAbrirModal(cuota)}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Renovar
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              -
+                            </span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

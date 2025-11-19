@@ -99,6 +99,12 @@ const api = {
     return response.data;
   },
 
+  // ✅ NUEVO: Crear cuota con pago (para alta de socios presencial)
+  crearCuotaConPago: async (data) => {
+    const response = await apiClient.post('/cuotas/cuotas/crear_con_pago/', data);
+    return response.data;
+  },
+
   // Renovación desde el socio (autogestionada)
   solicitarRenovacion: async (data) => {
     const response = await apiClient.post('/cuotas/cuotas/solicitar_renovacion/', data);

@@ -1,4 +1,4 @@
-// src/pages/MembresiaSocio.jsx - ARCHIVO COMPLETO
+// src/pages/MembresiaSocio.jsx - CORREGIDO
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -103,27 +103,21 @@ const MembresiaSocio = () => {
 
   const getEstadoBadge = (estado, diasRestantes) => {
     if (estado === 'vencida') {
-      return { label: "Vencida", className: "bg-red-600" };
+      return { label: "Vencida", className: "bg-red-600", icon: AlertTriangle };
     }
-    if (estado === 'suspendida') {
-      return { label: "Suspendida", className: "bg-gray-600" };
+    if (diasRestantes <= 5 && diasRestantes > 0) {
+      return { label: "Por Vencer", className: "bg-yellow-600", icon: Clock };
     }
-    if (diasRestantes <= 7 && diasRestantes > 0) {
-      return { label: "Por Vencer", className: "bg-orange-600" };
-    }
-    return { label: "Activa", className: "bg-green-600" };
+    return { label: "Activa", className: "bg-green-600", icon: CheckCircle2 };
   };
 
+  // ✅ CORREGIDO: Solo puede renovar cuando está VENCIDA
   const puedeRenovar = () => {
     if (!cuotaMensual) {
       return false;
     }
     
-    const diasRestantes = calcularDiasRestantes(cuotaMensual.fecha_vencimiento);
-    const puedeRenovarPorDias = diasRestantes <= 7;
-    const estaVencida = cuotaMensual.estado === 'vencida';
-    
-    return puedeRenovarPorDias || estaVencida;
+    return cuotaMensual.estado === 'vencida';
   };
 
   if (loading) {
@@ -193,6 +187,7 @@ const MembresiaSocio = () => {
   const diasRestantes = calcularDiasRestantes(cuotaMensual.fecha_vencimiento);
   const estadoBadge = getEstadoBadge(cuotaMensual.estado, diasRestantes);
   const mostrarBotonRenovar = puedeRenovar();
+  const EstadoIcon = estadoBadge.icon;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -207,12 +202,10 @@ const MembresiaSocio = () => {
             Volver al Inicio
           </Button>
 
-          {/* Botón de Renovar */}
+          {/* ✅ Botón de Renovar solo si está VENCIDA */}
           {mostrarBotonRenovar && (
             <Button 
-              onClick={() => {
-                setMostrarModalRenovacion(true);
-              }}
+              onClick={() => setMostrarModalRenovacion(true)}
               className="bg-blue-600 hover:bg-blue-700"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -235,47 +228,36 @@ const MembresiaSocio = () => {
                 </CardDescription>
               </div>
               <Badge className={estadoBadge.className}>
+                <EstadoIcon className="w-4 h-4 mr-1" />
                 {estadoBadge.label}
               </Badge>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Alerta de vencimiento próximo */}
-        {diasRestantes > 0 && diasRestantes <= 7 && cuotaMensual.estado === "activa" && (
-          <Alert className="mb-6 border-orange-600 bg-orange-50">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <span>
-                  ⚠️ Tu membresía vence en <strong>{diasRestantes}</strong> {diasRestantes === 1 ? "día" : "días"}. 
-                </span>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setMostrarModalRenovacion(true);
-                  }}
-                  className="bg-orange-600 hover:bg-orange-700"
-                >
-                  Renovar ahora
-                </Button>
-              </div>
+        {/* ✅ Alerta de vencimiento próximo (SOLO ALERTA, NO BOTÓN) */}
+        {diasRestantes > 0 && diasRestantes <= 5 && cuotaMensual.estado === "activa" && (
+          <Alert className="mb-6 border-yellow-600 bg-yellow-50">
+            <Clock className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              <span>
+                ⚠️ Tu membresía vence en <strong>{diasRestantes}</strong> {diasRestantes === 1 ? "día" : "días"}. 
+                Podrás renovar una vez que expire.
+              </span>
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Alerta de membresía vencida */}
+        {/* ✅ Alerta de membresía vencida con botón */}
         {cuotaMensual.estado === "vencida" && (
           <Alert variant="destructive" className="mb-6">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               <div className="flex items-center justify-between flex-wrap gap-4">
-                <span>❌ Tu membresía ha vencido.</span>
+                <span>❌ Tu membresía ha vencido. Renueva para seguir disfrutando del gimnasio.</span>
                 <Button
                   size="sm"
-                  onClick={() => {
-                    setMostrarModalRenovacion(true);
-                  }}
+                  onClick={() => setMostrarModalRenovacion(true)}
                   variant="secondary"
                 >
                   Renovar ahora
@@ -343,26 +325,34 @@ const MembresiaSocio = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-orange-600" />
-              Estadísticas
+              Estado de la Membresía
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-6 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-4xl font-bold text-blue-600">
-                  {diasRestantes > 0 ? diasRestantes : 0}
+              <div className={`text-center p-6 rounded-lg border ${
+                diasRestantes <= 0 ? 'bg-red-50 border-red-200' : 
+                diasRestantes <= 5 ? 'bg-yellow-50 border-yellow-200' : 
+                'bg-blue-50 border-blue-200'
+              }`}>
+                <p className={`text-4xl font-bold ${
+                  diasRestantes <= 0 ? 'text-red-600' : 
+                  diasRestantes <= 5 ? 'text-yellow-600' : 
+                  'text-blue-600'
+                }`}>
+                  {diasRestantes <= 0 ? Math.abs(diasRestantes) : diasRestantes}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Días Restantes
+                  {diasRestantes <= 0 ? 'Días Vencida' : 'Días Restantes'}
                 </p>
               </div>
 
               <div className="text-center p-6 bg-green-50 rounded-lg border border-green-200">
-                <CheckCircle2 className="h-10 w-10 mx-auto text-green-600 mb-2" />
+                <EstadoIcon className="h-10 w-10 mx-auto mb-2" style={{color: estadoBadge.className.includes('red') ? '#dc2626' : estadoBadge.className.includes('yellow') ? '#ca8a04' : '#16a34a'}} />
                 <p className="text-sm text-muted-foreground">
                   Estado
                 </p>
-                <p className="text-lg font-semibold text-green-700 mt-1">
+                <p className="text-lg font-semibold mt-1" style={{color: estadoBadge.className.includes('red') ? '#dc2626' : estadoBadge.className.includes('yellow') ? '#ca8a04' : '#16a34a'}}>
                   {estadoBadge.label}
                 </p>
               </div>
@@ -370,7 +360,7 @@ const MembresiaSocio = () => {
               <div className="text-center p-6 bg-purple-50 rounded-lg border border-purple-200">
                 <DollarSign className="h-10 w-10 mx-auto text-purple-600 mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  Próximo Pago
+                  Valor del Plan
                 </p>
                 <p className="text-lg font-semibold text-purple-700 mt-1">
                   {formatearPrecio(cuotaMensual.plan_precio || cuotaMensual.plan_info?.precio)}
@@ -424,9 +414,7 @@ const MembresiaSocio = () => {
       {cuotaMensual && (
         <RenovarMembresia
           open={mostrarModalRenovacion}
-          onClose={() => {
-            setMostrarModalRenovacion(false);
-          }}
+          onClose={() => setMostrarModalRenovacion(false)}
           cuotaActual={cuotaMensual}
           onSuccess={handleRenovacionExitosa}
         />

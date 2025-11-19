@@ -17,7 +17,8 @@ import {
   Box,
   TrendingUp,
   ShoppingCart,
-  AlertCircle
+  AlertCircle,
+  CreditCard
 } from "lucide-react";
 import api from "../api/api";
 
@@ -314,7 +315,24 @@ const HomeAdmin = () => {
                     </div>
                   </div>
                 </div>
+                
               </Button>
+              <Button 
+                onClick={() => navigate("/admin/membresias")}
+                variant="outline"
+                size="lg"
+                className="justify-start h-auto py-4"
+              >
+                <div className="flex items-start gap-3 w-full">
+                  <CreditCard className="h-5 w-5 text-teal-600 mt-0.5" />
+                  <div className="text-left">
+                    <div className="font-semibold">Cuotas</div>
+                    <div className="text-xs text-muted-foreground">
+                      Gestión De Pagos
+                    </div>
+                  </div>
+                </div>
+                </Button>
             </div>
           </CardContent>
         </Card>

@@ -1,4 +1,4 @@
-# caja/models.py - AGREGAR campo compra_relacionada
+# caja/models.py 
 from django.db import models
 from api.models import Perfil
 
