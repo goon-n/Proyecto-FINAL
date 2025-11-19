@@ -72,6 +72,8 @@ def register_user(request):
         return Response({'error': 'Faltan datos'}, status=400)
     if User.objects.filter(username=username).exists():
         return Response({'error': 'El usuario ya existe'}, status=400)
+    if email and User.objects.filter(email=email).exists():
+        return Response({'error': 'El email ya está registrado'}, status=400)
     user = User.objects.create_user(username=username, password=password, email=email)
     Perfil.objects.create(user=user, rol=rol)
     return Response({'message': 'Usuario registrado correctamente'}, status=201)

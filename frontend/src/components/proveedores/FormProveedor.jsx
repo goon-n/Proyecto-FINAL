@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
-const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guardando }) => {
+const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guardando, proveedoresExistentes = [] }) => {
   const [formData, setFormData] = useState({
     nombre: '',
     telefono: '',
@@ -46,6 +46,16 @@ const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guarda
       nuevosErrores.nombre = 'El nombre es requerido';
     } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.nombre)) {
       nuevosErrores.nombre = 'El nombre solo puede contener letras y espacios';
+    } else {
+      // Validar duplicado de nombre
+      const nombreExiste = proveedoresExistentes.some(
+        proveedor => 
+          proveedor.nombre.toLowerCase().trim() === formData.nombre.toLowerCase().trim() &&
+          proveedor.id !== proveedorEditar?.id // Excluir el proveedor que se está editando
+      );
+      if (nombreExiste) {
+        nuevosErrores.nombre = 'Ya existe un proveedor con ese nombre';
+      }
     }
 
     // Validar teléfono (opcional, pero si tiene valor debe ser válido)
@@ -63,8 +73,21 @@ const FormProveedor = ({ open, onClose, onSubmit, proveedorEditar = null, guarda
     }
 
     // Validar email (opcional, pero si tiene valor debe ser válido)
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      nuevosErrores.email = 'Email inválido';
+    if (formData.email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        nuevosErrores.email = 'Email inválido';
+      } else {
+        // Validar duplicado de email
+        const emailExiste = proveedoresExistentes.some(
+          proveedor => 
+            proveedor.email && 
+            proveedor.email.toLowerCase().trim() === formData.email.toLowerCase().trim() &&
+            proveedor.id !== proveedorEditar?.id // Excluir el proveedor que se está editando
+        );
+        if (emailExiste) {
+          nuevosErrores.email = 'Ya existe un proveedor con ese email';
+        }
+      }
     }
 
     setErrores(nuevosErrores);

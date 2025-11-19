@@ -18,21 +18,96 @@ export default function Register() {
     username: "",
     email: "",
     password: "",
+    confirmPassword: "",
     telefono: ""
   });
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState({});
+
+  // Validaciones
+  const validations = {
+    nombre: (v) => {
+      if (!v.trim()) return "Nombre requerido";
+      if (v.length < 3) return "Mínimo 3 caracteres";
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(v)) return "Solo letras";
+      if (v.trim().split(/\s+/).length < 2) return "Ingresa nombre y apellido";
+      return "";
+    },
+    username: (v) => {
+      if (!v.trim()) return "Usuario requerido";
+      if (v.length < 4 || v.length > 30) return "Entre 4 y 30 caracteres";
+      if (!/^[a-zA-Z0-9_-]+$/.test(v)) return "Solo letras, números, - y _";
+      return "";
+    },
+    email: (v) => {
+      if (!v.trim()) return "Email requerido";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Email inválido";
+      const domain = v.split('@')[1]?.toLowerCase();
+      if (!['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'live.com'].includes(domain)) {
+        return "Usa gmail, hotmail, outlook, yahoo o live";
+      }
+      return "";
+    },
+    password: (v) => {
+      if (!v) return "Contraseña requerida";
+      if (v.length < 8) return "Mínimo 8 caracteres";
+      if (!/[A-Z]/.test(v)) return "Incluye una mayúscula";
+      if (!/[a-z]/.test(v)) return "Incluye una minúscula";
+      if (!/[0-9]/.test(v)) return "Incluye un número";
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(v)) return "Incluye un símbolo";
+      return "";
+    },
+    confirmPassword: (v) => {
+      if (!v) return "Confirma tu contraseña";
+      if (v !== formData.password) return "Las contraseñas no coinciden";
+      return "";
+    },
+    telefono: (v) => {
+      if (!v.trim()) return "Teléfono requerido";
+      const clean = v.replace(/[\s-]/g, '');
+      if (!/^[0-9]+$/.test(clean)) return "Solo números";
+      if (clean.length < 10 || clean.length > 15) return "Entre 10 y 15 dígitos";
+      return "";
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: validations[field](value) });
+    }
+    // Re-validar confirmPassword si se cambia password
+    if (field === "password" && formData.confirmPassword) {
+      setErrors(prev => ({ ...prev, confirmPassword: value !== formData.confirmPassword ? "Las contraseñas no coinciden" : "" }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    setErrors({ ...errors, [field]: validations[field](formData[field]) });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!selectedPlan) {
-      setError("Debes seleccionar un plan para continuar");
+      setErrors({ general: "Debes seleccionar un plan para continuar" });
+      return;
+    }
+
+    // Validar todos los campos
+    const newErrors = {};
+    Object.keys(validations).forEach(field => {
+      const error = validations[field](formData[field]);
+      if (error) newErrors[field] = error;
+    });
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      newErrors.general = "Por favor, corrige los errores";
       return;
     }
     
-    setError(null);
-    
-    // ✅ SOLO NAVEGAR AL PAGO CON LOS DATOS (sin registrar todavía)
+    // Navegar al pago
     navigate("/payment", { 
       state: { 
         user: {
@@ -40,7 +115,7 @@ export default function Register() {
           email: formData.email,
           nombre: formData.nombre,
           telefono: formData.telefono,
-          password: formData.password  // 🔧 Importante: incluir password
+          password: formData.password
         }, 
         plan: selectedPlan 
       } 
@@ -115,89 +190,119 @@ export default function Register() {
             </div>
           )}
 
-          {error && (
+          {errors.general && (
             <div className="bg-destructive/15 text-destructive border border-destructive/30 p-3 rounded-md text-sm mb-4 flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
-              {error}
+              {errors.general}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nombre */}
               <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre Completo</Label>
+                <Label htmlFor="nombre">Nombre Completo *</Label>
                 <Input
                   id="nombre"
-                  type="text"
                   placeholder="Juan Pérez"
                   value={formData.nombre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre: e.target.value })
-                  }
-                  required
+                  onChange={(e) => handleChange("nombre", e.target.value)}
+                  onBlur={() => handleBlur("nombre")}
                   disabled={!selectedPlan}
+                  className={errors.nombre ? "border-red-500" : ""}
                 />
+                {errors.nombre && (
+                  <p className="text-xs text-red-500">{errors.nombre}</p>
+                )}
               </div>
 
+              {/* Usuario */}
               <div className="space-y-2">
-                <Label htmlFor="username">Usuario</Label>
+                <Label htmlFor="username">Usuario *</Label>
                 <Input
                   id="username"
-                  type="text"
                   placeholder="juanperez"
                   value={formData.username}
-                  onChange={(e) =>
-                    setFormData({ ...formData, username: e.target.value })
-                  }
-                  required
+                  onChange={(e) => handleChange("username", e.target.value)}
+                  onBlur={() => handleBlur("username")}
                   disabled={!selectedPlan}
+                  className={errors.username ? "border-red-500" : ""}
                 />
+                {errors.username && (
+                  <p className="text-xs text-red-500">{errors.username}</p>
+                )}
               </div>
 
+              {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="juan@ejemplo.com"
+                  placeholder="juan@gmail.com"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  required
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  onBlur={() => handleBlur("email")}
                   disabled={!selectedPlan}
+                  className={errors.email ? "border-red-500" : ""}
                 />
+                {errors.email && (
+                  <p className="text-xs text-red-500">{errors.email}</p>
+                )}
               </div>
 
+              {/* Teléfono */}
               <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono</Label>
+                <Label htmlFor="telefono">Teléfono *</Label>
                 <Input
                   id="telefono"
                   type="tel"
                   placeholder="387 123-4567"
                   value={formData.telefono}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telefono: e.target.value })
-                  }
-                  required
+                  onChange={(e) => handleChange("telefono", e.target.value)}
+                  onBlur={() => handleBlur("telefono")}
                   disabled={!selectedPlan}
+                  className={errors.telefono ? "border-red-500" : ""}
                 />
+                {errors.telefono && (
+                  <p className="text-xs text-red-500">{errors.telefono}</p>
+                )}
               </div>
 
+              {/* Contraseña */}
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="password">Contraseña</Label>
+                <Label htmlFor="password">Contraseña *</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres, mayúsculas, números y símbolos"
                   value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  required
+                  onChange={(e) => handleChange("password", e.target.value)}
+                  onBlur={() => handleBlur("password")}
                   disabled={!selectedPlan}
-                  minLength={6}
+                  className={errors.password ? "border-red-500" : ""}
                 />
+                {errors.password && (
+                  <p className="text-xs text-red-500">{errors.password}</p>
+                )}
+              </div>
+
+              {/* Confirmar Contraseña */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Repite tu contraseña"
+                  value={formData.confirmPassword}
+                  onChange={(e) => handleChange("confirmPassword", e.target.value)}
+                  onBlur={() => handleBlur("confirmPassword")}
+                  disabled={!selectedPlan}
+                  className={errors.confirmPassword ? "border-red-500" : ""}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-500">{errors.confirmPassword}</p>
+                )}
               </div>
             </div>
 

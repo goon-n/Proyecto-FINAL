@@ -8,6 +8,7 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
     vencimiento: "",
     cvv: ""
   });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState(null);
 
   const formatCardNumber = (value) => {
@@ -35,29 +36,84 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
     return cleaned;
   };
 
+  // Validaciones
+  const validateExpiry = (value) => {
+    if (!value.match(/^\d{2}\/\d{2}$/)) return "Formato inválido (MM/AA)";
+    
+    const [month, year] = value.split('/').map(Number);
+    
+    if (month < 1 || month > 12) return "Mes inválido (01-12)";
+    
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear() % 100;
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+      return "Tarjeta vencida";
+    }
+    
+    return "";
+  };
+
+  const validateNombre = (value) => {
+    if (!value.trim()) return "Nombre requerido";
+    if (value.length < 5) return "Mínimo 5 caracteres";
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return "Solo letras y espacios";
+    const words = value.trim().split(/\s+/);
+    if (words.length < 2) return "Ingresa nombre y apellido";
+    return "";
+  };
+
+  const validateCVV = (value) => {
+    if (!value) return "CVV requerido";
+    if (!/^\d{3}$/.test(value)) return "Debe tener 3 dígitos";
+    return "";
+  };
+
+  const handleBlur = (field) => {
+    let error = "";
+    
+    if (field === "vencimiento") {
+      error = validateExpiry(cardData.vencimiento);
+    } else if (field === "nombre") {
+      error = validateNombre(cardData.nombre);
+    } else if (field === "cvv") {
+      error = validateCVV(cardData.cvv);
+    }
+    
+    setErrors({ ...errors, [field]: error });
+  };
+
+  const handleChange = (field, value) => {
+    setCardData({ ...cardData, [field]: value });
+    
+    // Limpiar error si existe
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: "" });
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError(null);
 
     const cardNumber = cardData.numero.replace(/\s/g, '');
     
-    if (cardNumber.length !== 16) {
-      setError("El número de tarjeta debe tener 16 dígitos");
-      return;
-    }
+    // Validar todos los campos
+    const newErrors = {
+      numero: cardNumber.length !== 16 ? "Debe tener 16 dígitos" : "",
+      nombre: validateNombre(cardData.nombre),
+      vencimiento: validateExpiry(cardData.vencimiento),
+      cvv: validateCVV(cardData.cvv)
+    };
 
-    if (cardData.cvv.length !== 3) {
-      setError("El CVV debe tener 3 dígitos");
-      return;
-    }
+    setErrors(newErrors);
 
-    if (!cardData.nombre.trim()) {
-      setError("Ingresá el nombre del titular");
-      return;
-    }
-
-    if (!cardData.vencimiento.match(/^\d{2}\/\d{2}$/)) {
-      setError("Formato de vencimiento inválido (MM/AA)");
+    // Verificar si hay errores
+    const hasErrors = Object.values(newErrors).some(err => err !== "");
+    
+    if (hasErrors) {
+      setError("Por favor, corrige los errores en el formulario");
       return;
     }
 
@@ -102,15 +158,21 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
             <input
               type="text"
               value={cardData.numero}
-              onChange={(e) => setCardData({ ...cardData, numero: formatCardNumber(e.target.value) })}
+              onChange={(e) => handleChange("numero", formatCardNumber(e.target.value))}
+              onBlur={() => handleBlur("numero")}
               placeholder="1234 5678 9012 3456"
               maxLength="19"
               required
               disabled={isLoading}
-              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors disabled:bg-slate-100"
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors disabled:bg-slate-100 ${
+                errors.numero ? "border-red-500" : "border-slate-200 focus:border-emerald-500"
+              }`}
             />
             <CreditCard className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           </div>
+          {errors.numero && (
+            <p className="text-xs text-red-500 mt-1">{errors.numero}</p>
+          )}
         </div>
 
         <div>
@@ -121,14 +183,20 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
             <input
               type="text"
               value={cardData.nombre}
-              onChange={(e) => setCardData({ ...cardData, nombre: e.target.value.toUpperCase() })}
+              onChange={(e) => handleChange("nombre", e.target.value.toUpperCase())}
+              onBlur={() => handleBlur("nombre")}
               placeholder="JUAN PEREZ"
               required
               disabled={isLoading}
-              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors uppercase disabled:bg-slate-100"
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors uppercase disabled:bg-slate-100 ${
+                errors.nombre ? "border-red-500" : "border-slate-200 focus:border-emerald-500"
+              }`}
             />
             <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           </div>
+          {errors.nombre && (
+            <p className="text-xs text-red-500 mt-1">{errors.nombre}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -140,15 +208,21 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
               <input
                 type="text"
                 value={cardData.vencimiento}
-                onChange={(e) => setCardData({ ...cardData, vencimiento: formatExpiry(e.target.value) })}
+                onChange={(e) => handleChange("vencimiento", formatExpiry(e.target.value))}
+                onBlur={() => handleBlur("vencimiento")}
                 placeholder="MM/AA"
                 maxLength="5"
                 required
                 disabled={isLoading}
-                className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors disabled:bg-slate-100"
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors disabled:bg-slate-100 ${
+                  errors.vencimiento ? "border-red-500" : "border-slate-200 focus:border-emerald-500"
+                }`}
               />
               <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             </div>
+            {errors.vencimiento && (
+              <p className="text-xs text-red-500 mt-1">{errors.vencimiento}</p>
+            )}
           </div>
 
           <div>
@@ -159,15 +233,21 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
               <input
                 type="text"
                 value={cardData.cvv}
-                onChange={(e) => setCardData({ ...cardData, cvv: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                onChange={(e) => handleChange("cvv", e.target.value.replace(/\D/g, '').slice(0, 3))}
+                onBlur={() => handleBlur("cvv")}
                 placeholder="123"
                 maxLength="3"
                 required
                 disabled={isLoading}
-                className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors disabled:bg-slate-100"
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none transition-colors disabled:bg-slate-100 ${
+                  errors.cvv ? "border-red-500" : "border-slate-200 focus:border-emerald-500"
+                }`}
               />
               <Shield className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             </div>
+            {errors.cvv && (
+              <p className="text-xs text-red-500 mt-1">{errors.cvv}</p>
+            )}
           </div>
         </div>
 

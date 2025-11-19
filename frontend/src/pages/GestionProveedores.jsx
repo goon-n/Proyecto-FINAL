@@ -180,6 +180,7 @@ const GestionProveedores = () => {
         onSubmit={proveedorEditar ? handleEditarProveedor : handleCrearProveedor}
         proveedorEditar={proveedorEditar}
         guardando={guardando}
+        proveedoresExistentes={[...proveedoresActivos, ...proveedoresDesactivados]}
       />
     </div>
   );

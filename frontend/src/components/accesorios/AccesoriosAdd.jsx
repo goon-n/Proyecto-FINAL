@@ -1,6 +1,6 @@
 // src/components/accesorios/AccesoriosAdd.jsx
 import React, { useState, useEffect } from "react";
-import { createAccesorio, getProveedores } from "../../services/accesorios.service";
+import { createAccesorio, getProveedores, getAccesorios } from "../../services/accesorios.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,22 +19,28 @@ export default function AccesoriosAdd({ onAdd, onCancel }) {
     activo: true
   });
   const [proveedores, setProveedores] = useState([]);
+  const [accesoriosExistentes, setAccesoriosExistentes] = useState([]);
   const [guardando, setGuardando] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    const fetchProveedores = async () => {
+    const fetchData = async () => {
       try {
-        const res = await getProveedores();
-        setProveedores(res.data); // Ya vienen solo los activos desde el endpoint
+        const [resProveedores, resAccesorios] = await Promise.all([
+          getProveedores(),
+          getAccesorios()
+        ]);
+        setProveedores(resProveedores.data);
+        setAccesoriosExistentes(resAccesorios.data);
       } catch (error) {
-        toast.error("Error al cargar proveedores");
+        toast.error("Error al cargar datos");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProveedores();
+    fetchData();
   }, []);
 
   const handleInputChange = (e) => {
@@ -43,10 +49,18 @@ export default function AccesoriosAdd({ onAdd, onCancel }) {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+    // Limpiar error del campo cuando el usuario escribe
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const handleProveedorChange = (value) => {
     setFormData(prev => ({ ...prev, proveedor: value }));
+    // Limpiar error del proveedor cuando cambia
+    if (errors.proveedor) {
+      setErrors(prev => ({ ...prev, proveedor: null }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -68,7 +82,25 @@ export default function AccesoriosAdd({ onAdd, onCancel }) {
       return;
     }
 
+    // Validación: verificar si ya existe el accesorio con el mismo proveedor
+    const nombreBuscar = formData.nombre.trim().toLowerCase();
+    const proveedorId = parseInt(formData.proveedor);
+    
+    const yaExiste = accesoriosExistentes.some(acc => 
+      acc.nombre.toLowerCase() === nombreBuscar && 
+      acc.proveedor === proveedorId
+    );
+
+    if (yaExiste) {
+      setErrors({ 
+        nombre: "Ya existe un accesorio con ese nombre"
+      });
+      return;
+    }
+
     setGuardando(true);
+    setErrors({}); // Limpiar errores previos
+    
     try {
       const dataToSend = {
         ...formData,
@@ -90,10 +122,18 @@ export default function AccesoriosAdd({ onAdd, onCancel }) {
       
       if (onAdd) onAdd();
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 
-                      error.response?.data?.detail ||
-                      "Error al crear accesorio";
-      toast.error(errorMsg);
+      // Manejar errores de validación del backend
+      if (error.response?.data?.error) {
+        // Error de duplicado
+        setErrors({ 
+          nombre: error.response.data.error
+        });
+      } else {
+        const errorMsg = error.response?.data?.message || 
+                        error.response?.data?.detail ||
+                        "Error al crear accesorio";
+        toast.error(errorMsg);
+      }
     } finally {
       setGuardando(false);
     }
@@ -129,8 +169,12 @@ export default function AccesoriosAdd({ onAdd, onCancel }) {
                 value={formData.nombre}
                 onChange={handleInputChange}
                 placeholder="Ej: Mancuernas 5kg"
+                className={errors.nombre ? "border-red-500" : ""}
                 required
               />
+              {errors.nombre && (
+                <p className="text-sm text-red-500 mt-1">{errors.nombre}</p>
+              )}
             </div>
 
             <div className="space-y-2">
