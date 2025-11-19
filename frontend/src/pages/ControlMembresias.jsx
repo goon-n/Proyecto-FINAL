@@ -1,4 +1,4 @@
-// src/pages/ControlMembresias.jsx - ARCHIVO COMPLETO
+// src/pages/ControlMembresias.jsx - CÓDIGO COMPLETO Y CORREGIDO PARA ADMIN/ENTRENADOR
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -52,14 +52,49 @@ import {
   MoreHorizontal,
   RefreshCw,
   Ban,
-  Loader2
+  Loader2,
+  TrendingUp,
+  Wallet,
+  Landmark,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "../api/api";
 
-// Modal de Renovación para Admin
+// Modal de Renovación para Admin con Cambio de Plan
 const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [metodoPago, setMetodoPago] = useState("efectivo");
+  const [planes, setPlanes] = useState([]);
+  const [planSeleccionadoId, setPlanSeleccionadoId] = useState(null); 
+  const [loadingPlanes, setLoadingPlanes] = useState(true);
+  const [cambioPlan, setCambioPlan] = useState(false);
+  const [referencia, setReferencia] = useState(''); 
+  const [errorModal, setErrorModal] = useState(null); 
+
+  useEffect(() => {
+    if (open && cuota) {
+      cargarPlanes();
+      // Por defecto, mantener el plan actual
+      setPlanSeleccionadoId(cuota.plan);
+      setCambioPlan(false);
+      setErrorModal(null);
+      setReferencia('');
+      setMetodoPago("efectivo");
+    }
+  }, [open, cuota]);
+
+  const cargarPlanes = async () => {
+    try {
+      setLoadingPlanes(true);
+      const data = await api.listarPlanesActivos();
+      setPlanes(data);
+    } catch (error) {
+      console.error("Error al cargar planes:", error);
+      toast.error("Error al cargar los planes disponibles");
+    } finally {
+      setLoadingPlanes(false);
+    }
+  };
 
   if (!cuota) return null;
 
@@ -71,23 +106,50 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
     }).format(precio || 0);
   };
 
+  const planActualId = cuota.plan;
+  const planNuevo = planes.find(p => p.id === planSeleccionadoId);
+  const esCambioPlan = cambioPlan && planSeleccionadoId !== planActualId;
+  const montoAPagar = planNuevo ? planNuevo.precio : cuota.plan_precio; 
+
   const handleRenovar = async () => {
+    setErrorModal(null);
     setLoading(true);
+
+    // VALIDACIÓN DE REFERENCIA
+    if (metodoPago === 'tarjeta' && (!referencia || referencia.length !== 4)) {
+        setErrorModal("Se requieren los últimos 4 dígitos de la tarjeta.");
+        setLoading(false);
+        return;
+    }
+    if (metodoPago === 'transferencia' && !referencia.trim()) {
+        setErrorModal("Se requiere una referencia para la transferencia.");
+        setLoading(false);
+        return;
+    }
+
     try {
       const data = {
-        metodo_pago: metodoPago,
-        monto: cuota.plan_price || cuota.plan_precio
+        metodo_pago: metodoPago, // Pago flexible (efectivo, tarjeta, transferencia)
+        monto: montoAPagar,
+        ...(esCambioPlan && { plan_id: planSeleccionadoId }), // Envío de plan_id
+        referencia: referencia // Envío de referencia
       };
+
+      console.log("📤 Enviando renovación (Admin/Coach):", data);
       
+      // Usamos el endpoint del Admin/Entrenador: renovar(pk)
       await api.renovarCuota(cuota.id, data);
       
-      toast.success(`Membresía de ${cuota.socio_username} renovada exitosamente.`);
+      const planFinalNombre = esCambioPlan ? planNuevo.nombre : cuota.plan_nombre;
+
+      toast.success(`Cuota de ${cuota.socio_username} renovada. Plan: ${planFinalNombre}.`);
+      
       onSuccess();
       onClose();
       
     } catch (error) {
-      console.error("Error al renovar cuota:", error);
-      toast.error(error.response?.data?.detail || "Error al renovar la membresía");
+      console.error("❌ Error al renovar cuota:", error);
+      setErrorModal(error.response?.data?.detail || "Error al renovar la cuota mensual");
     } finally {
       setLoading(false);
     }
@@ -95,29 +157,95 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-blue-600" />
-            Renovar Membresía
+          <DialogTitle className="flex items-center gap-2 text-2xl">
+            <RefreshCw className="h-6 w-6 text-blue-600" />
+            Renovar Cuota Mensual
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-base">
             Registrar pago y renovar la cuota para: <strong>{cuota.socio_username}</strong>
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
+        <div className="space-y-6 py-4">
+            {errorModal && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{errorModal}</AlertDescription>
+                </Alert>
+            )}
+
+          {/* Toggle para cambio de plan */}
+          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="font-semibold text-blue-900">¿El socio solicitó cambio de plan?</p>
+                <p className="text-sm text-blue-700">Actual: {cuota.plan_nombre}</p>
+              </div>
+            </div>
+            <Button
+              variant={cambioPlan ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setCambioPlan(!cambioPlan);
+                if (!cambioPlan) {
+                  setPlanSeleccionadoId(cuota.plan); 
+                }
+              }}
+            >
+              {cambioPlan ? "No, mantener plan" : "Sí, cambiar plan"}
+            </Button>
+          </div>
+
+          {/* Selector de Plan (solo si cambioPlan = true) */}
+          {cambioPlan && (
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Seleccionar nuevo plan</Label>
+              {loadingPlanes ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                </div>
+              ) : (
+                <Select 
+                  value={planSeleccionadoId?.toString()} 
+                  onValueChange={(value) => setPlanSeleccionadoId(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {planes.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id.toString()}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{plan.nombre}</span>
+                          <span className="ml-4 font-semibold text-green-600">
+                            {formatearPrecio(plan.precio)}
+                            {plan.id === planActualId && " (Actual)"}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           {/* Resumen */}
           <Card className="bg-gray-50">
             <CardContent className="pt-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Plan:</span>
-                <span className="font-semibold">{cuota.plan_name}</span>
+                <span className="text-muted-foreground">Plan {esCambioPlan ? "nuevo" : "actual"}:</span>
+                <span className="font-semibold">
+                  {esCambioPlan ? planNuevo?.nombre : cuota.plan_nombre}
+                </span>
               </div>
-              <div className="flex justify-between text-lg">
+              <div className="flex justify-between text-lg border-t pt-2">
                 <span className="text-muted-foreground">Monto a Pagar:</span>
                 <span className="font-bold text-green-600">
-                  {formatearPrecio(cuota.plan_price)}
+                  {formatearPrecio(montoAPagar)}
                 </span>
               </div>
             </CardContent>
@@ -125,18 +253,45 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
           
           {/* Método de Pago */}
           <div className="space-y-2">
-            <Label htmlFor="metodo-pago">Método de Pago</Label>
+            <Label htmlFor="metodo-pago" className="text-base font-semibold">
+              Método de Pago
+            </Label>
             <Select value={metodoPago} onValueChange={setMetodoPago}>
               <SelectTrigger id="metodo-pago">
                 <SelectValue placeholder="Seleccionar método" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="efectivo">💵 Efectivo</SelectItem>
-                <SelectItem value="transferencia">💳 Transferencia</SelectItem>
-                <SelectItem value="tarjeta">🏦 Tarjeta (Posnet)</SelectItem>
+                <SelectItem value="efectivo">
+                    <Wallet className="inline h-4 w-4 mr-2" />
+                    💵 Efectivo
+                </SelectItem>
+                <SelectItem value="transferencia">
+                    <Landmark className="inline h-4 w-4 mr-2" />
+                    💳 Transferencia
+                </SelectItem>
+                <SelectItem value="tarjeta">
+                    <CreditCard className="inline h-4 w-4 mr-2" />
+                    🏦 Tarjeta
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
+          
+          {/* Campo de Referencia (Condicional) */}
+          {(metodoPago === 'tarjeta' || metodoPago === 'transferencia') && (
+            <div className="space-y-2">
+                <Label htmlFor="referencia" className="text-base font-semibold">
+                    {metodoPago === 'tarjeta' ? "Últimos 4 Dígitos Tarjeta" : "Referencia / Comprobante"}
+                </Label>
+                <Input
+                    id="referencia"
+                    value={referencia}
+                    onChange={(e) => setReferencia(e.target.value)}
+                    placeholder={metodoPago === 'tarjeta' ? "XXXX" : "Ingresar N° de comprobante"}
+                    maxLength={metodoPago === 'tarjeta' ? 4 : 100}
+                />
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -152,7 +307,7 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
             ) : (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Confirmar Pago y Renovar
+                Confirmar Pago {esCambioPlan && "y Cambio de Plan"}
               </>
             )}
           </Button>
@@ -194,6 +349,12 @@ const ControlMembresias = () => {
     try {
       const cuotasData = await api.listarCuotas();
       
+      if (!Array.isArray(cuotasData)) {
+        toast.error("Error en el formato de datos");
+        setCuotas([]);
+        return;
+      }
+      
       const cuotasEnriquecidas = cuotasData.map(cuota => {
         const diasRestantes = calcularDiasRestantes(cuota.fecha_vencimiento);
         let estadoCalculado = cuota.estado;
@@ -206,17 +367,15 @@ const ControlMembresias = () => {
           ...cuota,
           diasRestantes,
           estadoCalculado,
-          // ✅ Usar los nombres correctos del serializer
-          plan_name: cuota.plan_info?.nombre || cuota.plan_nombre,
-          plan_price: cuota.plan_info?.precio || cuota.plan_precio,
         };
       });
       
       setCuotas(cuotasEnriquecidas);
       calcularEstadisticas(cuotasEnriquecidas);
     } catch (error) {
-      console.error("Error al cargar cuotas:", error);
-      toast.error("Error al cargar las cuotas");
+      console.error("❌ Error al cargar cuotas:", error);
+      toast.error(error.response?.data?.detail || "Error al cargar las cuotas");
+      setCuotas([]);
     } finally {
       setLoading(false);
     }
@@ -339,7 +498,8 @@ const ControlMembresias = () => {
       toast.success("Cuota suspendida correctamente");
       cargarCuotas();
     } catch (error) {
-      toast.error("Error al suspender la cuota");
+      console.error("Error al suspender:", error);
+      toast.error(error.response?.data?.detail || "Error al suspender la cuota");
     }
   };
 
@@ -392,7 +552,7 @@ const ControlMembresias = () => {
           </CardHeader>
         </Card>
 
-        {/* Estadísticas - 4 CARDS SIN DUPLICADOS */}
+        {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
@@ -482,7 +642,9 @@ const ControlMembresias = () => {
             )}
             {!loading && cuotasFiltradas.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No se encontraron cuotas con los filtros aplicados
+                {cuotas.length === 0 
+                  ? "No hay cuotas registradas en el sistema" 
+                  : "No se encontraron cuotas con los filtros aplicados"}
               </div>
             ) : (
               <div className="border rounded-lg overflow-x-auto">
@@ -512,7 +674,7 @@ const ControlMembresias = () => {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {cuota.plan_name}
+                            {cuota.plan_nombre || cuota.plan_info?.nombre || 'N/A'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -539,7 +701,7 @@ const ControlMembresias = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {formatearPrecio(cuota.plan_price)}
+                          {formatearPrecio(cuota.plan_precio || cuota.plan_info?.precio)}
                         </TableCell>
                         <TableCell className="text-center">
                           <DropdownMenu>
@@ -556,7 +718,7 @@ const ControlMembresias = () => {
                                 className="text-blue-600"
                               >
                                 <RefreshCw className="mr-2 h-4 w-4" />
-                                Renovar / Registrar Pago
+                                Renovar / Cambiar Plan
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleSuspender(cuota.id)}

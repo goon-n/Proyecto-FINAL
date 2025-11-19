@@ -1,4 +1,4 @@
-# cuotas_mensuales/views.py
+# cuotas_mensuales/views.py - ARCHIVO COMPLETO CORREGIDO
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -20,6 +20,8 @@ from .serializers import (
     SolicitudRenovacionSerializer
 )
 from movimiento_caja.models import Caja, MovimientoDeCaja
+from django.contrib.auth.models import User
+from decimal import Decimal
 
 
 class PlanViewSet(viewsets.ModelViewSet):
@@ -72,12 +74,22 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        # Si es admin o entrenador, ver todas las cuotas
+        # Verificar si tiene perfil y es admin o entrenador
+        if hasattr(user, 'perfil') and user.perfil.rol in ['admin', 'entrenador']:
+            return CuotaMensual.objects.all().select_related('socio', 'plan')
+        
+        # También verificar por grupos (por si acaso)
         if user.groups.filter(name__in=['admin', 'entrenador']).exists():
             return CuotaMensual.objects.all().select_related('socio', 'plan')
         
         # Si es socio, solo ver sus propias cuotas
         return CuotaMensual.objects.filter(socio=user).select_related('plan')
+    
+    def list(self, request, *args, **kwargs):
+        """Listar cuotas según permisos"""
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def mi_cuota(self, request):
@@ -104,16 +116,17 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     def solicitar_renovacion(self, request):
         """
         Endpoint para que el SOCIO solicite renovación de su cuota
-        con posibilidad de cambiar de plan
+        con posibilidad de cambiar de plan. SOLO PAGO CON TARJETA.
         """
-        # Verificar que el usuario es socio
+        
+        # 1. VERIFICAR PERMISOS (SOLO SOCIO)
         if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'socio':
             return Response(
                 {'detail': 'Solo los socios pueden solicitar renovación'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Obtener cuota actual del socio
+        # 2. OBTENER CUOTA ACTUAL
         cuota_actual = CuotaMensual.objects.filter(
             socio=request.user,
             estado__in=['activa', 'vencida']
@@ -125,12 +138,25 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Obtener datos del request
+        # 3. OBTENER DATOS Y VALIDAR PAGO
         nuevo_plan_id = request.data.get('plan_id')
         metodo_pago = request.data.get('metodo_pago', 'tarjeta')
         tarjeta_ultimos_4 = request.data.get('tarjeta_ultimos_4', '')
         
-        # Si no se especifica plan, usar el actual
+        # 🟢 RESTRICCIÓN DE PAGO: SOLO TARJETA
+        if metodo_pago != 'tarjeta':
+            return Response(
+                {'detail': 'El socio solo puede renovar con el método de pago Tarjeta'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not tarjeta_ultimos_4 or len(str(tarjeta_ultimos_4)) < 4:
+             return Response(
+                {'detail': 'Se requieren los últimos 4 dígitos de la tarjeta'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 4. DETERMINAR NUEVO PLAN
         if nuevo_plan_id:
             try:
                 nuevo_plan = Plan.objects.get(id=nuevo_plan_id, activo=True)
@@ -142,92 +168,92 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         else:
             nuevo_plan = cuota_actual.plan
         
-        # Verificar si hay caja abierta
-        from movimiento_caja.models import Caja, MovimientoDeCaja
-        
+        # 5. VERIFICAR CAJA ABIERTA (Necesario para registrar el ingreso)
         caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
         if not caja_abierta:
             return Response(
                 {
-                    'detail': 'El sistema de pagos no está disponible. Por favor, contacta con la administración.',
+                    'detail': 'El sistema de pagos no está disponible. Contacta con la administración.',
                     'error': 'NO_CAJA_ABIERTA'
                 },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
         
-        # Cancelar la cuota actual
-        cuota_actual.estado = 'cancelada'
-        cuota_actual.save()
-        
-        # Crear nueva cuota
-        fecha_inicio = timezone.now().date()
-        fecha_vencimiento = fecha_inicio + timedelta(days=30)
-        
-        nueva_cuota = CuotaMensual.objects.create(
-            socio=request.user,
-            plan=nuevo_plan,
-            plan_nombre=nuevo_plan.nombre,
-            plan_precio=nuevo_plan.precio,
-            fecha_inicio=fecha_inicio,
-            fecha_vencimiento=fecha_vencimiento,
-            estado='activa',
-            tarjeta_ultimos_4=tarjeta_ultimos_4[-4:] if tarjeta_ultimos_4 else ''
-        )
-        
-        # Registrar el pago en historial
-        historial_pago = HistorialPago.objects.create(
-            cuota=nueva_cuota,
-            monto=nuevo_plan.precio,
-            metodo_pago=metodo_pago,
-            referencia=f"Renovación - {metodo_pago} {'****' + tarjeta_ultimos_4[-4:] if tarjeta_ultimos_4 else ''}",
-            notas=f"Renovación autogestionada - Plan anterior: {cuota_actual.plan_nombre}"
-        )
-        
-        # Registrar en caja
+        # 6. PROCESAR RENOVACIÓN
         try:
-            tipo_pago_caja = 'efectivo' if metodo_pago == 'efectivo' else 'transferencia'
-            
-            movimiento = MovimientoDeCaja.objects.create(
-                caja=caja_abierta,
-                tipo='ingreso',
-                monto=nuevo_plan.precio,
-                tipo_pago=tipo_pago_caja,
-                descripcion=f"Renovación cuota (autogestionada) - {request.user.username} - {nuevo_plan.nombre}",
-                creado_por=request.user.perfil
-            )
-            
-            # Vincular movimiento con historial
-            historial_pago.movimiento_caja_id = movimiento.id
-            historial_pago.save()
-            
-            cambio_plan = nuevo_plan.id != cuota_actual.plan.id
-            mensaje = '¡Renovación exitosa!'
-            if cambio_plan:
-                mensaje += f' Has cambiado de {cuota_actual.plan_nombre} a {nuevo_plan.nombre}'
-            
-            return Response({
-                'success': True,
-                'detail': mensaje,
-                'cuota': CuotaMensualSocioSerializer(nueva_cuota).data,
-                'cambio_plan': cambio_plan,
-                'plan_anterior': cuota_actual.plan_nombre,
-                'plan_nuevo': nuevo_plan.nombre,
-                'monto': float(nuevo_plan.precio)
-            }, status=status.HTTP_201_CREATED)
-            
+            with transaction.atomic():
+                # Cancelar la cuota actual (como histórico)
+                cuota_actual.estado = 'cancelada'
+                cuota_actual.save()
+                
+                # Crear nueva cuota
+                fecha_inicio = timezone.now().date()
+                fecha_vencimiento = fecha_inicio + timedelta(days=30)
+                
+                nueva_cuota = CuotaMensual.objects.create(
+                    socio=request.user,
+                    plan=nuevo_plan,
+                    plan_nombre=nuevo_plan.nombre,
+                    plan_precio=nuevo_plan.precio,
+                    fecha_inicio=fecha_inicio,
+                    fecha_vencimiento=fecha_vencimiento,
+                    estado='activa',
+                    tarjeta_ultimos_4=str(tarjeta_ultimos_4)[-4:]
+                )
+                
+                # Registrar el pago en historial
+                historial_pago = HistorialPago.objects.create(
+                    cuota=nueva_cuota,
+                    monto=nuevo_plan.precio,
+                    metodo_pago=metodo_pago,
+                    referencia=f"Renovación - {metodo_pago} {'****' + str(tarjeta_ultimos_4)[-4:]}",
+                    notas=f"Renovación autogestionada - Plan anterior: {cuota_actual.plan_nombre}"
+                )
+                
+                # Registrar en caja (Transferencia se usa para pagos sin efectivo)
+                MovimientoDeCaja.objects.create(
+                    caja=caja_abierta,
+                    tipo='ingreso',
+                    monto=nuevo_plan.precio,
+                    tipo_pago='transferencia', # Se asume Tarjeta/Transferencia van a este tipo en Caja
+                    descripcion=f"Renovación cuota (autogestionada) - {request.user.username} - {nuevo_plan.nombre}",
+                    creado_por=request.user.perfil
+                )
+                
+                cambio_plan = nuevo_plan.id != cuota_actual.plan.id
+                mensaje = '¡Renovación exitosa!'
+                if cambio_plan:
+                    mensaje += f' Has cambiado de {cuota_actual.plan_nombre} a {nuevo_plan.nombre}'
+                
+                return Response({
+                    'success': True,
+                    'detail': mensaje,
+                    'cuota': CuotaMensualSocioSerializer(nueva_cuota).data,
+                    'cambio_plan': cambio_plan,
+                    'plan_anterior': cuota_actual.plan_nombre,
+                    'plan_nuevo': nuevo_plan.nombre,
+                    'monto': float(nuevo_plan.precio)
+                }, status=status.HTTP_201_CREATED)
+                
         except Exception as e:
-            print(f"❌ Error al registrar en caja: {str(e)}")
-            raise
+            # En caso de error, el transaction.atomic() hará rollback
+            print(f"❌ Error al procesar renovación: {str(e)}")
+            return Response(
+                {'detail': f'Error interno al procesar la renovación: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     @transaction.atomic
     def crear_con_pago(self, request):
         """
-        🆕 Endpoint para crear cuota con pago y registro en caja
+        Endpoint para crear cuota con pago y registro en caja
         Usado por admin/entrenador al dar de alta un socio
         """
+        # ... (Código existente, se mantiene sin cambios ya que no era el foco) ...
+        
         # Verificar permisos
-        if not request.user.perfil.rol in ['admin', 'entrenador']:
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
             return Response(
                 {'detail': 'No tienes permisos para esta acción'},
                 status=status.HTTP_403_FORBIDDEN
@@ -248,7 +274,6 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         
         # Obtener socio y plan
         try:
-            from django.contrib.auth.models import User
             socio = User.objects.get(id=socio_id, perfil__rol='socio')
             plan = Plan.objects.get(id=plan_id, activo=True)
         except User.DoesNotExist:
@@ -310,7 +335,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 caja=caja_abierta,
                 tipo='ingreso',
                 monto=monto,
-                tipo_pago=metodo_pago,
+                tipo_pago=metodo_pago, # Permite los 3 tipos de pago de caja (efectivo, transferencia, tarjeta)
                 descripcion=descripcion_caja,
                 creado_por=request.user.perfil
             )
@@ -326,8 +351,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            print(f"❌ Error al registrar en caja: {str(e)}")
-            # Eliminar cuota e historial si falla el registro en caja
+            # ... (Lógica de error existente) ...
             historial_pago.delete()
             cuota.delete()
             return Response(
@@ -337,8 +361,10 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def cuotas_activas(self, request):
-        """Listar todas las cuotas activas (admin/entrenador)"""
-        if not request.user.groups.filter(name__in=['admin', 'entrenador']).exists():
+        # ... (Código existente, se mantiene) ...
+        es_admin_entrenador = self._is_admin_or_entrenador(request.user)
+        
+        if not es_admin_entrenador:
             return Response(
                 {'detail': 'No tienes permisos para esta acción'},
                 status=status.HTTP_403_FORBIDDEN
@@ -350,8 +376,10 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def cuotas_vencidas(self, request):
-        """Listar todas las cuotas vencidas (admin/entrenador)"""
-        if not request.user.groups.filter(name__in=['admin', 'entrenador']).exists():
+        # ... (Código existente, se mantiene) ...
+        es_admin_entrenador = self._is_admin_or_entrenador(request.user)
+        
+        if not es_admin_entrenador:
             return Response(
                 {'detail': 'No tienes permisos para esta acción'},
                 status=status.HTTP_403_FORBIDDEN
@@ -365,18 +393,18 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def renovar(self, request, pk=None):
         """
-        Renovar una cuota mensual Y registrar el pago en caja (ADMIN/ENTRENADOR)
+        Renovar una cuota mensual, PERMITE CAMBIO DE PLAN y registra el pago en caja (ADMIN/ENTRENADOR)
         """
-        cuota = self.get_object()
+        cuota_actual = self.get_object()
         
-        # Verificar permisos
-        if not request.user.groups.filter(name__in=['admin', 'entrenador']).exists():
+        # 1. VERIFICAR PERMISOS
+        if not self._is_admin_or_entrenador(request.user):
             return Response(
                 {'detail': 'No tienes permisos para renovar cuotas'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Verificar que hay caja abierta
+        # 2. VERIFICAR CAJA ABIERTA
         caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
         if not caja_abierta:
             return Response(
@@ -387,63 +415,99 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        serializer = RenovarCuotaSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        # 3. OBTENER DATOS Y VALIDAR PAGO (Admin/Entrenador permite los 3 métodos)
+        monto = Decimal(request.data.get('monto')) # Monto debe ser validado por frontend o serializer
+        metodo_pago = request.data.get('metodo_pago', 'efectivo')
+        nuevo_plan_id = request.data.get('plan_id')
+        referencia = request.data.get('referencia', '')
         
-        # Renovar la cuota
-        nueva_fecha = serializer.validated_data.get('fecha_vencimiento')
-        cuota.renovar(nueva_fecha_vencimiento=nueva_fecha)
+        if monto <= 0:
+            return Response({'detail': 'El monto a pagar debe ser positivo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 4. DETERMINAR NUEVO PLAN Y FECHAS
+        plan_anterior = cuota_actual.plan
         
-        # Registrar el pago
-        monto = serializer.validated_data.get('monto', cuota.plan_precio)
-        metodo_pago = serializer.validated_data.get('metodo_pago', 'tarjeta')
+        if nuevo_plan_id:
+            try:
+                nuevo_plan = Plan.objects.get(id=nuevo_plan_id, activo=True)
+            except Plan.DoesNotExist:
+                return Response(
+                    {'detail': 'El plan seleccionado no existe o no está activo'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            nuevo_plan = plan_anterior
+
+        # Determinar fecha de inicio
+        fecha_inicio_nueva = timezone.now().date()
+        if cuota_actual.fecha_vencimiento >= fecha_inicio_nueva and cuota_actual.estado == 'activa':
+             fecha_inicio_nueva = cuota_actual.fecha_vencimiento + timedelta(days=1)
         
-        # Crear historial de pago
-        historial_pago = HistorialPago.objects.create(
-            cuota=cuota,
-            monto=monto,
-            metodo_pago=metodo_pago,
-            referencia=f"Renovación cuota #{cuota.id}",
-            notas=f"Renovado por {request.user.username}"
-        )
+        fecha_vencimiento_nueva = fecha_inicio_nueva + timedelta(days=nuevo_plan.duracion_dias)
         
-        # REGISTRAR EN CAJA
+        # 5. PROCESAR RENOVACIÓN
         try:
-            # Determinar tipo de pago para caja
-            tipo_pago_caja = 'efectivo' if metodo_pago == 'efectivo' else 'transferencia'
-            
-            movimiento = MovimientoDeCaja.objects.create(
-                caja=caja_abierta,
-                tipo='ingreso',
-                monto=monto,
-                tipo_pago=tipo_pago_caja,
-                descripcion=f"Renovación cuota - {cuota.socio.username} - {cuota.plan_nombre}",
-                creado_por=request.user.perfil
-            )
-            
-            # Vincular movimiento con historial
-            historial_pago.movimiento_caja_id = movimiento.id
-            historial_pago.save()
-            
-            print(f"✅ Movimiento de caja creado: ID {movimiento.id}")
-            
-            return Response({
-                'detail': 'Cuota renovada exitosamente y registrada en caja',
-                'cuota': CuotaMensualSerializer(cuota).data,
-                'movimiento_caja_id': movimiento.id,
-                'monto': float(monto)
-            })
+            with transaction.atomic():
+                # Cancelar la cuota actual (como histórico)
+                cuota_actual.estado = 'cancelada'
+                cuota_actual.save()
                 
+                # Crear nueva cuota
+                nueva_cuota = CuotaMensual.objects.create(
+                    socio=cuota_actual.socio,
+                    plan=nuevo_plan,
+                    plan_nombre=nuevo_plan.nombre,
+                    plan_precio=monto, # Usamos el monto recibido para la nueva cuota
+                    fecha_inicio=fecha_inicio_nueva,
+                    fecha_vencimiento=fecha_vencimiento_nueva,
+                    estado='activa',
+                    tarjeta_ultimos_4=referencia if metodo_pago == 'tarjeta' and referencia.isdigit() and len(referencia) == 4 else ''
+                )
+
+                # Registrar el pago en historial
+                historial_pago = HistorialPago.objects.create(
+                    cuota=nueva_cuota,
+                    monto=monto,
+                    metodo_pago=metodo_pago,
+                    referencia=referencia,
+                    notas=f"Renovación por {request.user.username}. Plan anterior: {plan_anterior.nombre}"
+                )
+                
+                # REGISTRAR EN CAJA
+                MovimientoDeCaja.objects.create(
+                    caja=caja_abierta,
+                    tipo='ingreso',
+                    monto=monto,
+                    tipo_pago=metodo_pago, # Permite los 3 tipos de pago de caja
+                    descripcion=f"Renovación cuota - {cuota_actual.socio.username} - {nuevo_plan.nombre}",
+                    creado_por=request.user.perfil
+                )
+                
+                cambio_plan = nuevo_plan.id != plan_anterior.id
+                mensaje = 'Cuota renovada exitosamente.'
+                if cambio_plan:
+                     mensaje += f' Cambio de {plan_anterior.nombre} a {nuevo_plan.nombre} aplicado.'
+
+                return Response({
+                    'detail': mensaje,
+                    'cuota': CuotaMensualSerializer(nueva_cuota).data,
+                    'monto': float(monto),
+                    'cambio_plan': cambio_plan
+                })
+                    
         except Exception as e:
-            print(f"❌ Error al crear movimiento de caja: {str(e)}")
-            raise
+            print(f"❌ Error al crear movimiento de caja/renovar: {str(e)}")
+            return Response(
+                 {'detail': f'Error al procesar la renovación: {str(e)}'},
+                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def suspender(self, request, pk=None):
-        """Suspender una cuota"""
+        # ... (Código existente, se mantiene) ...
         cuota = self.get_object()
         
-        if not request.user.groups.filter(name__in=['admin', 'entrenador']).exists():
+        if not self._is_admin_or_entrenador(request.user):
             return Response(
                 {'detail': 'No tienes permisos para suspender cuotas'},
                 status=status.HTTP_403_FORBIDDEN
@@ -459,10 +523,10 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def cancelar(self, request, pk=None):
-        """Cancelar una cuota"""
+        # ... (Código existente, se mantiene) ...
         cuota = self.get_object()
         
-        if not request.user.groups.filter(name__in=['admin', 'entrenador']).exists():
+        if not self._is_admin_or_entrenador(request.user):
             return Response(
                 {'detail': 'No tienes permisos para cancelar cuotas'},
                 status=status.HTTP_403_FORBIDDEN
@@ -476,11 +540,17 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
             'cuota': CuotaMensualSerializer(cuota).data
         })
 
+    def _is_admin_or_entrenador(self, user):
+        """Función auxiliar para verificar rol"""
+        if hasattr(user, 'perfil') and user.perfil.rol in ['admin', 'entrenador']:
+            return True
+        if user.groups.filter(name__in=['admin', 'entrenador']).exists():
+            return True
+        return False
+
 
 class HistorialPagoViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet para ver el historial de pagos
-    """
+    # ... (Código existente, se mantiene) ...
     queryset = HistorialPago.objects.all()
     serializer_class = HistorialPagoSerializer
     permission_classes = [IsAuthenticated]
@@ -489,7 +559,7 @@ class HistorialPagoViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         
         # Admin/entrenador pueden ver todos los pagos
-        if user.groups.filter(name__in=['admin', 'entrenador']).exists():
+        if self._is_admin_or_entrenador(user):
             return HistorialPago.objects.all().select_related('cuota', 'cuota__socio')
         
         # Socio solo ve sus propios pagos
@@ -506,3 +576,11 @@ class HistorialPagoViewSet(viewsets.ReadOnlyModelViewSet):
         
         serializer = self.get_serializer(pagos, many=True)
         return Response(serializer.data)
+    
+    def _is_admin_or_entrenador(self, user):
+        """Función auxiliar para verificar rol"""
+        if hasattr(user, 'perfil') and user.perfil.rol in ['admin', 'entrenador']:
+            return True
+        if user.groups.filter(name__in=['admin', 'entrenador']).exists():
+            return True
+        return False
