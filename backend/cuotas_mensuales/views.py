@@ -318,7 +318,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 {'detail': f'Error interno al procesar la renovación: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+        
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     @transaction.atomic
     def crear_con_pago(self, request):
@@ -326,8 +326,13 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         Endpoint para crear cuota con pago y registro en caja
         Usado por admin/entrenador al dar de alta un socio
         """
+        print("="*60)
+        print("📥 DATOS RECIBIDOS EN crear_con_pago:")
+        print(f"   request.data: {request.data}")
+        print(f"   request.user: {request.user}")
+        print("="*60)
         # Verificar permisos
-        if not _is_admin_or_entrenador(request.user):
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
             return Response(
                 {'detail': 'No tienes permisos para esta acción'},
                 status=status.HTTP_403_FORBIDDEN
@@ -427,6 +432,16 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         except Exception as e:
             historial_pago.delete()
             cuota.delete()
+            return Response(
+                {'error': f'Error al registrar en caja: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def cuotas_activas(self, request):
+        es_admin_entrenador = self._is_admin_or_entrenador(request.user)
+        
+        if not es_admin_entrenador:
             return Response(
                 {'error': f'Error al registrar en caja: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

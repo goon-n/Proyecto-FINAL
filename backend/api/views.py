@@ -241,6 +241,8 @@ def listar_usuarios(request):
             return Response({'error': 'Rol no válido'}, status=400)
         
         try:
+            from django.contrib.auth.models import Group  # ✅ Importar Group
+            
             # Crear usuario
             user = User.objects.create_user(username=username, password=password, email=email)
             
@@ -254,6 +256,14 @@ def listar_usuarios(request):
             # Crear perfil con is_active=True explícitamente
             perfil = Perfil.objects.create(user=user, rol=rol, is_active=True)
             print(f"✅ Perfil creado: {perfil.id} - rol: {perfil.rol} - activo: {perfil.is_active}")
+            
+            # ✅ ASIGNAR AL GRUPO DE DJANGO
+            try:
+                grupo = Group.objects.get(name=rol)
+                user.groups.add(grupo)
+                print(f"✅ Usuario asignado al grupo: {rol}")
+            except Group.DoesNotExist:
+                print(f"⚠️ ADVERTENCIA: El grupo '{rol}' no existe en Django")
             
             return Response({
                 'message': 'Usuario creado correctamente',

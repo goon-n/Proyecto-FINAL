@@ -1,6 +1,15 @@
-// src/api/api.js - COMPLETO Y CORREGIDO
+// src/api/api.js - ACTUALIZADO CON VERIFICACIÓN DE CAJA SIN AUTH
 
 import apiClient from "../services/authServices";
+import axios from 'axios'; // ✅ Importar axios directamente
+
+// ✅ Cliente axios sin autenticación para endpoints públicos
+const publicClient = axios.create({
+  baseURL: 'http://localhost:8000/api', // Ajusta según tu backend
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 const api = {
   // ----- Usuario Actual -----
@@ -278,9 +287,15 @@ const api = {
     return response.data;
   },
 
+  // ✅ MODIFICADO: Usar cliente público sin autenticación
   cajaActual: async () => {
-    const response = await apiClient.get('/caja/caja/actual/');
-    return response.data;
+    try {
+      const response = await publicClient.get('/caja/caja/actual/');
+      return response.data;
+    } catch (error) {
+      // Si falla, lanzar el error para que Register lo maneje
+      throw error;
+    }
   },
 
   abrirCaja: async (data) => {

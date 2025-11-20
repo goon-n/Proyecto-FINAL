@@ -22,9 +22,18 @@ class CajaViewSet(viewsets.ModelViewSet):
     pagination_class = CajaPagination
     http_method_names = ['get', 'post', 'patch', 'head', 'options']
     
+    # ✅ PERMITIR ACCESO PÚBLICO A ESTE ENDPOINT
+    def get_permissions(self):
+        """
+        Permitir acceso sin autenticación solo al endpoint 'actual'
+        """
+        if self.action == 'actual':
+            return [permissions.AllowAny()]
+        return super().get_permissions()
+    
     @action(detail=False, methods=['get'])
     def actual(self, request):
-        """Obtener la caja actualmente abierta"""
+        """Obtener la caja actualmente abierta - ENDPOINT PÚBLICO"""
         caja = Caja.objects.filter(estado='ABIERTA').first()
         if caja:
             serializer = self.get_serializer(caja)

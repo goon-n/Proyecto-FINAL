@@ -49,17 +49,17 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "../api/api";
+import ModalPagoTarjeta from "../components/caja/ModalPagoTarjeta";
 
 // Modal de Renovación para Admin con Cambio de Plan
-const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
+const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess, onOpenTarjeta }) => {
   const [loading, setLoading] = useState(false);
   const [metodoPago, setMetodoPago] = useState("efectivo");
   const [planes, setPlanes] = useState([]);
   const [planSeleccionadoId, setPlanSeleccionadoId] = useState(null); 
   const [loadingPlanes, setLoadingPlanes] = useState(true);
   const [cambioPlan, setCambioPlan] = useState(false);
-  const [referencia, setReferencia] = useState(''); 
-  const [errorModal, setErrorModal] = useState(null); 
+  const [errorModal, setErrorModal] = useState(null);
 
   useEffect(() => {
     if (open && cuota) {
@@ -67,7 +67,6 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
       setPlanSeleccionadoId(cuota.plan);
       setCambioPlan(false);
       setErrorModal(null);
-      setReferencia('');
       setMetodoPago("efectivo");
     }
   }, [open, cuota]);
@@ -98,30 +97,32 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
   const planActualId = cuota.plan;
   const planNuevo = planes.find(p => p.id === planSeleccionadoId);
   const esCambioPlan = cambioPlan && planSeleccionadoId !== planActualId;
-  const montoAPagar = planNuevo ? planNuevo.precio : cuota.plan_precio; 
+  const montoAPagar = planNuevo ? planNuevo.precio : cuota.plan_precio;
 
   const handleRenovar = async () => {
+    // Si es tarjeta, abrir modal de tarjeta y cerrar este modal
+    if (metodoPago === 'tarjeta') {
+      onOpenTarjeta({
+        cuota,
+        montoAPagar,
+        esCambioPlan,
+        planSeleccionadoId,
+        planNuevo
+      });
+      onClose(); // Cerrar el modal de renovación
+      return;
+    }
+
+    // Efectivo o Transferencia
     setErrorModal(null);
     setLoading(true);
-
-    // VALIDACIÓN DE REFERENCIA
-    if (metodoPago === 'tarjeta' && (!referencia || referencia.length !== 4)) {
-        setErrorModal("Se requieren los últimos 4 dígitos de la tarjeta.");
-        setLoading(false);
-        return;
-    }
-    if (metodoPago === 'transferencia' && !referencia.trim()) {
-        setErrorModal("Se requiere una referencia para la transferencia.");
-        setLoading(false);
-        return;
-    }
 
     try {
       const data = {
         metodo_pago: metodoPago,
         monto: montoAPagar,
         ...(esCambioPlan && { plan_id: planSeleccionadoId }),
-        referencia: referencia
+        referencia: ''
       };
 
       console.log("📤 Enviando renovación (Admin/Coach):", data);
@@ -129,10 +130,8 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
       await api.renovarCuota(cuota.id, data);
       
       const planFinalNombre = esCambioPlan ? planNuevo.nombre : cuota.plan_nombre;
-
       toast.success(`Cuota de ${cuota.socio_username} renovada. Plan: ${planFinalNombre}.`);
       
-      // ✅ CRÍTICO: Cerrar modal Y recargar en paralelo
       onClose();
       onSuccess();
       
@@ -157,12 +156,12 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
         </DialogHeader>
         
         <div className="space-y-6 py-4">
-            {errorModal && (
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{errorModal}</AlertDescription>
-                </Alert>
-            )}
+          {errorModal && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorModal}</AlertDescription>
+            </Alert>
+          )}
 
           {/* Toggle para cambio de plan */}
           <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -250,36 +249,20 @@ const ModalRenovacionAdmin = ({ open, onClose, cuota, onSuccess }) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="efectivo">
-                    <Wallet className="inline h-4 w-4 mr-2" />
-                    💵 Efectivo
+                  <Wallet className="inline h-4 w-4 mr-2" />
+                  💵 Efectivo
                 </SelectItem>
                 <SelectItem value="transferencia">
-                    <Landmark className="inline h-4 w-4 mr-2" />
-                    🏦 Transferencia
+                  <Landmark className="inline h-4 w-4 mr-2" />
+                  🏦 Transferencia
                 </SelectItem>
                 <SelectItem value="tarjeta">
-                    <CreditCard className="inline h-4 w-4 mr-2" />
-                    💳 Tarjeta
+                  <CreditCard className="inline h-4 w-4 mr-2" />
+                  💳 Tarjeta
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          
-          {/* Campo de Referencia */}
-          {(metodoPago === 'tarjeta' || metodoPago === 'transferencia') && (
-            <div className="space-y-2">
-                <Label htmlFor="referencia" className="text-base font-semibold">
-                    {metodoPago === 'tarjeta' ? "Últimos 4 Dígitos Tarjeta" : "Referencia / Comprobante"}
-                </Label>
-                <Input
-                    id="referencia"
-                    value={referencia}
-                    onChange={(e) => setReferencia(e.target.value)}
-                    placeholder={metodoPago === 'tarjeta' ? "XXXX" : "Ingresar N° de comprobante"}
-                    maxLength={metodoPago === 'tarjeta' ? 4 : 100}
-                />
-            </div>
-          )}
         </div>
 
         <DialogFooter>
@@ -317,6 +300,10 @@ const ControlMembresias = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [cuotaSeleccionada, setCuotaSeleccionada] = useState(null);
   
+  // Estados para modal de tarjeta
+  const [modalTarjetaAbierto, setModalTarjetaAbierto] = useState(false);
+  const [datosPagoTarjeta, setDatosPagoTarjeta] = useState(null);
+  
   const [stats, setStats] = useState({
     total: 0,
     activas: 0,
@@ -335,7 +322,6 @@ const ControlMembresias = () => {
   const cargarCuotas = async () => {
     setLoading(true);
     try {
-      // ✅ AÑADIR timestamp para evitar cache
       const timestamp = new Date().getTime();
       const cuotasData = await api.listarCuotas();
       
@@ -347,7 +333,6 @@ const ControlMembresias = () => {
         return;
       }
       
-      // ✅ Filtrar para mostrar solo la cuota más reciente de cada socio
       const cuotasPorSocio = {};
       cuotasData.forEach(cuota => {
         const socioId = cuota.socio;
@@ -364,7 +349,6 @@ const ControlMembresias = () => {
         }
       });
       
-      // Convertir el objeto a array con solo las cuotas más recientes
       const cuotasMasRecientes = Object.values(cuotasPorSocio);
       
       console.log("✅ Cuotas filtradas (más recientes):", cuotasMasRecientes.length);
@@ -497,9 +481,44 @@ const ControlMembresias = () => {
   };
 
   const handleRenovacionExitosa = () => {
-    // ✅ CRÍTICO: Recargar inmediatamente
     console.log("🔄 Renovación exitosa, recargando cuotas...");
     cargarCuotas();
+  };
+
+  // Función para abrir modal de tarjeta
+  const handleOpenTarjeta = (datos) => {
+    setDatosPagoTarjeta(datos);
+    setModalTarjetaAbierto(true);
+  };
+
+  // Función para procesar pago con tarjeta
+  const handlePagoTarjeta = async (datosTarjeta) => {
+    setModalTarjetaAbierto(false);
+
+    try {
+      const data = {
+        metodo_pago: 'tarjeta',
+        monto: datosPagoTarjeta.montoAPagar,
+        ...(datosPagoTarjeta.esCambioPlan && { plan_id: datosPagoTarjeta.planSeleccionadoId }),
+        referencia: datosTarjeta.ultimos4
+      };
+
+      console.log("📤 Enviando renovación con tarjeta (Admin/Coach):", data);
+      
+      await api.renovarCuota(datosPagoTarjeta.cuota.id, data);
+      
+      const planFinalNombre = datosPagoTarjeta.esCambioPlan 
+        ? datosPagoTarjeta.planNuevo.nombre 
+        : datosPagoTarjeta.cuota.plan_nombre;
+      
+      toast.success(`Cuota de ${datosPagoTarjeta.cuota.socio_username} renovada. Plan: ${planFinalNombre}.`);
+      
+      handleRenovacionExitosa();
+      
+    } catch (error) {
+      console.error("❌ Error al renovar cuota:", error);
+      toast.error(error.response?.data?.detail || "Error al renovar la cuota mensual");
+    }
   };
 
   const puedeRenovar = (cuota) => {
@@ -731,13 +750,31 @@ const ControlMembresias = () => {
         </Card>
       </div>
 
-      {/* Modal */}
+      {/* Modal de Renovación */}
       {cuotaSeleccionada && (
         <ModalRenovacionAdmin
           open={modalAbierto}
           onClose={handleCerrarModal}
           cuota={cuotaSeleccionada}
           onSuccess={handleRenovacionExitosa}
+          onOpenTarjeta={handleOpenTarjeta}
+        />
+      )} 
+       {/* Modal de Pago con Tarjeta */}
+      {datosPagoTarjeta && (
+        <ModalPagoTarjeta
+          isOpen={modalTarjetaAbierto}
+          onClose={() => {
+            setModalTarjetaAbierto(false);
+            setDatosPagoTarjeta(null);
+          }}
+          onSubmit={handlePagoTarjeta}
+          monto={datosPagoTarjeta.montoAPagar}
+          descripcion={`Renovación cuota - ${datosPagoTarjeta.cuota.socio_username} - ${
+            datosPagoTarjeta.esCambioPlan 
+              ? datosPagoTarjeta.planNuevo?.nombre 
+              : datosPagoTarjeta.cuota.plan_nombre
+          }`}
         />
       )}
     </div>
