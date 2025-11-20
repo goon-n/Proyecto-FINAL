@@ -170,7 +170,8 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
       
     } catch (error) {
       console.error("❌ Error completo:", error);
-      console.error("❌ Response data:", error.response?.data);
+      console.error("❌ Response data:", JSON.stringify(error.response?.data, null, 2));
+      console.error("❌ Data enviada:", cuotaData);
       const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.message;
       toast.error("❌ " + errorMsg);
     } finally {
