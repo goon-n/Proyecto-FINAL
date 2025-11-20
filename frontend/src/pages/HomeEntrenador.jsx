@@ -179,10 +179,10 @@ const HomeEntrenador = () => {
           {/* COLUMNA IZQUIERDA: MENÚ DE ACCIONES RÁPIDAS */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="overflow-hidden border-none shadow-md">
-              <CardHeader className="bg-gray-900 text-white py-4">
+              <CardHeader className="bg-green-600 text-white py-4">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-400" />
-                  Gestión Rápida
+                  <TrendingUp className="h-5 w-5 text-white-400" />
+                  Gestión Administrativa
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -198,7 +198,7 @@ const HomeEntrenador = () => {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">Usuarios</p>
-                      <p className="text-xs text-gray-500">Gestionar socios y staff</p>
+                      <p className="text-xs text-gray-500">Gestionar socios</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
                   </button>
@@ -212,7 +212,7 @@ const HomeEntrenador = () => {
                       <Box className="h-5 w-5 text-green-700" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">Caja Diaria</p>
+                      <p className="font-semibold text-gray-900">Caja</p>
                       <p className="text-xs text-gray-500">Movimientos y cierres</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
@@ -227,8 +227,8 @@ const HomeEntrenador = () => {
                       <Package className="h-5 w-5 text-orange-700" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">Inventario</p>
-                      <p className="text-xs text-gray-500">Control de stock</p>
+                      <p className="font-semibold text-gray-900">Accesorios</p>
+                      <p className="text-xs text-gray-500">Control de Inventario</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
                   </button>
@@ -242,8 +242,8 @@ const HomeEntrenador = () => {
                       <CreditCard className="h-5 w-5 text-purple-700" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">Pagos y Cuotas</p>
-                      <p className="text-xs text-gray-500">Planes de suscripción</p>
+                      <p className="font-semibold text-gray-900">Cuotas</p>
+                      <p className="text-xs text-gray-500">Control y renovación</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
                   </button>

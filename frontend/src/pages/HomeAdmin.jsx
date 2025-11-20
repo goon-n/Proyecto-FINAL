@@ -224,9 +224,9 @@ const HomeAdmin = () => {
           {/* COLUMNA IZQUIERDA: MENÚ DE GESTIÓN */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="overflow-hidden border-none shadow-md">
-              <CardHeader className="bg-gray-900 text-white py-4">
+              <CardHeader className="bg-green-500 text-white py-4">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-purple-400" />
+                  <TrendingUp className="h-4 w-4 text-white-400" />
                   Gestión Administrativa
                 </CardTitle>
               </CardHeader>
@@ -258,7 +258,7 @@ const HomeAdmin = () => {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-gray-900 text-sm">Caja</p>
-                      <p className="text-xs text-gray-500">Ingresos y egresos</p>
+                      <p className="text-xs text-gray-500">Movimientos y cierres</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
                   </button>
@@ -302,8 +302,8 @@ const HomeAdmin = () => {
                       <Package className="h-4 w-4 text-orange-700" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">Inventario</p>
-                      <p className="text-xs text-gray-500">Stock de accesorios</p>
+                      <p className="font-medium text-gray-900 text-sm">Accesorios</p>
+                      <p className="text-xs text-gray-500">Control de Inventario</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
                   </button>

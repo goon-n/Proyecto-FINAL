@@ -1,9 +1,10 @@
 // src/pages/GestionUsuarios.jsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
 import { Users, UserCog, UsersRound } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
@@ -38,6 +39,11 @@ const GestionUsuarios = () => {
   const esEntrenador = user?.rol === "entrenador";
   const esAdmin = user?.rol === "admin";
 
+  // Paginación: 10 usuarios por página
+  const itemsPerPage = 10;
+  const [pageUsuarios, setPageUsuarios] = useState(1); // para admin/entrenadores list
+  const [pageSocios, setPageSocios] = useState(1); // para socios list
+
   // Separar usuarios por rol
   const adminYEntrenadores = usuariosActivos.filter(u => 
     u.perfil__rol === "admin" || u.perfil__rol === "entrenador"
@@ -50,6 +56,15 @@ const GestionUsuarios = () => {
   const usuariosFiltrados = esEntrenador 
     ? socios
     : usuariosActivos;
+
+  // Resetear páginas cuando cambian los conjuntos mostrados (usar longitud para evitar reset por referencia)
+  useEffect(() => {
+    setPageUsuarios(1);
+  }, [adminYEntrenadores.length]);
+
+  useEffect(() => {
+    setPageSocios(1);
+  }, [socios.length]);
 
   // ========== HANDLERS ==========
 
@@ -123,6 +138,23 @@ const GestionUsuarios = () => {
   const usuariosAMostrar = vistaActual === "activos" ? usuariosFiltrados : usuariosDesactivados;
   const esDesactivados = vistaActual === "desactivados";
 
+  // Helpers de paginación
+  const getTotalPages = (items) => Math.max(1, Math.ceil((items?.length || 0) / itemsPerPage));
+  const paginate = (items, page) => items.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  const renderPaginationControls = (currentPage, totalPages, onPrev, onNext, onSelectPage) => {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between mt-4 mb-2">
+        <div className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={onPrev} disabled={currentPage <= 1}>Anterior</Button>
+          <Button size="sm" variant="outline" onClick={onNext} disabled={currentPage >= totalPages}>Siguiente</Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -180,19 +212,35 @@ const GestionUsuarios = () => {
 
               <Card>
                 <CardContent className="pt-6">
-                  <TablaUsuarios
-                    usuarios={adminYEntrenadores}
-                    usuarioActualId={user.id}
-                    esDesactivados={false}
-                    rolesEditados={rolesEditados}
-                    onCambiarRol={handleRolChange}
-                    onGuardarRol={guardarCambioRol}
-                    onDesactivar={desactivarUsuario}
-                    onActivar={activarUsuario}
-                    guardando={guardando}
-                    procesando={procesando}
-                    esEntrenador={false}
-                  />
+                  {/* Paginación para admin/entrenadores */}
+                  {(() => {
+                    const totalPagesAdmin = getTotalPages(adminYEntrenadores);
+                    const adminPaginated = paginate(adminYEntrenadores, pageUsuarios);
+                    return (
+                      <>
+                        <TablaUsuarios
+                          usuarios={adminPaginated}
+                          usuarioActualId={user.id}
+                          esDesactivados={false}
+                          rolesEditados={rolesEditados}
+                          onCambiarRol={handleRolChange}
+                          onGuardarRol={guardarCambioRol}
+                          onDesactivar={desactivarUsuario}
+                          onActivar={activarUsuario}
+                          guardando={guardando}
+                          procesando={procesando}
+                          esEntrenador={false}
+                        />
+
+                        {renderPaginationControls(
+                          pageUsuarios,
+                          totalPagesAdmin,
+                          () => setPageUsuarios(p => Math.max(1, p - 1)),
+                          () => setPageUsuarios(p => Math.min(totalPagesAdmin, p + 1)),
+                        )}
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -223,19 +271,36 @@ const GestionUsuarios = () => {
                     cantidadDesactivados={usuariosDesactivados.filter(u => u.perfil__rol === 'socio').length}
                   />
 
-                  <TablaUsuarios
-                    usuarios={vistaActual === "activos" ? socios : usuariosDesactivados.filter(u => u.perfil__rol === 'socio')}
-                    usuarioActualId={user.id}
-                    esDesactivados={vistaActual === "desactivados"}
-                    rolesEditados={rolesEditados}
-                    onCambiarRol={handleRolChange}
-                    onGuardarRol={guardarCambioRol}
-                    onDesactivar={desactivarUsuario}
-                    onActivar={activarUsuario}
-                    guardando={guardando}
-                    procesando={procesando}
-                    esEntrenador={false}
-                  />
+                  {(() => {
+                    const sociosList = vistaActual === "activos" ? socios : usuariosDesactivados.filter(u => u.perfil__rol === 'socio');
+                    const totalPagesSoc = getTotalPages(sociosList);
+                    const sociosPaginated = paginate(sociosList, pageSocios);
+
+                    return (
+                      <>
+                        <TablaUsuarios
+                          usuarios={sociosPaginated}
+                          usuarioActualId={user.id}
+                          esDesactivados={vistaActual === "desactivados"}
+                          rolesEditados={rolesEditados}
+                          onCambiarRol={handleRolChange}
+                          onGuardarRol={guardarCambioRol}
+                          onDesactivar={desactivarUsuario}
+                          onActivar={activarUsuario}
+                          guardando={guardando}
+                          procesando={procesando}
+                          esEntrenador={false}
+                        />
+
+                        {renderPaginationControls(
+                          pageSocios,
+                          totalPagesSoc,
+                          () => setPageSocios(p => Math.max(1, p - 1)),
+                          () => setPageSocios(p => Math.min(totalPagesSoc, p + 1)),
+                        )}
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -262,19 +327,34 @@ const GestionUsuarios = () => {
 
             <Card>
               <CardContent className="pt-6">
-                <TablaUsuarios
-                  usuarios={socios}
-                  usuarioActualId={user.id}
-                  esDesactivados={false}
-                  rolesEditados={rolesEditados}
-                  onCambiarRol={handleRolChange}
-                  onGuardarRol={guardarCambioRol}
-                  onDesactivar={desactivarUsuario}
-                  onActivar={activarUsuario}
-                  guardando={guardando}
-                  procesando={procesando}
-                  esEntrenador={true}
-                />
+                {(() => {
+                  const totalPagesTrainer = getTotalPages(socios);
+                  const sociosPaginatedTrainer = paginate(socios, pageSocios);
+                  return (
+                    <>
+                      <TablaUsuarios
+                        usuarios={sociosPaginatedTrainer}
+                        usuarioActualId={user.id}
+                        esDesactivados={false}
+                        rolesEditados={rolesEditados}
+                        onCambiarRol={handleRolChange}
+                        onGuardarRol={guardarCambioRol}
+                        onDesactivar={desactivarUsuario}
+                        onActivar={activarUsuario}
+                        guardando={guardando}
+                        procesando={procesando}
+                        esEntrenador={true}
+                      />
+
+                      {renderPaginationControls(
+                        pageSocios,
+                        totalPagesTrainer,
+                        () => setPageSocios(p => Math.max(1, p - 1)),
+                        () => setPageSocios(p => Math.min(totalPagesTrainer, p + 1)),
+                      )}
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
           </>

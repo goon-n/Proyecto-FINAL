@@ -374,6 +374,26 @@ const ControlMembresias = () => {
     vencidas: 0
   });
 
+  // Paginación simple para la lista de cuotas
+  const itemsPerPage = 10;
+  const [pageCuotas, setPageCuotas] = useState(1);
+
+  const getTotalPages = (items) => Math.max(1, Math.ceil((items?.length || 0) / itemsPerPage));
+  const paginate = (items, page) => items.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  const renderPaginationControls = (currentPage, totalPages, onPrev, onNext) => {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between mt-4 mb-2">
+        <div className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={onPrev} disabled={currentPage <= 1}>Anterior</Button>
+          <Button size="sm" variant="outline" onClick={onNext} disabled={currentPage >= totalPages}>Siguiente</Button>
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     cargarCuotas();
   }, []);
@@ -381,6 +401,11 @@ const ControlMembresias = () => {
   useEffect(() => {
     filtrarCuotas();
   }, [cuotas, busqueda, filtroEstado]);
+
+  // Resetear página cuando cambie el tamaño de la lista filtrada
+  useEffect(() => {
+    setPageCuotas(1);
+  }, [cuotasFiltradas.length]);
 
   const cargarCuotas = async () => {
     setLoading(true);
@@ -739,7 +764,10 @@ const ControlMembresias = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {cuotasFiltradas.map((cuota) => (
+                    {(() => {
+                      const totalPages = getTotalPages(cuotasFiltradas);
+                      const cuotasPaginated = paginate(cuotasFiltradas, pageCuotas);
+                      return cuotasPaginated.map((cuota) => (
                       <TableRow 
                         key={cuota.id}
                         className={cuota.estado === 'vencida' ? 'bg-red-50 hover:bg-red-100' : ''}
@@ -837,9 +865,17 @@ const ControlMembresias = () => {
                           )}
                         </TableCell>
                       </TableRow>
-                    ))}
+                      ));
+                    })()}
                   </TableBody>
                 </Table>
+
+                {renderPaginationControls(
+                  pageCuotas,
+                  getTotalPages(cuotasFiltradas),
+                  () => setPageCuotas(p => Math.max(1, p - 1)),
+                  () => setPageCuotas(p => Math.min(getTotalPages(cuotasFiltradas), p + 1)),
+                )}
               </div>
             )}
           </CardContent>
