@@ -10,8 +10,10 @@ import { UserPlus, CreditCard, DollarSign, AlertCircle, RefreshCw } from "lucide
 import toast from "react-hot-toast";
 import api from "../../api/api";
 import ModalPagoTarjeta from "../caja/ModalPagoTarjeta";
+import { useAuth } from "../../context/AuthContext";
 
 export const AgregarSocioConPago = ({ onSocioCreado }) => {
+  const { user } = useAuth();
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [planes, setPlanes] = useState([]);
@@ -265,8 +267,8 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
                   Debe abrir una caja antes de crear socios con membresía.
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <a 
-                    href="/admin/caja" 
+                  <a
+                    href={user?.rol === "entrenador" ? "/entrenador/caja" : "/admin/caja"}
                     className="inline-block bg-red-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-700 transition-colors"
                   >
                     Ir a Gestión de Caja

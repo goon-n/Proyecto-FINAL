@@ -72,7 +72,8 @@ export default function CajaEdit({ id, onGuardado }) {
     if (caja.estado === 'CERRADA') {
       const efectivo = Number(caja.efectivo_esperado || 0);
       const transferencia = Number(caja.transferencia_esperada || 0);
-      const totalGeneral = efectivo + transferencia;
+      const tarjeta = Number(caja.tarjeta_esperada || 0);  // 🔧 AGREGADO
+      const totalGeneral = efectivo + transferencia + tarjeta;  // 🔧 MODIFICADO
       const montoContado = Number(caja.closing_counted_amount);
       const diferenciaEfectivo = montoContado - efectivo;
       
@@ -85,6 +86,7 @@ export default function CajaEdit({ id, onGuardado }) {
         `   Contado:  $${montoContado.toFixed(2)}\n` +
         `   Diferencia: $${diferenciaEfectivo.toFixed(2)} ${Math.abs(diferenciaEfectivo) < 0.01 ? '✅' : '⚠️'}\n\n` +
         `🏦 TRANSFERENCIAS: $${transferencia.toFixed(2)}\n\n` +
+        `💳 TARJETAS: $${tarjeta.toFixed(2)}\n\n` +  // 🔧 AGREGADO
         `┌─────────────────────────────────┐\n` +
         `💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}\n` +
         `└─────────────────────────────────┘\n\n` +
