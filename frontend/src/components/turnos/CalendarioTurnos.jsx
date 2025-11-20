@@ -74,6 +74,13 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
     };
 
     const handleAccion = async (turnoId, accion) => {
+        // Permitir refresh sin validación de usuario
+        if (accion === 'refresh') {
+            fetchCalendario();
+            cerrarModal();
+            return;
+        }
+
         if (!user) {
             alert('Debes iniciar sesión para realizar esta acción.');
             return;
@@ -99,6 +106,14 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
                     }
                     response = await api.cancelarTurno(turnoId);
                     alert(response.detail || 'Turno cancelado con éxito.');
+                    break;
+                
+                case 'cancelar_staff':
+                    if (!window.confirm('¿Estás seguro de que deseas cancelar este turno del socio?')) {
+                        return;
+                    }
+                    response = await api.cancelarTurnoParaSocio(turnoId);
+                    alert(response.detail || 'Turno cancelado exitosamente.');
                     break;
                     
                 default:

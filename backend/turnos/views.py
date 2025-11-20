@@ -375,6 +375,173 @@ class TurnoViewSet(viewsets.ModelViewSet):
 
     # turnos/views.py - REEMPLAZAR LOS MÉTODOS reservar y cancelar
 
+    @action(methods=['post'], detail=True, permission_classes=[IsStaffUser])
+    def reservar_para_socio(self, request, pk=None):
+        """Staff puede reservar turnos a nombre de un socio"""
+        turno = self.get_object()
+        socio_id = request.data.get('socio_id')
+        
+        if not socio_id:
+            return Response({
+                'detail': 'Debe proporcionar el ID del socio (socio_id)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            socio = User.objects.get(id=socio_id, is_active=True)
+            
+            # Verificar que el usuario sea socio
+            if not hasattr(socio, 'perfil') or socio.perfil.rol != 'socio':
+                return Response({
+                    'detail': 'El usuario seleccionado no es un socio activo'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({
+                'detail': 'Socio no encontrado'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        if turno.socio is not None or turno.estado != 'DISPONIBLE':
+            return Response({
+                'detail': 'Cupo no disponible para reserva'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar cuota activa del socio
+        cuota = CuotaMensual.objects.filter(
+            socio=socio,
+            estado='activa',
+            fecha_vencimiento__gte=timezone.now().date()
+        ).order_by('-fecha_vencimiento').first()
+
+        if not cuota:
+            return Response({
+                'detail': f'{socio.username} no tiene una cuota mensual activa.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar clases restantes
+        should_count = (cuota.plan.tipo_limite == 'semanal' and cuota.plan.cantidad_limite in (2, 3))
+        if should_count and cuota.clases_restantes <= 0:
+            return Response({
+                'detail': f'{socio.username} no tiene clases disponibles este mes.',
+                'error_code': 'sin_clases'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar límites del plan
+        puede_reservar, mensaje_error = self._validar_limites_plan(socio, turno.hora_inicio)
+        if not puede_reservar:
+            return Response({
+                'detail': mensaje_error,
+                'error_code': 'limite_plan'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Confirmar turno
+        turno.socio = socio
+        turno.estado = 'CONFIRMADO'
+        turno.fecha_reserva = timezone.now()
+        
+        try:
+            turno.full_clean()
+            turno.save()
+            
+            # Descontar clase si aplica
+            if should_count:
+                cuota.descontar_clase()
+            
+        except ValidationError as e:
+            return Response({'detail': e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        mensaje = f'Turno confirmado exitosamente para {socio.username}.'
+        if should_count:
+            mensaje += f' Le quedan {cuota.clases_restantes} clases este mes.'
+        
+        return Response({
+            'detail': mensaje,
+            'clases_restantes': cuota.clases_restantes if should_count else None
+        }, status=status.HTTP_200_OK)
+
+    @action(methods=['post'], detail=True, permission_classes=[IsStaffUser])
+    def cancelar_para_socio(self, request, pk=None):
+        """Staff puede cancelar turnos de cualquier socio"""
+        turno = self.get_object()
+        
+        if not turno.socio:
+            return Response({
+                'detail': 'Este turno no tiene un socio asignado'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if turno.estado not in ['RESERVADO', 'CONFIRMADO']:
+            return Response({
+                'detail': 'Solo se pueden cancelar turnos reservados o confirmados'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        socio = turno.socio
+        socio_username = socio.username
+        
+        # Devolver la clase si aplica
+        cuota = CuotaMensual.objects.filter(
+            socio=socio,
+            estado='activa'
+        ).order_by('-fecha_vencimiento').first()
+        
+        if cuota:
+            should_count_cancel = (cuota.plan.tipo_limite == 'semanal' and cuota.plan.cantidad_limite in (2, 3))
+            if should_count_cancel:
+                cuota.clases_restantes += 1
+                
+                # No superar el total calculado
+                def _effective_limit_from_cuota_obj(cuota_obj):
+                    plan = cuota_obj.plan
+                    try:
+                        cantidad = int(plan.cantidad_limite)
+                    except Exception:
+                        cantidad = None
+                    nombre = (cuota_obj.plan_nombre or '')
+                    m = re.search(r"\b(\d+)x\b", nombre.lower())
+                    parsed = int(m.group(1)) if m else None
+                    return parsed or cantidad
+
+                eff = _effective_limit_from_cuota_obj(cuota)
+                if eff:
+                    max_total = eff * 4
+                    if cuota.clases_restantes > max_total:
+                        cuota.clases_restantes = max_total
+
+                cuota.save(update_fields=['clases_restantes'])
+                print(f"✅ Clase devuelta a {socio_username}. Restantes: {cuota.clases_restantes}/{cuota.clases_totales}")
+        
+        # Liberar turno
+        turno.estado = 'DISPONIBLE'
+        turno.socio = None
+        turno.fecha_reserva = None
+        turno.save()
+        
+        mensaje = f'Turno cancelado. Cupo liberado para {socio_username}.'
+        clases_totales_calculado = None
+        clases_restantes_dev = None
+        
+        if cuota and should_count_cancel:
+            eff = None
+            try:
+                eff = int(cuota.plan.cantidad_limite)
+            except Exception:
+                eff = None
+            m = re.search(r"\b(\d+)x\b", (cuota.plan_nombre or '').lower())
+            parsed = int(m.group(1)) if m else None
+            eff = parsed or eff
+            if eff:
+                clases_totales_calculado = eff * 4
+                clases_restantes_dev = min(cuota.clases_restantes, clases_totales_calculado)
+
+            mensaje += f' Clase devuelta. {socio_username} tiene {clases_restantes_dev} clases disponibles.'
+
+        return Response({
+            'detail': mensaje,
+            'clases_restantes': clases_restantes_dev if clases_restantes_dev is not None else None,
+            'clases_totales_calculado': clases_totales_calculado
+        }, status=status.HTTP_200_OK)
+
     @action(methods=['post'], detail=True)
     def reservar(self, request, pk=None):
         """Reserva Y confirma el turno directamente + descuenta 1 clase"""

@@ -1,19 +1,38 @@
 // frontend/src/components/turnos/ModalHorario.jsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import moment from 'moment';
-import { Clock, Users, X } from 'lucide-react';
+import { Clock, Users, X, UserPlus } from 'lucide-react';
+import ModalReservarParaSocio from './ModalReservarParaSocio';
 
 const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, onCerrar }) => {
     const { cupos_disponibles, cupos_reservados, cupos_confirmados, total_cupos, turnos } = data;
     const misTurnos = turnos.filter(t => t.es_mio);
     const fechaFormateada = moment(fecha).format('dddd DD [de] MMMM, YYYY');
     
+    const [mostrarModalReservarParaSocio, setMostrarModalReservarParaSocio] = useState(false);
+    const [turnoIdSeleccionado, setTurnoIdSeleccionado] = useState(null);
+    
     // ✅ NUEVO: Calcular si puede cancelar (más de 1 hora antes)
     const horaCompleta = `${fecha}T${hora}`;
     const horaTurno = moment(horaCompleta);
     const ahora = moment();
     const puedeCancelar = horaTurno.diff(ahora, 'hours', true) > 1;
+
+    const handleAbrirReservarParaSocio = () => {
+        const turnoDisponible = turnos.find(t => t.estado === 'DISPONIBLE' && !t.socio);
+        if (turnoDisponible) {
+            setTurnoIdSeleccionado(turnoDisponible.id);
+            setMostrarModalReservarParaSocio(true);
+        }
+    };
+
+    const handleReservaExitosa = () => {
+        setMostrarModalReservarParaSocio(false);
+        if (onAccion) {
+            onAccion(null, 'refresh'); // Trigger refresh del calendario
+        }
+    };
 
     return (
         <div
@@ -126,7 +145,7 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                         </div>
                     )}
 
-                    {/* Botón para reservar */}
+                    {/* Botón para reservar (solo socios) */}
                     {cupos_disponibles > 0 && misTurnos.length === 0 && user && !isStaff && (
                         <button
                             onClick={() => {
@@ -138,6 +157,17 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                             className="w-full py-4 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 font-bold text-lg transition-colors"
                         >
                             Reservar Turno
+                        </button>
+                    )}
+
+                    {/* ✅ NUEVO: Botón para staff - Reservar para un socio */}
+                    {cupos_disponibles > 0 && isStaff && (
+                        <button
+                            onClick={handleAbrirReservarParaSocio}
+                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 font-bold text-lg transition-colors flex items-center justify-center gap-3"
+                        >
+                            <UserPlus size={24} />
+                            Reservar Turno para un Socio
                         </button>
                     )}
 
@@ -167,12 +197,23 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                                                 <span className="text-gray-700">👤 {turno.socio}</span>
                                             )}
                                         </div>
-                                        <button
-                                            onClick={() => onEditar(turno)}
-                                            className="px-3 py-1 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700"
-                                        >
-                                            Editar
-                                        </button>
+                                        <div className="flex gap-2">
+                                            {/* Botón de cancelar para staff */}
+                                            {turno.socio && turno.estado === 'CONFIRMADO' && (
+                                                <button
+                                                    onClick={() => onAccion(turno.id, 'cancelar_staff')}
+                                                    className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => onEditar(turno)}
+                                                className="px-3 py-1 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700"
+                                            >
+                                                Editar
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -191,15 +232,19 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                             <p className="text-blue-700 font-medium">Debes iniciar sesión para reservar turnos</p>
                         </div>
                     )}
-                    
-                    {/* ✅ NUEVO: Mensaje para staff */}
-                    {isStaff && cupos_disponibles > 0 && (
-                        <div className="text-center py-6 bg-yellow-50 rounded-xl">
-                            <p className="text-yellow-700 font-medium">Los administradores y entrenadores no pueden reservar turnos</p>
-                        </div>
-                    )}
                 </div>
             </div>
+
+            {/* ✅ NUEVO: Modal para seleccionar socio */}
+            {mostrarModalReservarParaSocio && (
+                <ModalReservarParaSocio
+                    fecha={fechaFormateada}
+                    hora={hora}
+                    turnoId={turnoIdSeleccionado}
+                    onCerrar={() => setMostrarModalReservarParaSocio(false)}
+                    onReservaExitosa={handleReservaExitosa}
+                />
+            )}
         </div>
     );
 };

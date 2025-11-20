@@ -355,6 +355,20 @@ const api = {
     return response.data;
   },
 
+  // Staff reserva turno a nombre de un socio
+  reservarTurnoParaSocio: async (turnoId, socioId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/reservar_para_socio/`, {
+      socio_id: socioId
+    });
+    return response.data;
+  },
+
+  // Staff cancela turno de un socio
+  cancelarTurnoParaSocio: async (turnoId) => {
+    const response = await apiClient.post(`/turnos/turno/${turnoId}/cancelar_para_socio/`);
+    return response.data;
+  },
+
   confirmarTurno: async (turnoId) => {
     const response = await apiClient.post(`/turnos/turno/${turnoId}/confirmar/`);
     return response.data;
