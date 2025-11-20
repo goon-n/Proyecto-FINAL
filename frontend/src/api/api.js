@@ -11,6 +11,17 @@ const publicClient = axios.create({
   },
 });
 
+export const descontarClaseManual = async (cuotaId) => {
+    try {
+        // ✅ CORREGIR: Agregar 'cuota_mensual' en la ruta
+        const response = await apiClient.post(`/cuotas/cuota_mensual/${cuotaId}/descontar_clase_manual/`);
+        return response.data;
+    } catch (error) {
+        console.error("❌ Error al descontar clase:", error);
+        throw error;
+    }
+};
+
 const api = {
   // ----- Usuario Actual -----
   obtenerUsuarioActual: async () => {
@@ -376,7 +387,9 @@ const api = {
       fecha_inicio: fechaInicio
     });
     return response.data;
-  },
+  }, 
+
+    descontarClaseManual,  
 };
 
 export default api;

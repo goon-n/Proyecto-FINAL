@@ -1,4 +1,4 @@
-# cuotas_mensuales/models.py - MODELO PLAN COMPLETO
+# cuotas_mensuales/models.py - MODELO COMPLETO CON CLASES
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -92,6 +92,16 @@ class CuotaMensual(models.Model):
     
     tarjeta_ultimos_4 = models.CharField(max_length=4, blank=True, null=True)
     
+    # 🆕 NUEVOS CAMPOS PARA SISTEMA DE CLASES
+    clases_totales = models.PositiveIntegerField(
+        default=0,  # ✅ Cambiado a 0
+        help_text='Total de clases incluidas en el plan'
+    )
+    clases_restantes = models.PositiveIntegerField(
+        default=0,  # ✅ Cambiado a 0
+        help_text='Clases disponibles en el mes actual'
+)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -111,7 +121,7 @@ class CuotaMensual(models.Model):
     
     def save(self, *args, **kwargs):
         """
-        ✅ CORREGIDO: Calcular estado SIEMPRE antes de guardar
+        ✅ CORREGIDO: Calcular estado SIEMPRE antes de guardar + calcular clases
         """
         # 1. Guardar información del plan SI NO EXISTE
         if not self.plan_nombre and self.plan:
@@ -119,18 +129,35 @@ class CuotaMensual(models.Model):
         if not self.plan_precio and self.plan:
             self.plan_precio = self.plan.precio
         
-        # 2. Calcular fecha de vencimiento si no existe
+        # 2. 🆕 CALCULAR CLASES SEGÚN EL PLAN (solo si es nueva o se renovó)
+        # Si no tiene PK es nueva, o si explícitamente se cambió el plan
+        es_nueva = not self.pk
+        
+        if es_nueva:
+            if self.plan.tipo_limite == 'libre':
+                self.clases_totales = 999  # Ilimitado
+                self.clases_restantes = 999
+            elif self.plan.tipo_limite == 'semanal':
+                # Ej: 2 veces/semana = 2 * 4 semanas = 8 clases/mes
+                self.clases_totales = self.plan.cantidad_limite * 4
+                self.clases_restantes = self.plan.cantidad_limite * 4
+            elif self.plan.tipo_limite == 'diario':
+                # Ej: 1 vez/día = 1 * 30 días = 30 clases/mes
+                self.clases_totales = self.plan.cantidad_limite * 30
+                self.clases_restantes = self.plan.cantidad_limite * 30
+        
+        # 3. Calcular fecha de vencimiento si no existe
         if not self.fecha_vencimiento and self.fecha_inicio:
             self.fecha_vencimiento = self.fecha_inicio + timedelta(days=30)
         
-        # 3. ✅ CORREGIDO: SIEMPRE calcular el estado antes de guardar
+        # 4. ✅ SIEMPRE calcular el estado antes de guardar
         hoy = timezone.now().date()
         if hoy > self.fecha_vencimiento:
             self.estado = 'vencida'
         else:
             self.estado = 'activa'
 
-        # 4. Guardar en la base de datos
+        # 5. Guardar en la base de datos
         super().save(*args, **kwargs)
     
     def actualizar_estado(self):
@@ -171,6 +198,15 @@ class CuotaMensual(models.Model):
         
         self.estado = 'activa'
         self.save()
+    
+    # 🆕 NUEVO MÉTODO
+    def descontar_clase(self):
+        """Descuenta 1 clase. Retorna True si se pudo descontar, False si no hay clases"""
+        if self.clases_restantes > 0:
+            self.clases_restantes -= 1
+            self.save(update_fields=['clases_restantes'])
+            return True
+        return False
 
 
 class HistorialPago(models.Model):

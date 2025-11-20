@@ -10,6 +10,7 @@ from django.utils import timezone
 from datetime import timedelta, datetime, time
 from backend.permissions import IsStaffUser
 from rest_framework.permissions import IsAuthenticated
+import re
 
 # ✅ CORREGIDO: Importar desde cuotas_mensuales, NO desde turnos
 from cuotas_mensuales.models import CuotaMensual
@@ -372,20 +373,16 @@ class TurnoViewSet(viewsets.ModelViewSet):
         print("=" * 60)
         return True, None
 
+    # turnos/views.py - REEMPLAZAR LOS MÉTODOS reservar y cancelar
+
     @action(methods=['post'], detail=True)
     def reservar(self, request, pk=None):
-        """Reserva Y confirma el turno directamente"""
+        """Reserva Y confirma el turno directamente + descuenta 1 clase"""
         turno = self.get_object()
         user = request.user
-    
-        # 🔍 DEBUG
+
         print("="*50)
         print(f"🔍 Turno ID: {turno.id}")
-        print(f"🔍 Hora inicio: {turno.hora_inicio}")
-        print(f"🔍 Hora (hour): {turno.hora_inicio.hour}")
-        print(f"🔍 Minuto: {turno.hora_inicio.minute}")
-        print(f"🔍 Día semana: {turno.hora_inicio.weekday()}")
-        print(f"🔍 Estado: {turno.estado}")
         print(f"🔍 Usuario: {user.username} (staff={user.is_staff})")
         print("="*50)
         
@@ -400,6 +397,27 @@ class TurnoViewSet(viewsets.ModelViewSet):
                 'detail': 'Cupo no disponible para reserva'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # 🆕 1. VALIDAR QUE TENGA CUOTA ACTIVA Y CLASES DISPONIBLES
+        cuota = CuotaMensual.objects.filter(
+            socio=user,
+            estado='activa',
+            fecha_vencimiento__gte=timezone.now().date()
+        ).order_by('-fecha_vencimiento').first()
+
+        if not cuota:
+            return Response({
+                'detail': 'No tienes una cuota mensual activa. Por favor, regulariza tu situación para reservar turnos.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 🆕 2. VERIFICAR CLASES RESTANTES: Solo contamos/descontamos para planes semanales limitados (ej. 2x o 3x semanal)
+        should_count = (cuota.plan.tipo_limite == 'semanal' and cuota.plan.cantidad_limite in (2, 3))
+        if should_count and cuota.clases_restantes <= 0:
+            return Response({
+                'detail': f'No tienes clases disponibles este mes. Has agotado tus {cuota.clases_totales} clases del plan "{cuota.plan_nombre}". Deberás esperar hasta la renovación.',
+                'error_code': 'sin_clases'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar límites del plan (semanal/diario)
         puede_reservar, mensaje_error = self._validar_limites_plan(user, turno.hora_inicio)
 
         if not puede_reservar:
@@ -408,7 +426,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
                 'error_code': 'limite_plan'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Confirmar directamente sin pasar por estado RESERVADO
+        # Confirmar directamente
         turno.socio = user
         turno.estado = 'CONFIRMADO'
         turno.fecha_reserva = timezone.now()
@@ -419,6 +437,12 @@ class TurnoViewSet(viewsets.ModelViewSet):
             print("✅ full_clean() OK")
             turno.save()
             print("✅ save() OK")
+            
+            # 🆕 3. DESCONTAR 1 CLASE: solo para los planes semanales limitados (2x/3x)
+            if should_count:
+                cuota.descontar_clase()
+                print(f"✅ Clase descontada. Restantes: {cuota.clases_restantes}/{cuota.clases_totales}")
+            
         except ValidationError as e:
             print(f"❌ ValidationError: {e.message_dict}")
             return Response({'detail': e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
@@ -426,29 +450,46 @@ class TurnoViewSet(viewsets.ModelViewSet):
             print(f"❌ Exception: {type(e).__name__}: {str(e)}")
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
             
-        return Response({
-            'detail': 'Turno confirmado con éxito. Puedes cancelarlo hasta 1 hora antes.'
-        }, status=status.HTTP_200_OK)
+        # 🆕 Calcular total efectivo según plan (para consistencia con frontend)
+        def _effective_limit_from_cuota(cuota_obj):
+            plan = cuota_obj.plan
+            # Preferir cantidad_limite si tiene sentido
+            try:
+                cantidad = int(plan.cantidad_limite)
+            except Exception:
+                cantidad = None
 
-    @action(methods=['post'], detail=True, permission_classes=[permissions.IsAuthenticated])
-    def confirmar(self, request, pk=None):
-        """Confirma un turno que estaba en estado RESERVADO (por compatibilidad)"""
-        turno = self.get_object()
-        user = request.user
-        
-        if turno.socio != user or turno.estado != 'RESERVADO':
-            return Response({'detail': 'El turno no está en estado de RESERVADO o no te pertenece.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if turno.hora_inicio < timezone.now():
-            return Response({'detail': 'No se puede confirmar un turno que ya ha comenzado.'}, status=status.HTTP_400_BAD_REQUEST)
+            # Intentar parsear del nombre si no hay cantidad válida
+            nombre = (cuota_obj.plan_nombre or '')
+            m = re.search(r"\b(\d+)x\b", nombre.lower())
+            parsed = int(m.group(1)) if m else None
 
-        turno.estado = 'CONFIRMADO'
-        turno.save()
-        return Response({'detail': 'Turno confirmado con éxito.'}, status=status.HTTP_200_OK)
+            effective = parsed or cantidad
+            return effective
+
+        effective_limit = _effective_limit_from_cuota(cuota)
+        clases_totales_calculado = None
+        clases_restantes_dev = None
+        if should_count and effective_limit:
+            clases_totales_calculado = effective_limit * 4
+            clases_restantes_dev = min(cuota.clases_restantes, clases_totales_calculado)
+
+        # Mensaje personalizado con clases restantes
+        mensaje = 'Turno confirmado con éxito. Puedes cancelarlo hasta 1 hora antes.'
+        if should_count:
+            mensaje += f' Te quedan {clases_restantes_dev} clases este mes.'
+
+        resp = {
+            'detail': mensaje,
+            'clases_restantes': clases_restantes_dev if should_count else None,
+            'clases_totales_calculado': clases_totales_calculado
+        }
+
+        return Response(resp, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=True)
     def cancelar(self, request, pk=None):
-        """Cancela el turno si falta más de 1 hora"""
+        """Cancela el turno si falta más de 1 hora + DEVUELVE la clase"""
         turno = self.get_object()
         user = request.user
         
@@ -460,16 +501,70 @@ class TurnoViewSet(viewsets.ModelViewSet):
         # Verificar que falte más de 1 hora
         if turno.hora_inicio <= timezone.now() + timedelta(hours=1):
             return Response({
-                'detail': 'No se puede cancelar un turno con menos de 1 hora de anticipación.'
+                'detail': 'No se puede cancelar un turno con menos de 1 hora de anticipación. La clase se descontará.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if turno.estado in ['RESERVADO', 'CONFIRMADO']:
+            # 🆕 DEVOLVER LA CLASE (solo para planes semanales limitados)
+            cuota = CuotaMensual.objects.filter(
+                socio=user,
+                estado='activa'
+            ).order_by('-fecha_vencimiento').first()
+            
+            if cuota:
+                should_count_cancel = (cuota.plan.tipo_limite == 'semanal' and cuota.plan.cantidad_limite in (2, 3))
+                if should_count_cancel:
+                    cuota.clases_restantes += 1
+                    # No superar el total calculado (usar misma regla que en reservar)
+                    # Calcular effective limit
+                    def _effective_limit_from_cuota_obj(cuota_obj):
+                        plan = cuota_obj.plan
+                        try:
+                            cantidad = int(plan.cantidad_limite)
+                        except Exception:
+                            cantidad = None
+                        nombre = (cuota_obj.plan_nombre or '')
+                        m = re.search(r"\b(\d+)x\b", nombre.lower())
+                        parsed = int(m.group(1)) if m else None
+                        return parsed or cantidad
+
+                    eff = _effective_limit_from_cuota_obj(cuota)
+                    if eff:
+                        max_total = eff * 4
+                        if cuota.clases_restantes > max_total:
+                            cuota.clases_restantes = max_total
+
+                    cuota.save(update_fields=['clases_restantes'])
+                    print(f"✅ Clase devuelta. Restantes: {cuota.clases_restantes}/{cuota.clases_totales}")
+            
             turno.estado = 'DISPONIBLE'
             turno.socio = None
             turno.fecha_reserva = None
             turno.save()
+            
+            mensaje = 'Turno cancelado, cupo liberado.'
+            clases_totales_calculado = None
+            clases_restantes_dev = None
+            if cuota and should_count_cancel:
+                # Calcular effective total
+                eff = None
+                try:
+                    eff = int(cuota.plan.cantidad_limite)
+                except Exception:
+                    eff = None
+                m = re.search(r"\b(\d+)x\b", (cuota.plan_nombre or '').lower())
+                parsed = int(m.group(1)) if m else None
+                eff = parsed or eff
+                if eff:
+                    clases_totales_calculado = eff * 4
+                    clases_restantes_dev = min(cuota.clases_restantes, clases_totales_calculado)
+
+                mensaje += f' Clase devuelta. Tienes {clases_restantes_dev} clases disponibles.'
+
             return Response({
-                'detail': 'Turno cancelado, cupo liberado.'
+                'detail': mensaje,
+                'clases_restantes': clases_restantes_dev if clases_restantes_dev is not None else None,
+                'clases_totales_calculado': clases_totales_calculado
             }, status=status.HTTP_200_OK)
         
         return Response({

@@ -443,7 +443,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
         
         if not es_admin_entrenador:
             return Response(
-                {'error': f'Error al registrar en caja: {str(e)}'},
+                {'error': f'Error al registrar en caja: {str()}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
@@ -530,6 +530,17 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 cuota.fecha_vencimiento = fecha_vencimiento_nueva
                 cuota.estado = 'activa'
                 
+                # 🆕 RESETEAR CLASES SEGÚN EL NUEVO PLAN
+                if nuevo_plan.tipo_limite == 'libre':
+                    cuota.clases_totales = 999
+                    cuota.clases_restantes = 999
+                elif nuevo_plan.tipo_limite == 'semanal':
+                    cuota.clases_totales = nuevo_plan.cantidad_limite * 4
+                    cuota.clases_restantes = nuevo_plan.cantidad_limite * 4
+                elif nuevo_plan.tipo_limite == 'diario':
+                    cuota.clases_totales = nuevo_plan.cantidad_limite * 30
+                    cuota.clases_restantes = nuevo_plan.cantidad_limite * 30
+                
                 if metodo_pago == 'tarjeta' and referencia.isdigit() and len(referencia) == 4:
                     cuota.tarjeta_ultimos_4 = referencia
                 
@@ -540,6 +551,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 print(f"   Estado nuevo: {cuota.estado}")
                 print(f"   Fecha inicio: {cuota.fecha_inicio}")
                 print(f"   Fecha vencimiento: {cuota.fecha_vencimiento}")
+                print(f"   Clases: {cuota.clases_restantes}/{cuota.clases_totales}")  # 🆕
                 print("=" * 60)
 
                 # Registrar el pago en historial
@@ -582,6 +594,50 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def descontar_clase_manual(self, request, pk=None):
+        """
+        Endpoint para que Admin/Entrenador descuente manualmente 1 clase
+        Usado cuando el socio viene sin turno reservado
+        """
+        # Verificar permisos
+        if not _is_admin_or_entrenador(request.user):
+            return Response(
+                {'detail': 'Solo admin y entrenadores pueden descontar clases manualmente'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        cuota = self.get_object()
+        
+        # Verificar que la cuota esté activa
+        if cuota.estado != 'activa':
+            return Response(
+                {'detail': 'La cuota no está activa'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar que tenga clases disponibles (excepto pase libre)
+        if cuota.plan.tipo_limite != 'libre' and cuota.clases_restantes <= 0:
+            return Response(
+                {'detail': f'El socio no tiene clases disponibles ({cuota.clases_restantes}/{cuota.clases_totales})'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Descontar la clase
+        if cuota.plan.tipo_limite != 'libre':
+            cuota.clases_restantes -= 1
+            cuota.save(update_fields=['clases_restantes'])
+            
+            return Response({
+                'detail': f'Clase descontada exitosamente para {cuota.socio.username}',
+                'clases_restantes': cuota.clases_restantes,
+                'clases_totales': cuota.clases_totales
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'detail': f'{cuota.socio.username} tiene pase libre, no se descuentan clases'
+            }, status=status.HTTP_200_OK)
 
 class HistorialPagoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = HistorialPago.objects.all()

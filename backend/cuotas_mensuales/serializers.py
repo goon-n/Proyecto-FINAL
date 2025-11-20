@@ -1,4 +1,4 @@
-# cuotas_mensuales/serializers.py - ARCHIVO COMPLETO CORREGIDO
+# cuotas_mensuales/serializers.py - ARCHIVO COMPLETO CON CLASES
 
 from rest_framework import serializers
 from .models import Plan, CuotaMensual, HistorialPago
@@ -18,6 +18,8 @@ class PlanSerializer(serializers.ModelSerializer):
             'activo',
             'es_popular',
             'features',
+            'tipo_limite',        # 🆕 Agregado para el frontend
+            'cantidad_limite',    # 🆕 Agregado para el frontend
             'created_at',
             'updated_at'
         ]
@@ -52,10 +54,12 @@ class CuotaMensualSerializer(serializers.ModelSerializer):
             'estado',
             'tarjeta_ultimos_4',
             'dias_restantes',
+            'clases_totales',      # 🆕
+            'clases_restantes',    # 🆕
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['plan_nombre', 'plan_precio', 'created_at', 'updated_at']
+        read_only_fields = ['plan_nombre', 'plan_precio', 'clases_totales', 'clases_restantes', 'created_at', 'updated_at']
     
     def get_dias_restantes(self, obj):
         return obj.dias_restantes()
@@ -75,7 +79,7 @@ class CuotaMensualCreateSerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        # El modelo se encarga de guardar plan_nombre y plan_precio
+        # El modelo se encarga de guardar plan_nombre, plan_precio y calcular clases
         return super().create(validated_data)
 
 
@@ -95,7 +99,9 @@ class CuotaMensualSocioSerializer(serializers.ModelSerializer):
             'fecha_inicio',
             'fecha_vencimiento',
             'estado',
-            'dias_restantes'
+            'dias_restantes',
+            'clases_totales',      # 🆕
+            'clases_restantes',    # 🆕
         ]
     
     def get_dias_restantes(self, obj):
@@ -133,21 +139,15 @@ class RenovarCuotaSerializer(serializers.Serializer):
     Serializer para renovar una cuota (ADMIN/ENTRENADOR)
     Acepta plan_id para permitir el cambio de plan y referencia para el comprobante.
     """
-    # 🟢 AÑADIDO: Para permitir el cambio de plan
     plan_id = serializers.IntegerField(required=False, help_text="ID del nuevo plan (opcional)") 
-    
-    # Campo que era opcional en la vista anterior, pero la nueva lógica lo gestiona
     fecha_vencimiento = serializers.DateField(required=False) 
-    
-    # Monto es requerido, aunque se pueda calcular en el backend, es mejor enviarlo
     monto = serializers.DecimalField(max_digits=10, decimal_places=2, required=True) 
     
     metodo_pago = serializers.ChoiceField(
         choices=['tarjeta', 'efectivo', 'transferencia'],
-        default='efectivo' # Admin/Entrenador inicia con 'efectivo'
+        default='efectivo'
     )
     
-    # 🟢 AÑADIDO: Para el comprobante de pago o últimos 4 de tarjeta
     referencia = serializers.CharField(max_length=100, required=False, allow_blank=True) 
 
 
@@ -163,5 +163,4 @@ class SolicitudRenovacionSerializer(serializers.Serializer):
         default='tarjeta'
     )
     
-    # 🟢 AJUSTADO: Se requiere para el registro en historial y se usa como 'referencia' en la vista
     tarjeta_ultimos_4 = serializers.CharField(max_length=4, required=True, allow_blank=False)

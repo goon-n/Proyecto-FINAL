@@ -303,6 +303,69 @@ const ControlMembresias = () => {
   // Estados para modal de tarjeta
   const [modalTarjetaAbierto, setModalTarjetaAbierto] = useState(false);
   const [datosPagoTarjeta, setDatosPagoTarjeta] = useState(null);
+
+  // 🆕 FUNCIÓN PARA DESCONTAR CLASE
+  const handleDescontarClase = async (cuota) => {
+    // Determinar si este plan debe contarse (solo semanal 2x o 3x)
+    const planTipo = cuota.plan_info?.tipo_limite;
+    const cantidadLimite = Number(cuota.plan_info?.cantidad_limite) || 0;
+    const nombrePlanLower = (cuota.plan_nombre || '').toLowerCase();
+    const matchX = nombrePlanLower.match(/\b(\d+)x\b/);
+    const parsedFromName = matchX ? Number(matchX[1]) : null;
+    const effectiveLimit = parsedFromName || cantidadLimite;
+    const shouldCount = planTipo === 'semanal' && [2,3].includes(effectiveLimit);
+
+    if (!shouldCount) {
+      toast.error("No corresponde descontar manualmente para este tipo de pase (libre/diario).");
+      return;
+    }
+
+    const totalMensual = effectiveLimit * 4;
+    const actuales = Number(cuota.clases_restantes || 0);
+
+    if (actuales <= 0) {
+      toast.error("Este socio no tiene clases disponibles");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Confirmar descuento de 1 clase para ${cuota.socio_username}?\n\n` +
+      `Clases actuales: ${Math.min(actuales, totalMensual)}/${totalMensual}\n` +
+      `Clases después: ${Math.max(Math.min(actuales - 1, totalMensual), 0)}/${totalMensual}`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      const response = await api.descontarClaseManual(cuota.id);
+      toast.success(response.detail || "Clase descontada exitosamente");
+      // Recargar cuotas para mantener consistencia
+      cargarCuotas();
+    } catch (error) {
+      console.error("Error al descontar clase:", error);
+      toast.error(error.response?.data?.detail || "Error al descontar la clase");
+    }
+  };
+
+  // Helper para obtener valores mostrados de clases según regla (semanal 2x/3x)
+  const getCuotaDisplay = (cuota) => {
+    const planTipo = cuota.plan_info?.tipo_limite;
+    const cantidadLimite = Number(cuota.plan_info?.cantidad_limite) || 0;
+    const nombrePlanLower = (cuota.plan_nombre || '').toLowerCase();
+    const matchX = nombrePlanLower.match(/\b(\d+)x\b/);
+    const parsedFromName = matchX ? Number(matchX[1]) : null;
+    const effectiveLimit = parsedFromName || cantidadLimite;
+    const shouldCount = planTipo === 'semanal' && [2,3].includes(effectiveLimit);
+
+    if (!shouldCount) {
+      return { displayRestantes: '∞', displayTotal: '∞', shouldCount: false };
+    }
+
+    const total = effectiveLimit * 4;
+    const restantesRaw = Number(cuota.clases_restantes ?? 0);
+    const displayRestantes = Math.min(restantesRaw, total);
+    return { displayRestantes, displayTotal: total, shouldCount: true };
+  };
   
   const [stats, setStats] = useState({
     total: 0,
@@ -466,9 +529,6 @@ const ControlMembresias = () => {
     }).format(precio || 0);
   };
 
-  const exportarExcel = () => {
-    toast.error("Exportación a Excel aún no implementada.");
-  };
 
   const handleAbrirModal = (cuota) => {
     setCuotaSeleccionada(cuota);
@@ -567,10 +627,6 @@ const ControlMembresias = () => {
                 </CardDescription>
               </div>
             </div>
-            <Button onClick={exportarExcel} variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar Excel
-            </Button>
           </CardHeader>
         </Card>
 
@@ -677,6 +733,7 @@ const ControlMembresias = () => {
                       <TableHead>Estado</TableHead>
                       <TableHead>Vencimiento</TableHead>
                       <TableHead>Días Restantes</TableHead>
+                      <TableHead>Clases</TableHead> 
                       <TableHead className="text-right">Precio</TableHead>
                       <TableHead className="text-center">Acciones</TableHead>
                     </TableRow>
@@ -720,7 +777,46 @@ const ControlMembresias = () => {
                               : `${cuota.diasRestantes} días`
                             }
                           </span>
-                        </TableCell>
+                          </TableCell>
+                          <TableCell>
+                              {cuota.plan_info?.tipo_limite === 'libre' ? (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                  <span className="text-lg">∞</span> Ilimitadas
+                                </Badge>
+                              ) : (
+                                (() => {
+                                  const { displayRestantes, displayTotal, shouldCount } = getCuotaDisplay(cuota);
+                                  const restantesNum = displayRestantes === '∞' ? Infinity : Number(displayRestantes);
+                                  const totalNum = displayTotal === '∞' ? Infinity : Number(displayTotal);
+                                  let badgeClass = "bg-green-50 text-green-700 border-green-200";
+                                  if (displayRestantes === 0 || displayRestantes === '0') {
+                                    badgeClass = "bg-red-50 text-red-700 border-red-200";
+                                  } else if (isFinite(totalNum) && restantesNum <= totalNum * 0.33) {
+                                    badgeClass = "bg-orange-50 text-orange-700 border-orange-200";
+                                  }
+
+                                  return (
+                                    <div className="flex flex-col gap-1">
+                                      <Badge variant="outline" className={badgeClass}>
+                                        {displayRestantes}/{displayTotal}
+                                      </Badge>
+
+                                      {cuota.estado === 'activa' && shouldCount && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                          onClick={() => handleDescontarClase(cuota)}
+                                          disabled={displayRestantes === 0 || displayRestantes === '0'}
+                                        >
+                                          Descontar
+                                        </Button>
+                                      )}
+                                    </div>
+                                  );
+                                })()
+                              )}
+                          </TableCell>
                         <TableCell className="text-right font-semibold">
                           {formatearPrecio(cuota.plan_precio || cuota.plan_info?.precio)}
                         </TableCell>
