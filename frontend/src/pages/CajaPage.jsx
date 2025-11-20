@@ -7,15 +7,28 @@ import { Toaster } from "react-hot-toast";
 import { FaCashRegister } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "../context/AuthContext"; // 🔧 IMPORTAR useAuth
 
 export default function CajaPage() {
   const [reload, setReload] = useState(false);
   const [vista, setVista] = useState({ modo: "list" });
   const navigate = useNavigate();
+  const { user } = useAuth(); // 🔧 OBTENER USUARIO
 
   const mostrarListado = () => setVista({ modo: "list" });
   const mostrarEditar = id => setVista({ modo: "edit", cajaId: id });
   const mostrarHistorial = id => setVista({ modo: "historial", cajaId: id });
+
+  // 🔧 FUNCIÓN PARA VOLVER AL DASHBOARD SEGÚN ROL
+  const volverAlDashboard = () => {
+    if (user?.rol === "admin") {
+      navigate("/admin");
+    } else if (user?.rol === "entrenador") {
+      navigate("/entrenador");
+    } else {
+      navigate("/"); // Fallback
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -28,7 +41,8 @@ export default function CajaPage() {
             <FaCashRegister className="text-blue-600" />
             Gestión de Caja
           </h1>
-          <Button variant="outline" onClick={() => navigate("/admin")}>
+          <Button variant="outline" onClick={volverAlDashboard}>
+            {/* 🔧 USAR FUNCIÓN QUE DETECTA EL ROL */}
             Volver al Panel
           </Button>
         </div>

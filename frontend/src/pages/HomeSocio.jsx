@@ -104,19 +104,10 @@ const HomeSocio = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={(perfil) => navigate("/perfil")}
+                  onClick={(perfil) => navigate("/socio/perfil")}
                 >
                   <UserCircle className="mr-2 h-4 w-4" />
                   Ver perfil
-                </Button>
-                {/* BOTÓN MIS TURNOS */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate("/socio/mis-turnos")}
-                >
-                  <ListChecks className="mr-2 h-4 w-4" />
-                  Mis turnos
                 </Button>
               </div>
             </div>

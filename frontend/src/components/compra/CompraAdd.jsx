@@ -207,8 +207,8 @@ export default function CompraAdd({ onAdd }) {
                 Debe abrir una caja antes de registrar compras.
               </p>
               <div className="mt-3">
-                <a 
-                  href="/admin/caja" 
+                <a
+                  href={usuarioAutenticado?.rol === 'entrenador' ? '/entrenador/caja' : '/admin/caja'}
                   className="inline-block bg-red-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-700 transition-colors"
                 >
                   Ir a Gestión de Caja
