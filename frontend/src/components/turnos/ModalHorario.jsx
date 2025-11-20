@@ -207,12 +207,14 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                                                     Cancelar
                                                 </button>
                                             )}
+                                            """{/* 
                                             <button
                                                 onClick={() => onEditar(turno)}
                                                 className="px-3 py-1 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700"
                                             >
                                                 Editar
                                             </button>
+                                            */}
                                         </div>
                                     </div>
                                 ))}

@@ -344,7 +344,13 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
                       id="nombre"
                       name="nombre"
                       value={formData.nombre}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Solo permitir letras, espacios y acentos
+                        if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                          handleChange(e);
+                        }
+                      }}
                       placeholder="Juan Pérez"
                       required
                       disabled={guardando}
@@ -357,8 +363,15 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
                       id="telefono"
                       name="telefono"
                       value={formData.telefono}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Solo permitir números, espacios y guiones, máximo 15 caracteres
+                        if (/^[\d\s\-]*$/.test(value) && value.length <= 15) {
+                          handleChange(e);
+                        }
+                      }}
                       placeholder="3874123456"
+                      maxLength={15}
                       disabled={guardando}
                     />
                   </div>

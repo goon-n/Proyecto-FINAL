@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SeccionTurnos } from "../components/shared/SeccionTurnos";
+import GraficoPlanesPopulares from "../components/caja/GraficoPlanesPopulares";
 import { 
   LogOut, 
   Users, 
@@ -351,6 +352,10 @@ const HomeAdmin = () => {
           </div>
 
         </div>
+
+        {/* --- GRÁFICO DE PLANES MÁS POPULARES --- */}
+        <GraficoPlanesPopulares />
+
       </main>
     </div>
   );

@@ -43,9 +43,14 @@ const GestionUsuarios = () => {
   const itemsPerPage = 10;
   const [pageUsuarios, setPageUsuarios] = useState(1); // para admin/entrenadores list
   const [pageSocios, setPageSocios] = useState(1); // para socios list
+  const [vistaUsuariosSistema, setVistaUsuariosSistema] = useState("activos"); // NUEVO: para filtrar empleados
 
   // Separar usuarios por rol
-  const adminYEntrenadores = usuariosActivos.filter(u => 
+  const adminYEntrenadoresActivos = usuariosActivos.filter(u => 
+    u.perfil__rol === "admin" || u.perfil__rol === "entrenador"
+  );
+  
+  const adminYEntrenadoresDesactivados = usuariosDesactivados.filter(u =>
     u.perfil__rol === "admin" || u.perfil__rol === "entrenador"
   );
   
@@ -60,7 +65,7 @@ const GestionUsuarios = () => {
   // Resetear páginas cuando cambian los conjuntos mostrados (usar longitud para evitar reset por referencia)
   useEffect(() => {
     setPageUsuarios(1);
-  }, [adminYEntrenadores.length]);
+  }, [adminYEntrenadoresActivos.length, adminYEntrenadoresDesactivados.length, vistaUsuariosSistema]);
 
   useEffect(() => {
     setPageSocios(1);
@@ -163,7 +168,7 @@ const GestionUsuarios = () => {
           titulo={esEntrenador ? "Gestión de Socios" : "Gestión de Empleados y Socios"}
           descripcion={esEntrenador 
             ? `${socios.length} socio${socios.length !== 1 ? "s" : ""}`
-            : `${usuariosActivos.length} usuarios • ${adminYEntrenadores.length} staff • ${socios.length} socios`
+            : `${usuariosActivos.length} usuarios • ${adminYEntrenadoresActivos.length} staff • ${socios.length} socios`
           }
           onVolver={() => navigate(esEntrenador ? "/entrenador" : "/admin")}
           textoBoton="Volver al Panel"
@@ -177,7 +182,7 @@ const GestionUsuarios = () => {
                 <UserCog className="h-4 w-4" />
                 Usuarios del Sistema
                 <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
-                  {adminYEntrenadores.length}
+                  {adminYEntrenadoresActivos.length}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="socios" className="flex items-center gap-2">
@@ -212,16 +217,27 @@ const GestionUsuarios = () => {
 
               <Card>
                 <CardContent className="pt-6">
+                  {/* NUEVO: Filtros para empleados */}
+                  <FiltrosUsuarios
+                    vistaActual={vistaUsuariosSistema}
+                    onCambiarVista={setVistaUsuariosSistema}
+                    cantidadActivos={adminYEntrenadoresActivos.length}
+                    cantidadDesactivados={adminYEntrenadoresDesactivados.length}
+                  />
+
                   {/* Paginación para admin/entrenadores */}
                   {(() => {
-                    const totalPagesAdmin = getTotalPages(adminYEntrenadores);
-                    const adminPaginated = paginate(adminYEntrenadores, pageUsuarios);
+                    const empleadosList = vistaUsuariosSistema === "activos" 
+                      ? adminYEntrenadoresActivos 
+                      : adminYEntrenadoresDesactivados;
+                    const totalPagesAdmin = getTotalPages(empleadosList);
+                    const adminPaginated = paginate(empleadosList, pageUsuarios);
                     return (
                       <>
                         <TablaUsuarios
                           usuarios={adminPaginated}
                           usuarioActualId={user.id}
-                          esDesactivados={false}
+                          esDesactivados={vistaUsuariosSistema === "desactivados"}
                           rolesEditados={rolesEditados}
                           onCambiarRol={handleRolChange}
                           onGuardarRol={guardarCambioRol}

@@ -15,20 +15,15 @@ export default function ModalPagoTarjeta({ isOpen, onClose, onSubmit, monto, des
   const [guardando, setGuardando] = useState(false);
 
   const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
+    // Solo permitir números
+    const v = value.replace(/\D/g, '');
     const parts = [];
 
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
+    for (let i = 0, len = v.length; i < len && i < 16; i += 4) {
+      parts.push(v.substring(i, i + 4));
     }
 
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return value;
-    }
+    return parts.join(' ');
   };
 
   const formatExpiry = (value) => {
@@ -37,6 +32,28 @@ export default function ModalPagoTarjeta({ isOpen, onClose, onSubmit, monto, des
       cleaned = cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4);
     }
     return cleaned;
+  };
+
+  const validateExpiry = (value) => {
+    if (!value.match(/^\d{2}\/\d{2}$/)) {
+      return "Formato inválido (MM/AA)";
+    }
+    
+    const [month, year] = value.split('/').map(Number);
+    
+    if (month < 1 || month > 12) {
+      return "Mes inválido (01-12)";
+    }
+    
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear() % 100;
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+      return "Tarjeta vencida";
+    }
+    
+    return "";
   };
 
   const handleSubmit = async (e) => {
@@ -60,8 +77,19 @@ export default function ModalPagoTarjeta({ isOpen, onClose, onSubmit, monto, des
       return;
     }
 
-    if (!cardData.vencimiento.match(/^\d{2}\/\d{2}$/)) {
-      setError("Formato de vencimiento inválido (MM/AA)");
+    if (cardData.nombre.length < 5) {
+      setError("El nombre debe tener al menos 5 caracteres");
+      return;
+    }
+
+    if (!/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]+$/.test(cardData.nombre)) {
+      setError("El nombre solo puede contener letras y espacios");
+      return;
+    }
+
+    const expiryError = validateExpiry(cardData.vencimiento);
+    if (expiryError) {
+      setError(expiryError);
       return;
     }
 
@@ -164,7 +192,13 @@ export default function ModalPagoTarjeta({ isOpen, onClose, onSubmit, monto, des
                   id="nombre"
                   type="text"
                   value={cardData.nombre}
-                  onChange={(e) => setCardData({ ...cardData, nombre: e.target.value.toUpperCase() })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Solo permitir letras, espacios y acentos
+                    if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                      setCardData({ ...cardData, nombre: value.toUpperCase() });
+                    }
+                  }}
                   placeholder="JUAN PEREZ"
                   required
                   disabled={guardando}

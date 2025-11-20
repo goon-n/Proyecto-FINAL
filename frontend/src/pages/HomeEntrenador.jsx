@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SeccionTurnos } from "../components/shared/SeccionTurnos";
+import GraficoPlanesPopulares from "../components/caja/GraficoPlanesPopulares";
 import { 
   LogOut, 
   Users, 
@@ -277,6 +278,10 @@ const HomeEntrenador = () => {
           </div>
 
         </div>
+
+        {/* --- GRÁFICO DE PLANES MÁS POPULARES --- */}
+        <GraficoPlanesPopulares />
+
       </main>
     </div>
   );

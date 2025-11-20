@@ -216,9 +216,13 @@ export default function Register() {
                     type="text"
                     placeholder="Juan Pérez"
                     value={formData.nombre}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nombre: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Solo permitir letras, espacios y acentos
+                      if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                        setFormData({ ...formData, nombre: value });
+                      }
+                    }}
                     required
                   />
                 </div>
@@ -258,9 +262,14 @@ export default function Register() {
                     type="tel"
                     placeholder="387 123-4567"
                     value={formData.telefono}
-                    onChange={(e) =>
-                      setFormData({ ...formData, telefono: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Solo permitir números, espacios y guiones, máximo 15 caracteres
+                      if (/^[\d\s\-]*$/.test(value) && value.length <= 15) {
+                        setFormData({ ...formData, telefono: value });
+                      }
+                    }}
+                    maxLength={15}
                     required
                   />
                 </div>

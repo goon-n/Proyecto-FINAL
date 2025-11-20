@@ -26,21 +26,11 @@ export default function GraficoIngresosEgresos({ cajaId }) {
 
   useEffect(() => {
     getMovimientos().then(res => {
-      // Obtener TODOS los movimientos (de todas las cajas)
+      // Obtener TODOS los movimientos de TODAS las cajas (histórico completo)
       const todosMovs = res.data;
       
-      // Obtener las fechas de la caja actual
-      const movsActual = todosMovs.filter(m => Number(m.caja) === Number(cajaId));
-      const fechasCajaActual = [...new Set(movsActual.map(m => m.fecha.substr(0, 10)))];
-      
-      // Filtrar todos los movimientos que coincidan con las fechas de la caja actual
-      const movsDelMismoDia = todosMovs.filter(m => {
-        const fechaMov = m.fecha.substr(0, 10);
-        return fechasCajaActual.includes(fechaMov);
-      });
-      
-      setMovimientos(movsDelMismoDia);
-      console.log(`📊 Mostrando ${movsDelMismoDia.length} movimientos de todas las cajas en los días que operó la caja ${cajaId}`);
+      setMovimientos(todosMovs);
+      console.log(`📊 Mostrando ${todosMovs.length} movimientos históricos de todas las cajas`);
     });
   }, [cajaId]);
 

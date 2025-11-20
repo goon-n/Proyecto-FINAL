@@ -12,20 +12,15 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
   const [error, setError] = useState(null);
 
   const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
+    // Solo permitir números
+    const v = value.replace(/\D/g, '');
     const parts = [];
 
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
+    for (let i = 0, len = v.length; i < len && i < 16; i += 4) {
+      parts.push(v.substring(i, i + 4));
     }
 
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return value;
-    }
+    return parts.join(' ');
   };
 
   const formatExpiry = (value) => {
@@ -183,7 +178,13 @@ export default function PaymentForm({ plan, onSubmit, isLoading }) {
             <input
               type="text"
               value={cardData.nombre}
-              onChange={(e) => handleChange("nombre", e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Solo permitir letras, espacios y acentos
+                if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                  handleChange("nombre", value.toUpperCase());
+                }
+              }}
               onBlur={() => handleBlur("nombre")}
               placeholder="JUAN PEREZ"
               required
