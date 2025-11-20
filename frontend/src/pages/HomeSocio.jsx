@@ -128,17 +128,6 @@ const HomeSocio = () => {
               <CardDescription className="text-lg mt-1">
                 Panel de control personal
               </CardDescription>
-              <div className="flex gap-2 mt-4">
-                {/* BOTÓN DE PERFIL */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(perfil) => navigate("/socio/perfil")}
-                >
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  Ver perfil
-                </Button>
-              </div>
             </div>
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <Badge variant="secondary" className="text-sm px-3 py-1 h-9 flex items-center">
