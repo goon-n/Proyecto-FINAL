@@ -404,6 +404,12 @@ const api = {
   }, 
 
     descontarClaseManual,  
+
+  obtenerHistorialDia: async (fecha) => {
+    const response = await apiClient.get(`/turnos/turno/historial/?fecha=${fecha}`);
+    return response.data;
+  },
+
 };
 
 export default api;

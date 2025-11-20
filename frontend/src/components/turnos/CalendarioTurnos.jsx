@@ -10,6 +10,7 @@ import CalendarioControles from './CalendarioControles';
 import CalendarioIndicadores from './CalendarioIndicadores';
 import CalendarioTabla from './CalendarioTabla';
 import ModalHorario from './ModalHorario';
+import ModalHistorial from './ModalHistorial';
 
 moment.locale('es');
 
@@ -21,6 +22,8 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
     const [semanaInicio, setSemanaInicio] = useState(moment().startOf('isoWeek'));
     const [modalAbierto, setModalAbierto] = useState(false);
     const [horarioSeleccionado, setHorarioSeleccionado] = useState(null);
+    const [modalHistorial, setModalHistorial] = useState(false);
+    const [historialData, setHistorialData] = useState(null);
 
     useEffect(() => {
         fetchCalendario();
@@ -63,7 +66,54 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
         setSemanaInicio(moment().startOf('isoWeek'));
     };
 
-    const abrirModal = (fecha, hora, horarioData) => {
+    const abrirModal = async (fecha, hora, horarioData, esHistorial) => {
+        // Si es historial de un turno (hora pasada) y tenemos los datos del horario,
+        // mostramos el historial de ese turno (confirmados) en el modal.
+        if (esHistorial && horarioData) {
+            try {
+                const turnos = horarioData.turnos || [];
+                
+                // ✅ CORREGIDO: Los confirmados son TODOS los que tienen socio asignado
+                const turnosConfirmados = turnos.filter(t => t.socio || t.socio_id);
+                const total_confirmados = turnosConfirmados.length;
+
+                // Permitir ver la lista si sos staff o si tenías un turno en ese horario
+                const tengoTurno = turnos.some(t => t.es_mio);
+                if (!isStaff && !tengoTurno) {
+                    alert('No tienes permisos para ver la asistencia de este turno.');
+                    return;
+                }
+
+                // ✅ Pasamos solo los turnos confirmados (con socio asignado)
+                setHistorialData({ 
+                    fecha, 
+                    turnos: turnosConfirmados, 
+                    total_confirmados 
+                });
+                setModalHistorial(true);
+                return;
+            } catch (error) {
+                console.error('Error preparando historial del turno:', error);
+                alert('No se pudo preparar el historial del turno');
+                return;
+            }
+        }
+
+        // Si es historial pero no tenemos datos específicos del horario, y sos staff,
+        // solicitar historial del día completo.
+        if (esHistorial && isStaff && !horarioData) {
+            try {
+                const data = await api.obtenerHistorialDia(fecha);
+                setHistorialData({ fecha, data });
+                setModalHistorial(true);
+            } catch (error) {
+                console.error('Error al cargar historial:', error);
+                alert('No se pudo cargar el historial del día');
+            }
+            return;
+        }
+
+        // Caso por defecto: abrir modal de gestión del horario (reserva/confirmación)
         setHorarioSeleccionado({ fecha, hora, data: horarioData });
         setModalAbierto(true);
     };
@@ -71,6 +121,11 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
     const cerrarModal = () => {
         setModalAbierto(false);
         setHorarioSeleccionado(null);
+    };
+
+    const cerrarModalHistorial = () => {
+        setModalHistorial(false);
+        setHistorialData(null);
     };
 
     const handleAccion = async (turnoId, accion) => {
@@ -205,6 +260,14 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
                     onAccion={handleAccion}
                     onEditar={onEditar}
                     onCerrar={cerrarModal}
+                />
+            )}
+
+            {modalHistorial && historialData && (
+                <ModalHistorial
+                    fecha={historialData.fecha}
+                    data={historialData.data || historialData}
+                    onCerrar={cerrarModalHistorial}
                 />
             )}
         </div>

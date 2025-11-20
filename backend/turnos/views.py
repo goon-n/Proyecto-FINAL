@@ -744,3 +744,62 @@ class TurnoViewSet(viewsets.ModelViewSet):
         turnos = Turno.objects.filter(socio=request.user).order_by('hora_inicio')
         serializer = self.get_serializer(turnos, many=True)
         return Response(serializer.data)
+    
+    @action(methods=['get'], detail=False, url_path='historial')
+    def historial_dia(self, request):
+        """
+        Endpoint para obtener el historial de turnos confirmados de un día específico
+        Solo accesible por staff
+        """
+        if not request.user.is_staff:
+            return Response({
+                'detail': 'No tienes permisos para ver el historial'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        fecha_str = request.query_params.get('fecha')
+        
+        if not fecha_str:
+            return Response({
+                'detail': 'Debe proporcionar el parámetro "fecha" en formato YYYY-MM-DD'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({
+                'detail': 'Formato de fecha inválido. Use YYYY-MM-DD'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener inicio y fin del día en hora local
+        inicio_dia = timezone.make_aware(
+            datetime.combine(fecha, time.min),
+            timezone.get_current_timezone()
+        )
+        fin_dia = timezone.make_aware(
+            datetime.combine(fecha, time.max),
+            timezone.get_current_timezone()
+        )
+        
+        # ✅ CORREGIDO: Obtener todos los turnos que tienen socio asignado (están confirmados)
+        turnos = Turno.objects.filter(
+            hora_inicio__gte=inicio_dia,
+            hora_inicio__lte=fin_dia,
+            socio__isnull=False  # ✅ Si tiene socio, está confirmado
+        ).select_related('socio').order_by('hora_inicio')
+        
+        # Serializar datos
+        turnos_data = []
+        for turno in turnos:
+            turnos_data.append({
+                'id': turno.id,
+                'hora_inicio': turno.hora_inicio,
+                'socio': turno.socio.username if turno.socio else None,
+                'socio_id': turno.socio.id if turno.socio else None,
+                'estado': turno.estado
+            })
+        
+        return Response({
+            'fecha': fecha_str,
+            'total_confirmados': len(turnos_data),  # ✅ Todos los que tienen socio
+            'turnos': turnos_data
+        })
