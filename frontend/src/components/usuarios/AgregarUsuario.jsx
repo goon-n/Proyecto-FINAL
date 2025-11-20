@@ -1,4 +1,4 @@
-// src/components/usuarios/AgregarUsuario.jsx
+// src/components/usuarios/AgregarUsuario.jsx - SIN VALIDACIÓN DE CAJA
 
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,6 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador, soloStaff, soloS
       return;
     }
 
-    // ✅ Ahora la contraseña es obligatoria para todos
     if (!formData.password) {
       toast.error("La contraseña es obligatoria");
       return;
@@ -134,7 +133,6 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador, soloStaff, soloS
                 />
               </div>
 
-              {/* ✅ Ahora SIEMPRE se muestra la contraseña */}
               <div>
                 <Label htmlFor="password">Contraseña *</Label>
                 <Input
