@@ -1,4 +1,4 @@
-// src/components/cuotas/RenovarMembresia.jsx - CORREGIDO
+// src/components/cuotas/RenovarMembresia.jsx - CORREGIDO FINAL
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -21,13 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ModalPagoTarjeta from "../caja/ModalPagoTarjeta"; // ✅ IMPORTAR EL MODAL
+import ModalPagoTarjeta from "../caja/ModalPagoTarjeta";
 
 
 const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorPlanes, setErrorPlanes] = useState(null); 
-  const [modalTarjetaAbierto, setModalTarjetaAbierto] = useState(false); // ✅ NUEVO
+  const [modalTarjetaAbierto, setModalTarjetaAbierto] = useState(false);
+  const [datosPagoTarjeta, setDatosPagoTarjeta] = useState(null); // ✅ NUEVO
   
   // Estados para la selección de plan
   const [planes, setPlanes] = useState([]);
@@ -56,23 +57,35 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
   const planElegido = planes.find(p => p.id === planSeleccionadoId) || cuotaActual?.plan_info;
   const precioFinal = planElegido?.precio || cuotaActual?.plan_precio;
 
-  // ✅ NUEVA FUNCIÓN: Abrir modal de tarjeta
+  // ✅ FUNCIÓN MODIFICADA: Cerrar este modal y abrir el de tarjeta
   const handleAbrirModalTarjeta = () => {
+    // Guardar los datos necesarios
+    setDatosPagoTarjeta({
+      planSeleccionadoId,
+      planActualId,
+      planElegido,
+      precioFinal
+    });
+    
+    // Cerrar el modal de renovación
+    onClose();
+    
+    // Abrir el modal de tarjeta
     setModalTarjetaAbierto(true);
   };
 
-  // ✅ NUEVA FUNCIÓN: Procesar pago con tarjeta
+  // ✅ FUNCIÓN MODIFICADA: Procesar pago con tarjeta
   const handlePagoTarjeta = async (datosTarjeta) => {
     setModalTarjetaAbierto(false);
     setLoading(true);
 
     try {
-      const isPlanChanged = planSeleccionadoId !== planActualId;
+      const isPlanChanged = datosPagoTarjeta.planSeleccionadoId !== datosPagoTarjeta.planActualId;
 
       const data = {
         metodo_pago: 'tarjeta',
         tarjeta_ultimos_4: datosTarjeta.ultimos4,
-        ...(isPlanChanged && { plan_id: planSeleccionadoId })
+        ...(isPlanChanged && { plan_id: datosPagoTarjeta.planSeleccionadoId })
       };
 
       console.log("📤 Enviando renovación (Socio - Tarjeta):", data);
@@ -82,7 +95,7 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
       toast.success(response.detail || "¡Renovación exitosa!");
       
       onSuccess && onSuccess(response);
-      onClose();
+      setDatosPagoTarjeta(null); // Limpiar datos
     } catch (error) {
       console.error("Error al renovar:", error);
       const mensaje = error.response?.data?.detail || "Error al procesar la renovación";
@@ -219,13 +232,18 @@ const RenovarMembresia = ({ open, onClose, cuotaActual, onSuccess }) => {
       </Dialog>
 
       {/* ✅ MODAL DE PAGO CON TARJETA */}
-      <ModalPagoTarjeta
-        isOpen={modalTarjetaAbierto}
-        onClose={() => setModalTarjetaAbierto(false)}
-        onSubmit={handlePagoTarjeta}
-        monto={precioFinal}
-        descripcion={`Renovación - ${planElegido?.nombre || 'Plan actual'}`}
-      />
+      {datosPagoTarjeta && (
+        <ModalPagoTarjeta
+          isOpen={modalTarjetaAbierto}
+          onClose={() => {
+            setModalTarjetaAbierto(false);
+            setDatosPagoTarjeta(null);
+          }}
+          onSubmit={handlePagoTarjeta}
+          monto={datosPagoTarjeta.precioFinal}
+          descripcion={`Renovación - ${datosPagoTarjeta.planElegido?.nombre || 'Plan actual'}`}
+        />
+      )}
     </>
   );
 };
