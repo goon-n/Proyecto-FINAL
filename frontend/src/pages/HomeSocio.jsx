@@ -330,34 +330,7 @@ const HomeSocio = () => {
           </CardContent>
         </Card>
 
-        {/* Card de Estadísticas */}
-        <Card className="hover:shadow-lg transition-shadow md:col-span-2">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-6 w-6 text-green-500" />
-              <CardTitle className="text-2xl text-green-600">Tu Progreso</CardTitle>
-            </div>
-            <CardDescription>
-              Estadísticas de tu actividad
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-accent rounded-lg">
-                <p className="text-3xl font-bold text-blue-600">0</p>
-                <p className="text-sm text-muted-foreground mt-1">Turnos este mes</p>
-              </div>
-              <div className="text-center p-4 bg-accent rounded-lg">
-                <p className="text-3xl font-bold text-green-600">0</p>
-                <p className="text-sm text-muted-foreground mt-1">Asistencias</p>
-              </div>
-              <div className="text-center p-4 bg-accent rounded-lg">
-                <p className="text-3xl font-bold text-purple-600">0%</p>
-                <p className="text-sm text-muted-foreground mt-1">Tasa de asistencia</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   );

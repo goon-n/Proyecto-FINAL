@@ -1,4 +1,4 @@
-# cuotas_mensuales/models.py - CORREGIDO
+# cuotas_mensuales/models.py - MODELO PLAN COMPLETO
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -7,9 +7,28 @@ from datetime import timedelta
 
 class Plan(models.Model):
     """
-    Planes disponibles en el gimnasio
-    Ejemplo: 2x Semanal, 3x Semanal, Pase Libre
+    Planes disponibles con reglas de límites de turnos
     """
+    # CAMPOS PARA RESTRICCIONES DE TURNOS
+    TIPO_LIMITE_CHOICES = [
+        ('semanal', 'Semanal (X veces por semana)'),
+        ('diario', 'Diario (X veces por día)'),
+        ('libre', 'Pase Libre (Sin límite)'),
+    ]
+    
+    tipo_limite = models.CharField(
+        max_length=20, 
+        choices=TIPO_LIMITE_CHOICES, 
+        default='semanal',
+        help_text="Define cómo se cuenta el límite de turnos"
+    )
+    
+    cantidad_limite = models.PositiveIntegerField(
+        default=3,
+        help_text="Cantidad de turnos permitidos por período (0 para ilimitado)"
+    )
+    
+    # CAMPOS BÁSICOS
     nombre = models.CharField(max_length=100, unique=True)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     frecuencia = models.CharField(max_length=100)
@@ -33,7 +52,11 @@ class Plan(models.Model):
         ordering = ['precio']
     
     def __str__(self):
-        return f"{self.nombre} - ${self.precio}"
+        if self.tipo_limite == 'libre':
+            limite_str = "Acceso Ilimitado"
+        else:
+            limite_str = f"{self.cantidad_limite}x {self.get_tipo_limite_display()}"
+        return f"{self.nombre} - {limite_str}"
     
     def get_caracteristicas_list(self):
         """Retorna las características como lista"""

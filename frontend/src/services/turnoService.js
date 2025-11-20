@@ -55,3 +55,9 @@ export const generarTurnosSemana = async (fechaInicio) => {
     });
     return response.data;
 };
+
+export const getMiCuota = async () => {
+    // La ruta final será: /api/cuotas/cuota_mensual/mi_cuota/
+    const response = await apiClient.get('/cuotas/cuota_mensual/mi_cuota/');
+    return response.data;
+};

@@ -16,6 +16,8 @@ INSTALLED_APPS = [
     'corsheaders',  # necesario para CORS
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_yasg',
+
     'api',
     'movimiento_caja',
     'turnos',

@@ -1,4 +1,4 @@
-// src/api/api.js - ACTUALIZADO CON MEMBRESÍAS
+// src/api/api.js - COMPLETO Y CORREGIDO
 
 import apiClient from "../services/authServices";
 
@@ -75,55 +75,55 @@ const api = {
 
   // Cuotas
   obtenerCuotaSocio: async () => {
-    const response = await apiClient.get('/cuotas/cuotas/mi_cuota/');
+    const response = await apiClient.get('/cuotas/cuota_mensual/mi_cuota/');
     return response.data;
   },
 
   listarCuotas: async () => {
-    const response = await apiClient.get('/cuotas/cuotas/');
+    const response = await apiClient.get('/cuotas/cuota_mensual/');
     return response.data;
   },
 
   listarCuotasActivas: async () => {
-    const response = await apiClient.get('/cuotas/cuotas/cuotas_activas/');
+    const response = await apiClient.get('/cuotas/cuota_mensual/cuotas_activas/');
     return response.data;
   },
 
   listarCuotasVencidas: async () => {
-    const response = await apiClient.get('/cuotas/cuotas/cuotas_vencidas/');
+    const response = await apiClient.get('/cuotas/cuota_mensual/cuotas_vencidas/');
     return response.data;
   },
 
   crearCuota: async (data) => {
-    const response = await apiClient.post('/cuotas/cuotas/', data);
+    const response = await apiClient.post('/cuotas/cuota_mensual/', data);
     return response.data;
   },
 
-  // ✅ NUEVO: Crear cuota con pago (para alta de socios presencial)
+  // Crear cuota con pago
   crearCuotaConPago: async (data) => {
-    const response = await apiClient.post('/cuotas/cuotas/crear_con_pago/', data);
+    const response = await apiClient.post('/cuotas/cuota_mensual/crear_con_pago/', data);
     return response.data;
   },
 
   // Renovación desde el socio (autogestionada)
   solicitarRenovacion: async (data) => {
-    const response = await apiClient.post('/cuotas/cuotas/solicitar_renovacion/', data);
+    const response = await apiClient.post('/cuotas/cuota_mensual/solicitar_renovacion/', data);
     return response.data;
   },
 
   // Renovación desde admin/entrenador
   renovarCuota: async (cuotaId, data) => {
-    const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/renovar/`, data);
+    const response = await apiClient.post(`/cuotas/cuota_mensual/${cuotaId}/renovar/`, data);
     return response.data;
   },
 
   suspenderCuota: async (cuotaId) => {
-    const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/suspender/`);
+    const response = await apiClient.post(`/cuotas/cuota_mensual/${cuotaId}/suspender/`);
     return response.data;
   },
 
   cancelarCuota: async (cuotaId) => {
-    const response = await apiClient.post(`/cuotas/cuotas/${cuotaId}/cancelar/`);
+    const response = await apiClient.post(`/cuotas/cuota_mensual/${cuotaId}/cancelar/`);
     return response.data;
   },
 
@@ -315,6 +315,12 @@ const api = {
     const response = await apiClient.get('/turnos/turno/calendario/', {
       params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin }
     });
+    return response.data;
+  },
+
+  // ✅ AGREGADO: Endpoint para obtener turnos del socio actual
+  obtenerMisTurnos: async () => {
+    const response = await apiClient.get('/turnos/turno/mis_turnos/');
     return response.data;
   },
 

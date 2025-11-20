@@ -9,6 +9,7 @@ import GenerarTurnosSemana from "../components/turnos/GenerarTurnosSemana";
 import CalendarioTurnos from "../components/turnos/CalendarioTurnos"; 
 import TurnosEdit from "../components/turnos/TurnosEdit";
 import CrearTurno from "../components/turnos/CrearTurno";
+import EstadoCuota from "../components/turnos/EstadoCuota"; // Asegúrate de que este archivo exista
 import { PageHeader } from "../components/shared/PageHeader";
 
 const TurnosPage = ({ userRole }) => {
@@ -39,6 +40,7 @@ const TurnosPage = ({ userRole }) => {
         setMostrarGenerador(false);
     };
 
+    // Recargar calendario tras una acción exitosa
     const handleTurnoAccion = () => {
         setRefreshKey(prev => prev + 1);
         setMostrarGenerador(false);
@@ -131,14 +133,21 @@ const TurnosPage = ({ userRole }) => {
                 {vistaActual === "editar" && " / Editar Turno"}
             </nav>
 
-            {/* 👇 Panel de generación de turnos (colapsable) */}
+            {/* 👇 AQUÍ ESTÁ EL CAMBIO: Widget de Estado de Cuota */}
+            {isSocio && vistaActual === "lista" && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                    <EstadoCuota />
+                </div>
+            )}
+
+            {/* Panel de generación de turnos (colapsable) */}
             {isStaff && vistaActual === "lista" && mostrarGenerador && (
                 <div className="animate-in slide-in-from-top duration-300">
                     <GenerarTurnosSemana onSuccess={handleTurnoAccion} />
                 </div>
             )}
             
-            {/* Vista: Editar Turno (Solo Staff) */}
+            {/* Renderizado de Vistas */}
             {vistaActual === "editar" && turnoEditar && isStaff ? (
                 <TurnosEdit 
                     turno={turnoEditar}
@@ -146,12 +155,11 @@ const TurnosPage = ({ userRole }) => {
                     onCancel={volverALista}
                 />
             ) : vistaActual === "agregar" && isStaff ? (
-                /* Vista: Crear Turno (Solo Staff) */
                 <CrearTurno 
                     onCreationSuccess={handleTurnoAccion}
                 />
             ) : (
-                /* Vista: Calendario de Turnos (Todos los usuarios) */
+                /* Al pasar refreshKey forzamos al calendario a recargar datos si cambia algo */
                 <CalendarioTurnos 
                     key={refreshKey}
                     isStaff={isStaff}

@@ -1,4 +1,4 @@
-# turnos/views.py
+# turnos/views.py - IMPORTS CORREGIDOS
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -11,6 +11,8 @@ from datetime import timedelta, datetime, time
 from backend.permissions import IsStaffUser
 from rest_framework.permissions import IsAuthenticated
 
+# ✅ CORREGIDO: Importar desde cuotas_mensuales, NO desde turnos
+from cuotas_mensuales.models import CuotaMensual
 
 class TurnoViewSet(viewsets.ModelViewSet):
     
@@ -22,7 +24,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy', 'generar_turnos_semana']:
             self.permission_classes = [IsStaffUser] 
-        elif self.action in ['reservar', 'cancelar', 'confirmar']:
+        elif self.action in ['reservar', 'cancelar', 'confirmar', 'mis_turnos']:
             self.permission_classes = [permissions.IsAuthenticated]
         else:
             self.permission_classes = [permissions.AllowAny]
@@ -46,9 +48,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
         if user.is_authenticated:
             q_filter |= Q(socio=user, estado__in=['RESERVADO', 'CONFIRMADO'])
         
-        return Turno.objects.filter(q_filter).filter(
-            hora_inicio__gte=now
-        ).order_by('hora_inicio')
+        return Turno.objects.filter(q_filter).filter(hora_inicio__gte=now).order_by('hora_inicio')
 
     def create(self, request, *args, **kwargs):
         if request.data.get('hora_inicio'):
@@ -273,6 +273,105 @@ class TurnoViewSet(viewsets.ModelViewSet):
         
         return Response(resultado)
     
+    def _validar_limites_plan(self, socio, fecha_turno):
+        """Verifica si el socio puede reservar según su plan actual"""
+        
+        # 1. BUSCAR CUOTA ACTIVA
+        cuota = CuotaMensual.objects.filter(
+            socio=socio,
+            estado='activa',
+            fecha_vencimiento__gte=timezone.now().date()
+        ).order_by('-fecha_vencimiento').first()
+
+        if not cuota:
+            return False, "No tienes una cuota mensual activa. Por favor, regulariza tu situación para reservar turnos."
+
+        plan = cuota.plan
+        
+        print("=" * 60)
+        print(f"🔍 VALIDANDO LÍMITES DEL PLAN")
+        print(f"   Socio: {socio.username}")
+        print(f"   Plan: {plan.nombre}")
+        print(f"   Tipo límite: {plan.tipo_limite}")
+        print(f"   Cantidad límite: {plan.cantidad_limite}")
+
+        # 2. SI ES PASE LIBRE, PERMITIR SIN RESTRICCIONES
+        if plan.tipo_limite == 'libre':
+            print(f"   ✅ Pase Libre - Sin restricciones")
+            print("=" * 60)
+            return True, None
+
+        # 3. CALCULAR RANGO DE FECHAS SEGÚN TIPO DE LÍMITE
+        if plan.tipo_limite == 'semanal':
+            # Calcular lunes y domingo de la semana del turno
+            fecha_turno_date = fecha_turno.date() if hasattr(fecha_turno, 'date') else fecha_turno
+            
+            # Lunes de la semana (weekday 0 = lunes)
+            dias_desde_lunes = fecha_turno_date.weekday()
+            inicio_semana = fecha_turno_date - timedelta(days=dias_desde_lunes)
+            fin_semana = inicio_semana + timedelta(days=6)  # Domingo
+            
+            inicio_rango = timezone.make_aware(
+                datetime.combine(inicio_semana, time.min),
+                timezone.get_current_timezone()
+            )
+            fin_rango = timezone.make_aware(
+                datetime.combine(fin_semana, time.max),
+                timezone.get_current_timezone()
+            )
+            
+            nombre_periodo = f"esta semana ({inicio_semana.strftime('%d/%m')} - {fin_semana.strftime('%d/%m')})"
+            tipo_periodo = "semana"
+            
+        elif plan.tipo_limite == 'diario':
+            # Solo contar turnos del mismo día
+            fecha_turno_date = fecha_turno.date() if hasattr(fecha_turno, 'date') else fecha_turno
+            
+            inicio_rango = timezone.make_aware(
+                datetime.combine(fecha_turno_date, time.min),
+                timezone.get_current_timezone()
+            )
+            fin_rango = timezone.make_aware(
+                datetime.combine(fecha_turno_date, time.max),
+                timezone.get_current_timezone()
+            )
+            
+            nombre_periodo = f"hoy ({fecha_turno_date.strftime('%d/%m/%Y')})"
+            tipo_periodo = "día"
+        else:
+            print(f"   ⚠️ Tipo de límite desconocido: {plan.tipo_limite}")
+            print("=" * 60)
+            return True, None
+
+        print(f"   📅 Rango: {inicio_rango} - {fin_rango}")
+
+        # 4. CONTAR TURNOS YA RESERVADOS EN EL RANGO
+        turnos_ocupados = Turno.objects.filter(
+            socio=socio,
+            estado__in=['RESERVADO', 'CONFIRMADO'],
+            hora_inicio__gte=inicio_rango,
+            hora_inicio__lte=fin_rango
+        ).count()
+
+        print(f"   📊 Turnos ocupados: {turnos_ocupados}/{plan.cantidad_limite}")
+
+        # 5. VALIDAR LÍMITE
+        if turnos_ocupados >= plan.cantidad_limite:
+            mensaje_error = (
+                f"❌ Límite alcanzado\n\n"
+                f"Tu plan '{plan.nombre}' permite {plan.cantidad_limite} "
+                f"{'turno' if plan.cantidad_limite == 1 else 'turnos'} por {tipo_periodo}.\n\n"
+                f"Ya tienes {turnos_ocupados} {'turno reservado' if turnos_ocupados == 1 else 'turnos reservados'} "
+                f"{nombre_periodo}."
+            )
+            print(f"   ❌ LÍMITE ALCANZADO")
+            print("=" * 60)
+            return False, mensaje_error
+        
+        print(f"   ✅ Puede reservar (le quedan {plan.cantidad_limite - turnos_ocupados} turnos)")
+        print("=" * 60)
+        return True, None
+
     @action(methods=['post'], detail=True)
     def reservar(self, request, pk=None):
         """Reserva Y confirma el turno directamente"""
@@ -299,6 +398,14 @@ class TurnoViewSet(viewsets.ModelViewSet):
         if turno.socio is not None or turno.estado != 'DISPONIBLE':
             return Response({
                 'detail': 'Cupo no disponible para reserva'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        puede_reservar, mensaje_error = self._validar_limites_plan(user, turno.hora_inicio)
+
+        if not puede_reservar:
+            return Response({
+                'detail': mensaje_error,
+                'error_code': 'limite_plan'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Confirmar directamente sin pasar por estado RESERVADO

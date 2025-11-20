@@ -64,7 +64,6 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
     };
 
     const abrirModal = (fecha, hora, horarioData) => {
-        console.log('🎯 Abriendo modal para:', { fecha, hora, cupos: horarioData.total_cupos });
         setHorarioSeleccionado({ fecha, hora, data: horarioData });
         setModalAbierto(true);
     };
@@ -86,9 +85,14 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
             let response;
             switch(accion) {
                 case 'reservar':
+                    // Aquí llamamos al endpoint que valida el plan
                     response = await api.reservarTurno(turnoId);
-                    alert(response.detail || 'Turno confirmado con éxito.');
+                    
+                    // Si llegamos aquí, la reserva fue exitosa
+                    // (Si hubiera error de plan, salta al catch)
+                    alert(response.detail || '¡Turno reservado exitosamente!');
                     break;
+                    
                 case 'cancelar':
                     if (!window.confirm('¿Estás seguro de que deseas cancelar este turno?')) {
                         return;
@@ -96,16 +100,36 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
                     response = await api.cancelarTurno(turnoId);
                     alert(response.detail || 'Turno cancelado con éxito.');
                     break;
+                    
                 default:
                     throw new Error('Acción no válida');
             }
             
+            // Recargar datos para actualizar cupos y UI
             fetchCalendario();
             cerrarModal();
+            
         } catch (error) {
-            const detail = error.response?.data?.detail || `Error al ${accion} el turno.`;
-            console.error('❌ Error en acción:', detail);
-            alert(`Error: ${detail}`);
+            // 👇 LÓGICA MEJORADA DE ERRORES
+            console.error('❌ Error en acción:', error);
+
+            let mensajeError = `Error al ${accion} el turno.`;
+            
+            // Intentar extraer el mensaje detallado del backend (donde viene la restricción del plan)
+            if (error.response && error.response.data) {
+                if (error.response.data.detail) {
+                    // Puede ser un string o un objeto de Django
+                    if (typeof error.response.data.detail === 'string') {
+                        mensajeError = error.response.data.detail;
+                    } else {
+                        mensajeError = JSON.stringify(error.response.data.detail);
+                    }
+                }
+            }
+
+            alert(`⚠️ No se pudo completar la acción:\n\n${mensajeError}`);
+            
+            // Refrescamos por si el estado cambió en el servidor mientras tanto
             fetchCalendario();
         }
     };
