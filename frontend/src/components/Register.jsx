@@ -21,7 +21,6 @@ export default function Register() {
     username: "",
     email: "",
     password: "",
-    confirmPassword: "",
     telefono: ""
   });
   const [error, setError] = useState(null);
@@ -56,21 +55,7 @@ export default function Register() {
     e.preventDefault();
     
     if (!selectedPlan) {
-      setErrors({ general: "Debes seleccionar un plan para continuar" });
-      return;
-    }
-
-    // Validar todos los campos
-    const newErrors = {};
-    Object.keys(validations).forEach(field => {
-      const error = validations[field](formData[field]);
-      if (error) newErrors[field] = error;
-    });
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
-      newErrors.general = "Por favor, corrige los errores";
+      setError("Debes seleccionar un plan para continuar");
       return;
     }
     
@@ -213,10 +198,10 @@ export default function Register() {
             </div>
           )}
 
-          {errors.general && (
+          {error && (
             <div className="bg-destructive/15 text-destructive border border-destructive/30 p-3 rounded-md text-sm mb-4 flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
-              {errors.general}
+              {error}
             </div>
           )}
 

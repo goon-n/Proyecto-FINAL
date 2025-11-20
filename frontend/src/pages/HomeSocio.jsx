@@ -8,15 +8,15 @@ import { Separator } from "@/components/ui/separator";
 import { 
   LogOut, 
   Calendar, 
-  Dumbbell, 
   CreditCard, 
   Clock, 
-  TrendingUp, 
+  User,
   ArrowRight, 
   AlertCircle,
   RefreshCw,
-  UserCircle,
-  ListChecks
+  CalendarCheck,
+  PlusCircle,
+  MapPin
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "../api/api";
@@ -26,11 +26,14 @@ const HomeSocio = () => {
   const navigate = useNavigate();
   
   const [membresia, setMembresia] = useState(null);
+  const [turnos, setTurnos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingTurnos, setLoadingTurnos] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarDatos();
+    cargarTurnos();
   }, []);
 
   const cargarDatos = async () => {
@@ -51,6 +54,29 @@ const HomeSocio = () => {
     }
   };
 
+  const cargarTurnos = async () => {
+    try {
+      setLoadingTurnos(true);
+      // Asumimos que existe este endpoint o uno similar para traer los turnos del usuario logueado
+      // Si tu API tiene otro nombre, ajustalo aquí (ej: api.get('/turnos/mis-turnos'))
+      const dataTurnos = await api.obtenerMisTurnos(); 
+      
+      // Filtramos solo los futuros
+      const ahora = new Date();
+      const turnosFuturos = Array.isArray(dataTurnos) 
+        ? dataTurnos.filter(t => new Date(`${t.fecha}T${t.hora}`) > ahora).sort((a,b) => new Date(`${a.fecha}T${a.hora}`) - new Date(`${b.fecha}T${b.hora}`)).slice(0, 2)
+        : [];
+        
+      setTurnos(turnosFuturos);
+    } catch (error) {
+      console.error("Error al cargar turnos:", error);
+      // No mostramos error en UI para no saturar, simplemente dejamos la lista vacía
+      setTurnos([]);
+    } finally {
+      setLoadingTurnos(false);
+    }
+  };
+
   const calcularDiasRestantes = (fechaVencimiento) => {
     if (!fechaVencimiento) return 0;
     const hoy = new Date();
@@ -61,11 +87,14 @@ const HomeSocio = () => {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "N/A";
-    return new Date(fecha).toLocaleDateString("es-AR", {
+    // Ajustamos la zona horaria para evitar desfases
+    const date = new Date(fecha);
+    return new Intl.DateTimeFormat("es-AR", {
       day: "2-digit",
       month: "2-digit",
-      year: "numeric"
-    });
+      year: "numeric",
+      timeZone: "America/Argentina/Buenos_Aires"
+    }).format(date);
   };
 
   const formatearPrecio = (precio) => {
@@ -87,46 +116,27 @@ const HomeSocio = () => {
   const planPrecio = membresia?.plan_info?.precio || membresia?.plan_precio || 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <Card className="bg-white border-l-4 border-l-primary shadow-sm">
+          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6">
             <div>
-              <CardTitle className="text-3xl font-bold">
-                ¡Hola, {user.username}! 💪
+              <CardTitle className="text-2xl md:text-3xl font-bold text-gray-800">
+                ¡Hola, {user.username}! 👋
               </CardTitle>
-              <CardDescription className="text-lg mt-2">
-                Bienvenido a tu panel de socio
+              <CardDescription className="text-lg mt-1">
+                Panel de control personal
               </CardDescription>
-              <div className="flex gap-2 mt-4">
-                {/* BOTÓN DE PERFIL */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(perfil) => navigate("/perfil")}
-                >
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  Ver perfil
-                </Button>
-                {/* BOTÓN MIS TURNOS */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate("/socio/mis-turnos")}
-                >
-                  <ListChecks className="mr-2 h-4 w-4" />
-                  Mis turnos
-                </Button>
-              </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Badge variant="default" className="text-base px-4 py-2">
-                👤 {user.rol}
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+              <Badge variant="secondary" className="text-sm px-3 py-1 h-9 flex items-center">
+                <User className="mr-2 h-3 w-3" />
+                {user.rol.charAt(0).toUpperCase() + user.rol.slice(1)}
               </Badge>
-              <Button onClick={logout} variant="destructive" size="lg">
-                <LogOut className="mr-2 h-5 w-5" />
-                Cerrar Sesión
+              <Button onClick={logout} variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                <LogOut className="mr-2 h-4 w-4" />
+                Salir
               </Button>
             </div>
           </CardHeader>
@@ -138,23 +148,21 @@ const HomeSocio = () => {
         <div className="max-w-6xl mx-auto mb-6">
           <Alert className={membresia.estado === 'vencida' ? 'border-red-500 bg-red-50' : 'border-orange-500 bg-orange-50'}>
             <AlertCircle className={`h-4 w-4 ${membresia.estado === 'vencida' ? 'text-red-600' : 'text-orange-600'}`} />
-            <AlertDescription className={membresia.estado === 'vencida' ? 'text-red-800' : 'text-orange-800'}>
-              <div className="flex items-center justify-between">
-                <span>
-                  {membresia.estado === 'vencida' 
-                    ? '⚠️ Tu membresía ha vencido.' 
-                    : `⚠️ Tu membresía vence en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}.`
-                  }
-                </span>
-                <Button
-                  size="sm"
-                  onClick={() => navigate("/socio/membresia")}
-                  className={membresia.estado === 'vencida' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Renovar ahora
-                </Button>
-              </div>
+            <AlertDescription className={`flex flex-col md:flex-row items-center justify-between gap-3 ${membresia.estado === 'vencida' ? 'text-red-800' : 'text-orange-800'}`}>
+              <span className="font-medium">
+                {membresia.estado === 'vencida' 
+                  ? '⚠️ Tu membresía ha vencido. Para ingresar, por favor renueva tu cuota.' 
+                  : `⚠️ Tu membresía vence en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}.`
+                }
+              </span>
+              <Button
+                size="sm"
+                onClick={() => navigate("/socio/membresia")}
+                className={membresia.estado === 'vencida' ? 'bg-red-600 hover:bg-red-700 text-white w-full md:w-auto' : 'bg-orange-600 hover:bg-orange-700 text-white w-full md:w-auto'}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Renovar ahora
+              </Button>
             </AlertDescription>
           </Alert>
         </div>
@@ -163,173 +171,214 @@ const HomeSocio = () => {
       {/* Grid de Cards */}
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Card de Reservar Turno (Destacada) */}
-        <Card className="hover:shadow-lg transition-shadow border-2 border-primary md:col-span-2">
-          <CardHeader>
+        {/* 1. Card de Turnos (Modificada para mostrar reservas) */}
+        <Card className="hover:shadow-md transition-all duration-200 border-t-4 border-t-primary md:col-span-2">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-6 w-6 text-primary" />
-                <CardTitle className="text-2xl">Reservar Turno</CardTitle>
-              </div>
-              <Button 
-                onClick={() => navigate("/socio/turnos")}
-                size="lg"
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                Ver Todos los Turnos
-              </Button>
-            </div>
-            <CardDescription>
-              Reservá tu próxima clase o sesión de entrenamiento
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <Clock className="h-16 w-16 mx-auto text-primary opacity-50 mb-4" />
-              <p className="text-muted-foreground mb-4">
-                ¡Comienza tu entrenamiento reservando un turno!
-              </p>
-              <Button 
-                onClick={() => navigate("/socio/turnos")}
-                size="lg"
-                variant="outline"
-              >
-                Explorar Turnos Disponibles
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card de Rutinas */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Dumbbell className="h-6 w-6 text-yellow-500" />
-              <CardTitle className="text-2xl text-yellow-600">Tus Rutinas</CardTitle>
-            </div>
-            <CardDescription>
-              Plan de entrenamiento personalizado
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="p-4 bg-accent rounded-lg">
-                <h4 className="font-semibold mb-2">Rutina de Tonificación</h4>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Programa semanal enfocado en tonificación muscular
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  <Badge variant="secondary">Lunes</Badge>
-                  <Badge variant="secondary">Miércoles</Badge>
-                  <Badge variant="secondary">Viernes</Badge>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Mis Turnos</CardTitle>
+                  <CardDescription>Tus próximas actividades</CardDescription>
                 </div>
               </div>
+              <Button 
+                onClick={() => navigate("/socio/turnos")} 
+                variant="outline"
+                size="sm"
+                className="hidden md:flex"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Nuevo Turno
+              </Button>
             </div>
-            <Separator className="my-4" />
-            <Button className="w-full" variant="outline">
-              <Dumbbell className="mr-2 h-4 w-4" />
-              Ver rutina completa
-            </Button>
+          </CardHeader>
+          <CardContent>
+            {loadingTurnos ? (
+               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
+                  <p className="text-sm">Cargando turnos...</p>
+               </div>
+            ) : turnos.length > 0 ? (
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {turnos.map((turno, index) => (
+                    <div key={index} className="flex items-start space-x-4 rounded-lg border p-4 bg-card hover:bg-accent/5 transition-colors">
+                      <div className="mt-1 bg-primary/10 p-2 rounded-full">
+                        <CalendarCheck className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {turno.actividad_nombre || "Entrenamiento"}
+                        </p>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="mr-1 h-3 w-3" />
+                          {formatearFecha(turno.fecha)} - {turno.hora}hs
+                        </div>
+                        {turno.profesor && (
+                           <div className="flex items-center text-xs text-muted-foreground mt-1">
+                             <User className="mr-1 h-3 w-3" />
+                             Prof: {turno.profesor}
+                           </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="flex gap-3 justify-end">
+                   <Button variant="ghost" size="sm" onClick={() => navigate("/socio/mis-turnos")}>
+                     Ver historial completo
+                   </Button>
+                   <Button size="sm" onClick={() => navigate("/socio/turnos")}>
+                     Reservar otro turno <ArrowRight className="ml-2 h-4 w-4" />
+                   </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50/50 rounded-lg border border-dashed">
+                <Calendar className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                <h3 className="text-lg font-medium text-gray-900">No tienes turnos próximos</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Aún no has reservado ninguna clase o sesión de entrenamiento para los próximos días.
+                </p>
+                <Button onClick={() => navigate("/socio/turnos")} className="shadow-sm">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Reservar mi primer turno
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Card de Membresía */}
-        <Card className="hover:shadow-lg transition-shadow">
+        {/* 2. Card de Perfil (Reemplaza a Rutinas) */}
+        <Card className="hover:shadow-md transition-all duration-200">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-6 w-6 text-blue-500" />
-              <CardTitle className="text-2xl text-blue-600">Membresía</CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <User className="h-6 w-6 text-indigo-600" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-indigo-900">Mi Perfil</CardTitle>
+                <CardDescription>Datos personales y seguridad</CardDescription>
+              </div>
             </div>
-            <CardDescription>
-              Estado de tu suscripción
-            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-10 w-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-lg">
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{user.username}</p>
+                    <p className="text-xs text-muted-foreground">{user.email || "Socio Activo"}</p>
+                  </div>
+                </div>
+                <Separator className="my-3 bg-indigo-200/50" />
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <MapPin className="h-4 w-4" />
+                  <span>Gestiona tu dirección y contacto</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" 
+                onClick={() => navigate("/socio/perfil")}
+              >
+                <User className="mr-2 h-4 w-4" />
+                Ir a mi Perfil
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 3. Card de Membresía */}
+        <Card className="hover:shadow-md transition-all duration-200">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <CreditCard className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-blue-900">Membresía</CardTitle>
+                <CardDescription>Estado de tu suscripción</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-muted-foreground">Cargando...</p>
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p className="text-xs text-muted-foreground">Cargando estado...</p>
               </div>
             ) : error ? (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription className="text-xs">{error}</AlertDescription>
               </Alert>
             ) : membresia ? (
               <div className="space-y-4">
-                <div className={`flex items-center justify-between p-4 rounded-lg border ${
+                <div className={`flex flex-col p-4 rounded-lg border ${
                   membresia.estado === 'vencida' 
-                    ? 'bg-red-500/10 border-red-500/20' 
+                    ? 'bg-red-50 border-red-100' 
                     : diasRestantes <= 7 
-                      ? 'bg-orange-500/10 border-orange-500/20'
-                      : 'bg-green-500/10 border-green-500/20'
+                      ? 'bg-orange-50 border-orange-100'
+                      : 'bg-green-50 border-green-100'
                 }`}>
-                  <div>
-                    <p className={`font-semibold ${
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-bold text-gray-900 text-lg">{planNombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Vence: {formatearFecha(membresia.fecha_vencimiento)}
+                      </p>
+                    </div>
+                    <Badge className={
                       membresia.estado === 'vencida' 
-                        ? 'text-red-700 dark:text-red-400' 
-                        : diasRestantes <= 7
-                          ? 'text-orange-700 dark:text-orange-400'
-                          : 'text-green-700 dark:text-green-400'
-                    }`}>
-                      {planNombre}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {membresia.estado === 'vencida' 
-                        ? `Venció el ${formatearFecha(membresia.fecha_vencimiento)}`
-                        : `Válida hasta ${formatearFecha(membresia.fecha_vencimiento)}`
-                      }
-                    </p>
+                        ? 'bg-red-500' 
+                        : diasRestantes <= 7 
+                          ? 'bg-orange-500'
+                          : 'bg-green-600'
+                    }>
+                      {membresia.estado === 'activa' ? 'ACTIVA' : membresia.estado.toUpperCase()}
+                    </Badge>
                   </div>
-                  <Badge className={
-                    membresia.estado === 'vencida' 
-                      ? 'bg-red-600' 
-                      : diasRestantes <= 7 
-                        ? 'bg-orange-600'
-                        : 'bg-green-600'
-                  }>
-                    {membresia.estado === 'vencida' 
-                      ? 'Vencida' 
-                      : membresia.estado === 'activa' 
-                        ? 'Activa' 
-                        : membresia.estado
-                    }
-                  </Badge>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="p-3 bg-accent rounded-lg">
-                    <p className={`text-2xl font-bold ${
-                      diasRestantes <= 0 ? 'text-red-600' : diasRestantes <= 7 ? 'text-orange-600' : ''
-                    }`}>
-                      {diasRestantes > 0 ? diasRestantes : 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Días restantes</p>
-                  </div>
-                  <div className="p-3 bg-accent rounded-lg">
-                    <p className="text-2xl font-bold">{formatearPrecio(planPrecio)}</p>
-                    <p className="text-xs text-muted-foreground">Próximo pago</p>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="bg-white/60 p-2 rounded text-center">
+                      <span className="block text-xs text-gray-500">Días Restantes</span>
+                      <span className={`block font-bold ${diasRestantes <= 5 ? 'text-red-600' : 'text-gray-800'}`}>
+                        {diasRestantes > 0 ? diasRestantes : 0}
+                      </span>
+                    </div>
+                    <div className="bg-white/60 p-2 rounded text-center">
+                      <span className="block text-xs text-gray-500">Valor Cuota</span>
+                      <span className="block font-bold text-gray-800">{formatearPrecio(planPrecio)}</span>
+                    </div>
                   </div>
                 </div>
+
+                <Button 
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800" 
+                  variant="outline"
+                  onClick={() => navigate("/socio/membresia")}
+                >
+                  Ver detalles de pagos
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground mb-4">No tienes membresía activa</p>
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground mb-4">No tienes membresía activa</p>
+                <Button onClick={() => navigate("/socio/membresia")} size="sm">
+                  Adquirir Membresía
+                </Button>
               </div>
             )}
-            <Separator className="my-4" />
-            <Button 
-              className="w-full" 
-              variant="outline"
-              onClick={() => navigate("/socio/membresia")}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              Ver detalles completos
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
           </CardContent>
         </Card>
-
 
       </div>
     </div>

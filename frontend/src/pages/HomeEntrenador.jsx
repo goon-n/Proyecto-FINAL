@@ -1,4 +1,4 @@
-// src/pages/HomeEntrenador.jsx - VERSIÓN FINAL
+// src/pages/HomeEntrenador.jsx
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -6,16 +6,18 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { SeccionTurnos } from "../components/shared/SeccionTurnos";
 import { 
   LogOut, 
   Users, 
   Package, 
-  Settings,
   Box,
   TrendingUp,
-  Clock,
   CreditCard,
+  Activity,
+  CalendarCheck,
+  ArrowRight
 } from "lucide-react";
 import api from "../api/api";
 
@@ -63,198 +65,219 @@ const HomeEntrenador = () => {
   };
 
   if (!user) {
-    return <div className="text-center mt-10">Cargando...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="animate-pulse flex flex-col items-center">
+          <Activity className="h-10 w-10 text-blue-600 mb-4" />
+          <p className="text-lg font-medium text-gray-600">Cargando panel...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
-      <div className="max-w-7xl mx-auto mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+    <div className="min-h-screen bg-gray-50/50 pb-12">
+      
+      {/* --- HERO SECTION --- */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <CardTitle className="text-3xl font-bold">
-                ¡Bienvenido, {user.username}! 💪
-              </CardTitle>
-              <CardDescription className="text-lg mt-2">
-                Panel de entrenador
-              </CardDescription>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+                Hola, {user.username} 👋
+              </h1>
+              <p className="text-gray-500 mt-2 flex items-center gap-2">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1">
+                  {user.rol.toUpperCase()}
+                </Badge>
+                <span className="text-sm">Panel de Control General</span>
+              </p>
             </div>
-            <div className="flex items-center gap-4">
-              <Badge variant="default" className="text-base px-4 py-2">
-                🏋️ {user.rol}
-              </Badge>
-              <Button onClick={logout} variant="destructive" size="lg">
-                <LogOut className="mr-2 h-5 w-5" />
-                Cerrar Sesión
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
+            <Button 
+              onClick={logout} 
+              variant="outline" 
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 transition-colors"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Estadísticas Rápidas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        
+        {/* --- ESTADÍSTICAS SUPERIORES (KPIs) --- */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* KPI Socios */}
+          <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Socios</p>
-                  <p className="text-3xl font-bold">{stats.socios}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Miembros activos
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Socios Activos</p>
+                  <h3 className="text-3xl font-bold text-gray-900">{stats.socios}</h3>
                 </div>
-                <Users className="h-12 w-12 text-blue-500 opacity-75" />
+                <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-blue-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="pt-6">
+          {/* KPI Inventario */}
+          <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-orange-500">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Accesorios</p>
-                  <p className="text-3xl font-bold">{stats.accesorios}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    En inventario
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Items en Stock</p>
+                  <h3 className="text-3xl font-bold text-gray-900">{stats.accesorios}</h3>
                 </div>
-                <Package className="h-12 w-12 text-orange-500 opacity-75" />
+                <div className="h-12 w-12 rounded-full bg-orange-50 flex items-center justify-center">
+                  <Package className="h-6 w-6 text-orange-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="pt-6">
+          {/* KPI Caja (Dinámica) */}
+          <Card className={`shadow-sm hover:shadow-md transition-shadow border-l-4 ${stats.cajaActual ? 'border-l-green-500' : 'border-l-gray-300'}`}>
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Turnos Hoy</p>
-                  <p className="text-3xl font-bold">-</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Próximamente
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Estado de Caja</p>
+                  {stats.cajaActual ? (
+                    <>
+                      <h3 className="text-3xl font-bold text-green-700">
+                        ${Number(stats.cajaActual.closing_system_amount || 0).toLocaleString('es-AR')}
+                      </h3>
+                      <p className="text-xs text-green-600 font-medium mt-1">● Caja Abierta</p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-xl font-bold text-gray-500 mt-1">Cerrada</h3>
+                      <Button 
+                        variant="link" 
+                        className="h-auto p-0 text-blue-600 text-xs mt-1"
+                        onClick={() => navigate("/entrenador/caja")}
+                      >
+                        Abrir caja ahora &rarr;
+                      </Button>
+                    </>
+                  )}
                 </div>
-                <Clock className="h-12 w-12 text-cyan-500 opacity-75" />
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${stats.cajaActual ? 'bg-green-100' : 'bg-gray-100'}`}>
+                  <Box className={`h-6 w-6 ${stats.cajaActual ? 'text-green-600' : 'text-gray-500'}`} />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Estado de Caja */}
-        {stats.cajaActual && (
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Box className="h-8 w-8 text-green-600" />
-                  <div>
-                    <p className="font-semibold text-green-900">Caja Abierta</p>
-                    <p className="text-sm text-green-700">
-                      Total sistema: ${Number(stats.cajaActual.closing_system_amount || 0).toFixed(2)}
-                    </p>
-                  </div>
+        {/* --- SECCIÓN PRINCIPAL: ACCIONES Y TURNOS --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* COLUMNA IZQUIERDA: MENÚ DE ACCIONES RÁPIDAS */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="overflow-hidden border-none shadow-md">
+              <CardHeader className="bg-gray-900 text-white py-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-400" />
+                  Gestión Rápida
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 divide-y">
+                  
+                  {/* Botón Usuarios */}
+                  <button 
+                    onClick={() => navigate("/entrenador/usuarios")}
+                    className="flex items-center gap-4 p-4 w-full text-left hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                      <Users className="h-5 w-5 text-blue-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">Usuarios</p>
+                      <p className="text-xs text-gray-500">Gestionar socios y staff</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
+                  </button>
+
+                  {/* Botón Caja */}
+                  <button 
+                    onClick={() => navigate("/entrenador/caja")}
+                    className="flex items-center gap-4 p-4 w-full text-left hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                      <Box className="h-5 w-5 text-green-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">Caja Diaria</p>
+                      <p className="text-xs text-gray-500">Movimientos y cierres</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
+                  </button>
+
+                  {/* Botón Inventario */}
+                  <button 
+                    onClick={() => navigate("/entrenador/accesorios")}
+                    className="flex items-center gap-4 p-4 w-full text-left hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                      <Package className="h-5 w-5 text-orange-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">Inventario</p>
+                      <p className="text-xs text-gray-500">Control de stock</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
+                  </button>
+
+                  {/* Botón Membresías */}
+                  <button 
+                    onClick={() => navigate("/entrenador/membresias")}
+                    className="flex items-center gap-4 p-4 w-full text-left hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                      <CreditCard className="h-5 w-5 text-purple-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">Pagos y Cuotas</p>
+                      <p className="text-xs text-gray-500">Planes de suscripción</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500" />
+                  </button>
+
                 </div>
-                <Button 
-                  onClick={() => navigate("/entrenador/caja")}
-                  variant="default"
-                >
-                  <Box className="mr-2 h-4 w-4" />
-                  Gestionar Caja
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Sección de Turnos */}
-        <SeccionTurnos mostrarBotonCrear={true} />
-
-        {/* Acciones Rápidas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-6 w-6 text-blue-500" />
-              Acciones Rápidas
-            </CardTitle>
-            <CardDescription>
-              Gestiona las actividades del gimnasio
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              <Button 
-                onClick={() => navigate("/entrenador/usuarios")} 
-                variant="outline" 
-                size="lg"
-                className="justify-start h-auto py-4"
-              >
-                <div className="flex items-start gap-3 w-full">
-                  <Users className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div className="text-left">
-                    <div className="font-semibold">Usuarios</div>
-                    <div className="text-xs text-muted-foreground">
-                      Ver socios y staff
+          {/* COLUMNA DERECHA (MÁS ANCHA): GESTIÓN DE TURNOS */}
+          <div className="lg:col-span-2">
+             <Card className="h-full shadow-md border-none">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        <CalendarCheck className="h-5 w-5 text-blue-600" />
+                        Agenda de Turnos
+                      </CardTitle>
+                      <CardDescription>Gestión de clases y reservas del día</CardDescription>
                     </div>
                   </div>
-                </div>
-              </Button>
-
-              <Button 
-                onClick={() => navigate("/entrenador/caja")} 
-                variant="outline" 
-                size="lg"
-                className="justify-start h-auto py-4"
-              >
-                <div className="flex items-start gap-3 w-full">
-                  <Box className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div className="text-left">
-                    <div className="font-semibold">Caja</div>
-                    <div className="text-xs text-muted-foreground">
-                      Control de ingresos
-                    </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Envuelve tu componente existente en un contenedor limpio */}
+                  <div className="bg-white rounded-lg">
+                    <SeccionTurnos mostrarBotonCrear={true} />
                   </div>
-                </div>
-              </Button>
+                </CardContent>
+             </Card>
+          </div>
 
-              <Button 
-                onClick={() => navigate("/entrenador/accesorios")} 
-                variant="outline" 
-                size="lg" 
-                className="justify-start h-auto py-4"
-              >
-                <div className="flex items-start gap-3 w-full">
-                  <Package className="h-5 w-5 text-orange-600 mt-0.5" />
-                  <div className="text-left">
-                    <div className="font-semibold">Accesorios</div>
-                    <div className="text-xs text-muted-foreground">
-                      Ver inventario
-                    </div>
-                  </div>
-                </div>
-              </Button>
-
-              <Button 
-                onClick={() => navigate("/entrenador/membresias")} 
-                variant="outline" 
-                size="lg" 
-                className="justify-start h-auto py-4"
-              >
-                <div className="flex items-start gap-3 w-full">
-                  <CreditCard className="h-5 w-5 text-purple-600 mt-0.5" />
-                  <div className="text-left">
-                    <div className="font-semibold">Cuotas</div>
-                    <div className="text-xs text-muted-foreground">
-                      Gestion de pagos
-                    </div>
-                  </div>
-                </div>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
