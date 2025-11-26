@@ -102,10 +102,15 @@ class SocioViewSet(viewsets.ModelViewSet):
     serializer_class = SocioSerializer
 
 class ProveedorViewSet(viewsets.ModelViewSet):
-    queryset = Proveedor.objects.all()
     serializer_class = ProveedorSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ['activo', 'nombre']
+    
+    def get_queryset(self):
+        """Agregar contador de accesorios activos por proveedor"""
+        return Proveedor.objects.annotate(
+            accesorios_count=Count('accesorios', filter=Q(accesorios__activo=True))
+        )
 
 
 class AccesoriosViewSet(viewsets.ModelViewSet):
@@ -594,14 +599,18 @@ def activar_proveedor(request, proveedor_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def proveedores_activos(request):
-    activos = Proveedor.objects.filter(activo=True)
+    activos = Proveedor.objects.filter(activo=True).annotate(
+        accesorios_count=Count('accesorios', filter=Q(accesorios__activo=True))
+    )
     serializer = ProveedorSerializer(activos, many=True)
     return Response(serializer.data)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def proveedores_desactivados(request):
-    desactivados = Proveedor.objects.filter(activo=False)
+    desactivados = Proveedor.objects.filter(activo=False).annotate(
+        accesorios_count=Count('accesorios', filter=Q(accesorios__activo=True))
+    )
     serializer = ProveedorSerializer(desactivados, many=True)
     return Response(serializer.data)
 

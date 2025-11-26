@@ -45,6 +45,10 @@ const GestionUsuarios = () => {
   const [procesando, setProcesando] = useState(null);
   const [vistaActual, setVistaActual] = useState("activos");
   const [seccionActiva, setSeccionActiva] = useState("usuarios");
+  
+  // Estados de búsqueda
+  const [busquedaEmpleados, setBusquedaEmpleados] = useState("");
+  const [busquedaSocios, setBusquedaSocios] = useState("");
 
   const esEntrenador = user?.rol === "entrenador";
   const esAdmin = user?.rol === "admin";
@@ -70,6 +74,19 @@ const GestionUsuarios = () => {
   const socios = usuariosActivos.filter(u => 
     u.perfil__rol === "socio"
   );
+  
+  // Función helper para filtrar por búsqueda
+  const filtrarPorBusqueda = (usuarios, busqueda) => {
+    if (!busqueda.trim()) return usuarios;
+    
+    const termino = busqueda.toLowerCase();
+    return usuarios.filter(u => 
+      u.username?.toLowerCase().includes(termino) ||
+      u.email?.toLowerCase().includes(termino) ||
+      u.first_name?.toLowerCase().includes(termino) ||
+      u.last_name?.toLowerCase().includes(termino)
+    );
+  };
 
   const usuariosFiltrados = esEntrenador 
     ? socios
@@ -246,13 +263,16 @@ const GestionUsuarios = () => {
                     onCambiarVista={setVistaUsuariosSistema}
                     cantidadActivos={adminYEntrenadoresActivos.length}
                     cantidadDesactivados={adminYEntrenadoresDesactivados.length}
+                    busqueda={busquedaEmpleados}
+                    onBusquedaChange={setBusquedaEmpleados}
                   />
 
                   {/* Paginación para admin/entrenadores */}
                   {(() => {
-                    const empleadosList = vistaUsuariosSistema === "activos" 
+                    const empleadosBase = vistaUsuariosSistema === "activos" 
                       ? adminYEntrenadoresActivos 
                       : adminYEntrenadoresDesactivados;
+                    const empleadosList = filtrarPorBusqueda(empleadosBase, busquedaEmpleados);
                     const totalPagesAdmin = getTotalPages(empleadosList);
                     const adminPaginated = paginate(empleadosList, pageUsuarios);
                     return (
@@ -309,10 +329,13 @@ const GestionUsuarios = () => {
                     onCambiarVista={setVistaActual}
                     cantidadActivos={socios.length}
                     cantidadDesactivados={usuariosDesactivados.filter(u => u.perfil__rol === 'socio').length}
+                    busqueda={busquedaSocios}
+                    onBusquedaChange={setBusquedaSocios}
                   />
 
                   {(() => {
-                    const sociosList = vistaActual === "activos" ? socios : usuariosDesactivados.filter(u => u.perfil__rol === 'socio');
+                    const sociosBase = vistaActual === "activos" ? socios : usuariosDesactivados.filter(u => u.perfil__rol === 'socio');
+                    const sociosList = filtrarPorBusqueda(sociosBase, busquedaSocios);
                     const totalPagesSoc = getTotalPages(sociosList);
                     const sociosPaginated = paginate(sociosList, pageSocios);
 
@@ -367,9 +390,19 @@ const GestionUsuarios = () => {
 
             <Card>
               <CardContent className="pt-6">
+                <FiltrosUsuarios
+                  vistaActual="activos"
+                  onCambiarVista={() => {}}
+                  cantidadActivos={socios.length}
+                  cantidadDesactivados={0}
+                  busqueda={busquedaSocios}
+                  onBusquedaChange={setBusquedaSocios}
+                />
+                
                 {(() => {
-                  const totalPagesTrainer = getTotalPages(socios);
-                  const sociosPaginatedTrainer = paginate(socios, pageSocios);
+                  const sociosFiltrados = filtrarPorBusqueda(socios, busquedaSocios);
+                  const totalPagesTrainer = getTotalPages(sociosFiltrados);
+                  const sociosPaginatedTrainer = paginate(sociosFiltrados, pageSocios);
                   return (
                     <>
                       <TablaUsuarios

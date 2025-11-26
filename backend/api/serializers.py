@@ -25,6 +25,8 @@ class ClaseSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'descripcion', 'dia', 'hora_inicio', 'hora_fin', 'entrenador', 'entrenador_username', 'socios']
 
 class ProveedorSerializer(serializers.ModelSerializer):
+    accesorios_count = serializers.IntegerField(read_only=True)
+    
     class Meta:
         model = Proveedor
         fields = '__all__'
