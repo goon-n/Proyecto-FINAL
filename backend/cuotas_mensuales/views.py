@@ -253,7 +253,7 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
         
-        # 6. ✅ ACTUALIZAR CUOTA EXISTENTE
+        # 6. ✅ ACTUALIZAR CUOTA EXISTENTE CON RESETEO DE CLASES
         try:
             with transaction.atomic():
                 plan_anterior = cuota_actual.plan
@@ -269,12 +269,25 @@ class CuotaMensualViewSet(viewsets.ModelViewSet):
                 cuota_actual.fecha_vencimiento = fecha_vencimiento
                 cuota_actual.estado = 'activa'
                 cuota_actual.tarjeta_ultimos_4 = str(tarjeta_ultimos_4)[-4:]
+                
+                # ✅ RESETEAR CLASES SEGÚN EL NUEVO PLAN
+                if nuevo_plan.tipo_limite == 'libre':
+                    cuota_actual.clases_totales = 999
+                    cuota_actual.clases_restantes = 999
+                elif nuevo_plan.tipo_limite == 'semanal':
+                    cuota_actual.clases_totales = nuevo_plan.cantidad_limite * 4
+                    cuota_actual.clases_restantes = nuevo_plan.cantidad_limite * 4
+                elif nuevo_plan.tipo_limite == 'diario':
+                    cuota_actual.clases_totales = nuevo_plan.cantidad_limite * 30
+                    cuota_actual.clases_restantes = nuevo_plan.cantidad_limite * 30
+                
                 cuota_actual.save()
                 
                 print(f"✅ CUOTA ACTUALIZADA (Socio):")
                 print(f"   Cuota ID: {cuota_actual.id}")
                 print(f"   Estado: {cuota_actual.estado}")
                 print(f"   Fecha vencimiento: {cuota_actual.fecha_vencimiento}")
+                print(f"   Clases: {cuota_actual.clases_restantes}/{cuota_actual.clases_totales}")
                 
                 # Registrar el pago en historial
                 historial_pago = HistorialPago.objects.create(

@@ -106,17 +106,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       <aside
         className={`
           fixed inset-y-0 left-0 z-50
-          w-64 bg-gray-900 text-white
+          w-64 bg-gray-700 text-white
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           flex flex-col
         `}
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-500 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">ADN-FIT</h1>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-white mt-1">
               {user?.rol === 'admin' ? 'Panel Admin' : 'Panel Entrenador'}
             </p>
           </div>
@@ -126,7 +126,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="lg:hidden text-white hover:bg-gray-800"
+            className="lg:hidden text-white hover:bg-gray-500"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -153,8 +153,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                       flex items-center gap-3 px-4 py-3 rounded-lg 
                       transition-colors
                       ${isActive 
-                        ? 'bg-blue-600 text-white' 
-                        : 'hover:bg-gray-800 text-gray-300'
+                        ? 'bg-gray-400 text-white' 
+                        : 'hover:bg-gray-500 text-white'
                       }
                     `}
                   >
@@ -168,7 +168,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         </nav>
 
         {/* User Info & Logout */}
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 border-t border-gray-500">
           <div className="mb-3 px-4">
             <p className="text-sm text-gray-400">Usuario</p>
             <p className="font-medium truncate">{user?.username}</p>
@@ -179,7 +179,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           <Button
             onClick={handleLogout}
             variant="ghost"
-            className="w-full justify-start gap-3 text-white hover:bg-red-600"
+            className="w-full justify-start gap-3 text-white hover:bg-red-400"
           >
             <LogOut className="w-5 h-5" />
             <span>Cerrar Sesión</span>

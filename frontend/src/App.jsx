@@ -20,6 +20,8 @@ import Payment from "./pages/Payment";
 import MembresiaSocio from "./pages/MembresiaSocio";
 import Perfil from "./pages/Perfil";
 import MisTurnosResumen from "./components/turnos/MisTurnosResumen";
+import GestionReportes from "./pages/GestionReportes";
+import './index.css';
 
 function PrivateRoute({ children, rolesPermitidos }) {
   const { user, loading } = useAuth();
@@ -40,6 +42,8 @@ function PrivateRoute({ children, rolesPermitidos }) {
 }
 
 export default function App() {
+  const { user } = useAuth(); // ← AGREGAR ESTA LÍNEA (EL FIX)
+
   return (
     <BrowserRouter>
       <AlertProvider>
@@ -66,6 +70,7 @@ export default function App() {
                     <Route path="turnos" element={<TurnosPage userRole="admin" />} />
                     <Route path="membresias" element={<ControlMembresias />} />
                     <Route path="perfil" element={<Perfil />} />
+                    <Route path="reportes-accesorios" element={<GestionReportes />} />
                   </Routes>
                 </AdminLayout>
               </PrivateRoute>
@@ -86,6 +91,7 @@ export default function App() {
                     <Route path="turnos" element={<TurnosPage userRole="entrenador" />} />
                     <Route path="membresias" element={<ControlMembresias />} />
                     <Route path="perfil" element={<Perfil />} />
+                    <Route path="reportes-accesorios" element={<GestionReportes />} />
                   </Routes>
                 </AdminLayout>
               </PrivateRoute>

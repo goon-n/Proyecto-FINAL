@@ -1,9 +1,9 @@
 // src/pages/GestionAccesorios.jsx
-import React, { useState, useEffect } from "react"; // 🆕 Agregamos useEffect
-import { useNavigate, useLocation } from "react-router-dom"; // 🆕 Agregamos useLocation
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, Plus, ArrowLeft } from "lucide-react";
+import { Package, Plus, ArrowLeft, FileWarning } from "lucide-react"; // ← Agregué FileWarning
 import toast from "react-hot-toast";
 
 // Components
@@ -16,10 +16,12 @@ import { PageHeader } from "../components/shared/PageHeader";
 
 // Hook para estadísticas
 import { useAccesorios } from "../hooks/useAccesorios";
+import { useAuth } from "../context/AuthContext"; // ← Agregué esto
 
 const GestionAccesorios = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // 🆕 NUEVO - para detectar navegación desde compras
+  const location = useLocation();
+  const { user } = useAuth(); // ← Para saber el rol
   
   const [vistaActual, setVistaActual] = useState("lista");
   const [accesorioEditar, setAccesorioEditar] = useState(null);
@@ -28,11 +30,9 @@ const GestionAccesorios = () => {
   // Hook para obtener datos de accesorios
   const { accesorios, accesoriosActivos, loading: loadingStats, refetch } = useAccesorios();
 
-  // 🆕 NUEVO - Detectar si viene desde compras para ir directo a "agregar"
   useEffect(() => {
     if (location.state?.accion === 'agregar') {
       setVistaActual('agregar');
-      // Limpiar el state para que no se quede guardado en el historial
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -55,14 +55,14 @@ const GestionAccesorios = () => {
 
   const handleAccesorioCreado = () => {
     setReload(prev => prev + 1);
-    refetch(); // Actualizar estadísticas
+    refetch();
     setVistaActual("lista");
     toast.success("¡Accesorio creado exitosamente!");
   };
 
   const handleAccesorioActualizado = () => {
     setReload(prev => prev + 1);
-    refetch(); // Actualizar estadísticas
+    refetch();
     setVistaActual("lista");
     setAccesorioEditar(null);
     toast.success("¡Accesorio actualizado exitosamente!");
@@ -132,6 +132,18 @@ const GestionAccesorios = () => {
         icon={TitleIcon}
       >
         <div className="flex gap-3">
+          {/* 🆕 BOTÓN DE REPORTES - Solo visible en vista lista */}
+          {vistaActual === "lista" && (
+            <Button 
+              onClick={() => navigate(`/${user?.rol}/reportes-accesorios`)}
+              variant="outline"
+              className="flex items-center gap-2 border-orange-300 text-orange-700 hover:bg-orange-50"
+            >
+              <FileWarning className="h-4 w-4" />
+              Ver Reportes
+            </Button>
+          )}
+
           {vistaActual !== "lista" && (
             <Button 
               variant="outline" 
@@ -159,9 +171,9 @@ const GestionAccesorios = () => {
       <nav className="text-sm text-muted-foreground">
         <span 
           className="cursor-pointer hover:text-primary" 
-          onClick={() => navigate("/admin")}
+          onClick={() => navigate(`/${user?.rol}`)}
         >
-          Panel Admin
+          Panel {user?.rol === 'admin' ? 'Admin' : 'Entrenador'}
         </span>
         {" / "}
         <span 

@@ -7,6 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { Users, UserCog, UsersRound } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 // Custom hooks
 import { useUsuarios } from "../hooks/useUsuarios";
@@ -44,6 +54,9 @@ const GestionUsuarios = () => {
   const [pageUsuarios, setPageUsuarios] = useState(1); // para admin/entrenadores list
   const [pageSocios, setPageSocios] = useState(1); // para socios list
   const [vistaUsuariosSistema, setVistaUsuariosSistema] = useState("activos"); // NUEVO: para filtrar empleados
+
+  const [dialogoDesactivar, setDialogoDesactivar] = useState({ abierto: false, userId: null, username: '' });
+  const [dialogoActivar, setDialogoActivar] = useState({ abierto: false, userId: null, username: '' });
 
   // Separar usuarios por rol
   const adminYEntrenadoresActivos = usuariosActivos.filter(u => 
@@ -102,6 +115,7 @@ const GestionUsuarios = () => {
       await apiClient.delete(`/general/usuarios/${userId}/desactivar/`);
       await refetch();
       setVistaActual("activos");
+      setDialogoDesactivar({ abierto: false, userId: null, username: '' }); // Cerrar diálogo
     } catch (error) {
       alert(error.response?.data?.error || "Error al desactivar usuario");
     } finally {
@@ -115,11 +129,20 @@ const GestionUsuarios = () => {
       await apiClient.post(`/general/usuarios/${userId}/activar/`);
       await refetch();
       setVistaActual("desactivados");
+      setDialogoActivar({ abierto: false, userId: null, username: '' }); // Cerrar diálogo
     } catch (error) {
       alert(error.response?.data?.error || "Error al activar usuario");
     } finally {
       setProcesando(null);
     }
+  };
+
+  const abrirDialogoDesactivar = (userId, username) => {
+    setDialogoDesactivar({ abierto: true, userId, username });
+  };
+
+  const abrirDialogoActivar = (userId, username) => {
+    setDialogoActivar({ abierto: true, userId, username });
   };
 
   // ========== ESTADOS DE CARGA ==========
@@ -241,8 +264,8 @@ const GestionUsuarios = () => {
                           rolesEditados={rolesEditados}
                           onCambiarRol={handleRolChange}
                           onGuardarRol={guardarCambioRol}
-                          onDesactivar={desactivarUsuario}
-                          onActivar={activarUsuario}
+                          onDesactivar={abrirDialogoDesactivar}
+                          onActivar={abrirDialogoActivar}
                           guardando={guardando}
                           procesando={procesando}
                           esEntrenador={false}
@@ -278,7 +301,8 @@ const GestionUsuarios = () => {
                   onSocioCreado={refetch}
                 />
               </CardContent>
-            </Card>              <Card>
+            </Card>
+            <Card>
                 <CardContent className="pt-6">
                   <FiltrosUsuarios
                     vistaActual={vistaActual}
@@ -301,8 +325,8 @@ const GestionUsuarios = () => {
                           rolesEditados={rolesEditados}
                           onCambiarRol={handleRolChange}
                           onGuardarRol={guardarCambioRol}
-                          onDesactivar={desactivarUsuario}
-                          onActivar={activarUsuario}
+                          onDesactivar={abrirDialogoDesactivar}
+                          onActivar={abrirDialogoActivar}
                           guardando={guardando}
                           procesando={procesando}
                           esEntrenador={false}
@@ -355,8 +379,8 @@ const GestionUsuarios = () => {
                         rolesEditados={rolesEditados}
                         onCambiarRol={handleRolChange}
                         onGuardarRol={guardarCambioRol}
-                        onDesactivar={desactivarUsuario}
-                        onActivar={activarUsuario}
+                        onDesactivar={abrirDialogoDesactivar}
+                        onActivar={abrirDialogoActivar}
                         guardando={guardando}
                         procesando={procesando}
                         esEntrenador={true}
@@ -375,6 +399,54 @@ const GestionUsuarios = () => {
             </Card>
           </>
         )}
+
+        {/* Diálogo de confirmación para desactivar */}
+        <AlertDialog open={dialogoDesactivar.abierto} onOpenChange={(abierto) => !procesando && setDialogoDesactivar({ ...dialogoDesactivar, abierto })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Desactivar usuario?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Estás por desactivar al usuario <strong>{dialogoDesactivar.username}</strong>.
+                <br /><br />
+                El usuario no tendrá acceso al sistema hasta que sea reactivado.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={procesando}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => desactivarUsuario(dialogoDesactivar.userId)}
+                disabled={procesando}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {procesando ? "Desactivando..." : "Desactivar"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Diálogo de confirmación para activar */}
+        <AlertDialog open={dialogoActivar.abierto} onOpenChange={(abierto) => !procesando && setDialogoActivar({ ...dialogoActivar, abierto })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Activar usuario?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Estás por activar al usuario <strong>{dialogoActivar.username}</strong>.
+                <br /><br />
+                El usuario recuperará el acceso al sistema.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={procesando}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => activarUsuario(dialogoActivar.userId)}
+                disabled={procesando}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {procesando ? "Activando..." : "Activar"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -36,8 +36,13 @@ from .views import (
     eliminar_compra_con_stock,
     get_csrf,
     register_with_payment,
-    mi_perfil  # ← AGREGAR ESTA LÍNEA
-
+    mi_perfil,
+    # 🆕 NUEVAS VISTAS DE REPORTES
+    reportes_accesorios,
+    confirmar_reporte,
+    rechazar_reporte,
+    estadisticas_reportes,
+    accesorios_por_proveedor,
 )
 
 router = DefaultRouter()
@@ -45,7 +50,6 @@ router.register(r'clases', ClaseViewSet)
 router.register(r'socios', SocioViewSet)
 router.register(r'accesorios', AccesoriosViewSet)
 router.register(r'compras', CompraViewSet)
-# NO registramos ProveedorViewSet aquí para evitar conflictos
 
 urlpatterns = [
     # Autenticación (PRIMERO)
@@ -54,8 +58,7 @@ urlpatterns = [
     path('logout/', logout_view, name='logout'),
     path('register/', register_user, name='register'),
     path('user/', obtener_usuario_actual, name='user'),
-    path('perfil/', mi_perfil, name='mi-perfil'),  # ← AGREGAR ESTA LÍNEA
-
+    path('perfil/', mi_perfil, name='mi-perfil'),
 
     # Gestión de usuarios (admin)
     path('usuarios/', listar_usuarios, name='listar-usuarios'),
@@ -66,7 +69,6 @@ urlpatterns = [
     path('usuarios/<int:user_id>/cambiar-contrasena/', cambiar_contrasena, name='cambiar-contrasena'),
     path('register-with-payment/', register_with_payment, name='register_with_payment'),
 
-
     # Gestión de proveedores (ANTES del router)
     path('proveedores/activos/', proveedores_activos, name='proveedores-activos'),
     path('proveedores/desactivados/', proveedores_desactivados, name='proveedores-desactivados'),
@@ -74,11 +76,19 @@ urlpatterns = [
     path('proveedores/<int:proveedor_id>/editar/', editar_proveedor, name='editar-proveedor'),
     path('proveedores/<int:proveedor_id>/desactivar/', desactivar_proveedor, name='desactivar-proveedor'),
     path('proveedores/<int:proveedor_id>/activar/', activar_proveedor, name='activar-proveedor'),
+    path('accesorios-proveedor/<int:proveedor_id>/', accesorios_por_proveedor, name='accesorios-proveedor'),
+
 
     # Gestión de compras (extras)
     path('compras/estadisticas/', estadisticas_compras, name='estadisticas-compras'),
     path('compras/proveedor/<int:proveedor_id>/', compras_por_proveedor, name='compras-por-proveedor'),
     path('compras/<int:compra_id>/eliminar-con-stock/', eliminar_compra_con_stock, name='eliminar-compra-con-stock'),
+
+    # 🆕 REPORTES DE ACCESORIOS
+    path('reportes-accesorios/', reportes_accesorios, name='reportes-accesorios'),
+    path('reportes-accesorios/<int:reporte_id>/confirmar/', confirmar_reporte, name='confirmar-reporte'),
+    path('reportes-accesorios/<int:reporte_id>/rechazar/', rechazar_reporte, name='rechazar-reporte'),
+    path('reportes-accesorios/estadisticas/', estadisticas_reportes, name='estadisticas-reportes'),
 
     # Clases y socios (extras)
     path('clases/<int:clase_id>/socios/disponibles/', socios_disponibles, name='socios-disponibles'),

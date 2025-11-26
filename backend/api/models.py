@@ -101,3 +101,59 @@ class Clase(models.Model):
     )
     def __str__(self):
         return f"{self.nombre} - {self.dia} {self.hora_inicio}"
+
+class ReporteAccesorio(models.Model):
+    """
+    Reportes de accesorios faltantes, rotos o extraviados
+    Creados por entrenadores y confirmados por admins
+    """
+    MOTIVO_CHOICES = [
+        ('faltante', 'Faltante'),
+        ('roto', 'Roto/Dañado'),
+        ('extraviado', 'Extraviado'),
+        ('otro', 'Otro')
+    ]
+    
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('confirmado', 'Confirmado'),
+        ('rechazado', 'Rechazado')
+    ]
+    
+    accesorio = models.ForeignKey(
+        Accesorios,
+        on_delete=models.CASCADE,
+        related_name='reportes'
+    )
+    cantidad = models.PositiveIntegerField(default=1)
+    motivo = models.CharField(max_length=20, choices=MOTIVO_CHOICES, default='faltante')
+    descripcion = models.TextField(help_text="Descripción detallada del problema")
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
+    
+    # Quién reporta (entrenador)
+    reportado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='reportes_creados'
+    )
+    fecha_reporte = models.DateTimeField(auto_now_add=True)
+    
+    # Quién confirma/rechaza (admin)
+    confirmado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reportes_confirmados'
+    )
+    fecha_confirmacion = models.DateTimeField(null=True, blank=True)
+    notas_confirmacion = models.TextField(blank=True, help_text="Notas del admin al confirmar/rechazar")
+    
+    class Meta:
+        ordering = ['-fecha_reporte']
+        verbose_name = 'Reporte de Accesorio'
+        verbose_name_plural = 'Reportes de Accesorios'
+    
+    def __str__(self):
+        return f"Reporte #{self.id} - {self.accesorio.nombre} ({self.get_estado_display()})"

@@ -1,9 +1,10 @@
 // src/services/accesorios.service.js
 import apiClient from "./authServices";
 
+// ✅ SIN /api/ porque apiClient ya lo tiene en baseURL
 const API_URL = "/general/accesorios/";
 const PROV_ACTIVOS_URL = "/general/proveedores/activos/";
-const PROV_TODOS_URL = "/general/proveedores/activos/";
+const PROV_DESACTIVADOS_URL = "/general/proveedores/desactivados/";
 
 // Operaciones CRUD para accesorios
 export const getAccesorios = () => apiClient.get(API_URL);
@@ -16,16 +17,12 @@ export const updateAccesorio = (id, data) => apiClient.put(`${API_URL}${id}/`, d
 
 export const deleteAccesorio = (id) => apiClient.delete(`${API_URL}${id}/`);
 
-// 🆕 NUEVO - Toggle activo/inactivo
 export const toggleAccesorioActivo = async (id, activo) => {
   try {
-    // Primero obtener los datos actuales del accesorio
     const accesorioActual = await getAccesorio(id);
-    
-    // Actualizar solo el campo activo
     const response = await apiClient.patch(
       `${API_URL}${id}/`, 
-      { activo: !activo } // Toggle: si está activo lo desactiva y viceversa
+      { activo: !activo }
     );
     return response;
   } catch (error) {
@@ -33,15 +30,14 @@ export const toggleAccesorioActivo = async (id, activo) => {
   }
 };
 
-// Obtener proveedores para el formulario (solo activos)
+// Obtener proveedores
 export const getProveedores = () => apiClient.get(PROV_ACTIVOS_URL);
 
-// Obtener todos los proveedores (activos e inactivos) para editar
 export const getTodosLosProveedores = async () => {
   try {
     const [activos, inactivos] = await Promise.all([
       apiClient.get(PROV_ACTIVOS_URL),
-      apiClient.get("/general/proveedores/desactivados/")
+      apiClient.get(PROV_DESACTIVADOS_URL)
     ]);
     return {
       data: [...activos.data, ...inactivos.data]
@@ -60,3 +56,37 @@ export const getAccesoriosInactivos = () =>
 
 export const getAccesoriosByProveedor = (proveedorId) => 
   apiClient.get(`${API_URL}?proveedor=${proveedorId}`);
+
+// ========== REPORTES DE ACCESORIOS ==========
+
+export const getReportesAccesorios = (filtros = {}) => {
+  const params = new URLSearchParams();
+  if (filtros.estado) params.append('estado', filtros.estado);
+  if (filtros.accesorio) params.append('accesorio', filtros.accesorio);
+  
+  const url = params.toString() 
+    ? `/general/reportes-accesorios/?${params.toString()}`
+    : '/general/reportes-accesorios/';
+  
+  return apiClient.get(url);
+};
+
+export const crearReporteAccesorio = (data) => {
+  return apiClient.post('/general/reportes-accesorios/', data);
+};
+
+export const confirmarReporte = (reporteId, notas = '') => {
+  return apiClient.post(`/general/reportes-accesorios/${reporteId}/confirmar/`, {
+    notas_confirmacion: notas
+  });
+};
+
+export const rechazarReporte = (reporteId, notas = '') => {
+  return apiClient.post(`/general/reportes-accesorios/${reporteId}/rechazar/`, {
+    notas_confirmacion: notas
+  });
+};
+
+export const getEstadisticasReportes = () => {
+  return apiClient.get('/general/reportes-accesorios/estadisticas/');
+};

@@ -88,3 +88,24 @@ input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 4px;               /* grosor */
+  background: transparent;
+  background-color: #a3a3a3; /* gris */
+  border-radius: 9999px;     /* redondeado */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #a3a3a3; /* gris */
+  border-radius: 9999px;     /* redondeado */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #737373; /* más oscuro en hover */
+}

@@ -11,6 +11,7 @@ import CalendarioIndicadores from './CalendarioIndicadores';
 import CalendarioTabla from './CalendarioTabla';
 import ModalHorario from './ModalHorario';
 import ModalHistorial from './ModalHistorial';
+import { useCustomAlert } from '../../hooks/useCustomAlert'; // ✅ IMPORTAR
 
 moment.locale('es');
 
@@ -25,6 +26,9 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
     const [modalHistorial, setModalHistorial] = useState(false);
     const [historialData, setHistorialData] = useState(null);
 
+    // ✅ USAR EL HOOK DE ALERTAS
+    const { showSuccess, showError, showInfo, showConfirm, AlertComponent } = useCustomAlert();
+
     useEffect(() => {
         fetchCalendario();
     }, [semanaInicio]);
@@ -36,13 +40,10 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
         try {
             const fechaInicio = semanaInicio.format('YYYY-MM-DD');
             const fechaFin = semanaInicio.clone().add(6, 'days').format('YYYY-MM-DD');
-
-            console.log('📡 Cargando calendario:', { fechaInicio, fechaFin });
             
             const data = await api.obtenerCalendarioTurnos(fechaInicio, fechaFin);
 
             if (Array.isArray(data)) {
-                console.log('📅 Calendario cargado:', data.length, 'días');
                 setCalendarioData(data);
             } else {
                 console.error('❌ La respuesta no es un array:', data);
@@ -67,24 +68,19 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
     };
 
     const abrirModal = async (fecha, hora, horarioData, esHistorial) => {
-        // Si es historial de un turno (hora pasada) y tenemos los datos del horario,
-        // mostramos el historial de ese turno (confirmados) en el modal.
         if (esHistorial && horarioData) {
             try {
                 const turnos = horarioData.turnos || [];
-                
-                // ✅ CORREGIDO: Los confirmados son TODOS los que tienen socio asignado
                 const turnosConfirmados = turnos.filter(t => t.socio || t.socio_id);
                 const total_confirmados = turnosConfirmados.length;
-
-                // Permitir ver la lista si sos staff o si tenías un turno en ese horario
                 const tengoTurno = turnos.some(t => t.es_mio);
+                
                 if (!isStaff && !tengoTurno) {
-                    alert('No tienes permisos para ver la asistencia de este turno.');
+                    // ✅ REEMPLAZAR alert() por showError()
+                    showError('No tienes permisos para ver la asistencia de este turno.');
                     return;
                 }
 
-                // ✅ Pasamos solo los turnos confirmados (con socio asignado)
                 setHistorialData({ 
                     fecha, 
                     turnos: turnosConfirmados, 
@@ -94,13 +90,12 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
                 return;
             } catch (error) {
                 console.error('Error preparando historial del turno:', error);
-                alert('No se pudo preparar el historial del turno');
+                // ✅ REEMPLAZAR alert() por showError()
+                showError('No se pudo preparar el historial del turno');
                 return;
             }
         }
 
-        // Si es historial pero no tenemos datos específicos del horario, y sos staff,
-        // solicitar historial del día completo.
         if (esHistorial && isStaff && !horarioData) {
             try {
                 const data = await api.obtenerHistorialDia(fecha);
@@ -108,12 +103,12 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
                 setModalHistorial(true);
             } catch (error) {
                 console.error('Error al cargar historial:', error);
-                alert('No se pudo cargar el historial del día');
+                // ✅ REEMPLAZAR alert() por showError()
+                showError('No se pudo cargar el historial del día');
             }
             return;
         }
 
-        // Caso por defecto: abrir modal de gestión del horario (reserva/confirmación)
         setHorarioSeleccionado({ fecha, hora, data: horarioData });
         setModalAbierto(true);
     };
@@ -129,7 +124,6 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
     };
 
     const handleAccion = async (turnoId, accion) => {
-        // Permitir refresh sin validación de usuario
         if (accion === 'refresh') {
             fetchCalendario();
             cerrarModal();
@@ -137,58 +131,60 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
         }
 
         if (!user) {
-            alert('Debes iniciar sesión para realizar esta acción.');
+            // ✅ REEMPLAZAR alert() por showInfo()
+            showInfo('Debes iniciar sesión para realizar esta acción.');
             return;
         }
 
         try {
-            console.log(`🔄 Ejecutando acción: ${accion} en turno ${turnoId}`);
             
             let response;
             switch(accion) {
                 case 'reservar':
-                    // Aquí llamamos al endpoint que valida el plan
                     response = await api.reservarTurno(turnoId);
-                    
-                    // Si llegamos aquí, la reserva fue exitosa
-                    // (Si hubiera error de plan, salta al catch)
-                    alert(response.detail || '¡Turno reservado exitosamente!');
+                    // ✅ REEMPLAZAR alert() por showSuccess()
+                    showSuccess(response.detail || '¡Turno reservado exitosamente! No olvides confirmarlo.');
                     break;
                     
                 case 'cancelar':
-                    if (!window.confirm('¿Estás seguro de que deseas cancelar este turno?')) {
-                        return;
-                    }
+                    // ✅ REEMPLAZAR confirm() por showConfirm()
+                    const confirmarCancelar = await showConfirm({
+                        message: '¿Estás seguro de que deseas cancelar este turno?'
+                    });
+                    
+                    if (!confirmarCancelar) return;
+                    
                     response = await api.cancelarTurno(turnoId);
-                    alert(response.detail || 'Turno cancelado con éxito.');
+                    showSuccess(response.detail || 'Turno cancelado con éxito.');
                     break;
                 
                 case 'cancelar_staff':
-                    if (!window.confirm('¿Estás seguro de que deseas cancelar este turno del socio?')) {
-                        return;
-                    }
+                    // ✅ REEMPLAZAR confirm() por showConfirm()
+                    const confirmarCancelarStaff = await showConfirm({
+                        type: 'warning',
+                        message: '¿Estás seguro de que deseas cancelar este turno del socio?'
+                    });
+                    
+                    if (!confirmarCancelarStaff) return;
+                    
                     response = await api.cancelarTurnoParaSocio(turnoId);
-                    alert(response.detail || 'Turno cancelado exitosamente.');
+                    showSuccess(response.detail || 'Turno cancelado exitosamente.');
                     break;
                     
                 default:
                     throw new Error('Acción no válida');
             }
             
-            // Recargar datos para actualizar cupos y UI
             fetchCalendario();
             cerrarModal();
             
         } catch (error) {
-            // 👇 LÓGICA MEJORADA DE ERRORES
             console.error('❌ Error en acción:', error);
 
             let mensajeError = `Error al ${accion} el turno.`;
             
-            // Intentar extraer el mensaje detallado del backend (donde viene la restricción del plan)
             if (error.response && error.response.data) {
                 if (error.response.data.detail) {
-                    // Puede ser un string o un objeto de Django
                     if (typeof error.response.data.detail === 'string') {
                         mensajeError = error.response.data.detail;
                     } else {
@@ -197,9 +193,9 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
                 }
             }
 
-            alert(`⚠️ No se pudo completar la acción:\n\n${mensajeError}`);
+            // ✅ REEMPLAZAR alert() por showError()
+            showError(`No se pudo completar la acción:\n\n${mensajeError}`);
             
-            // Refrescamos por si el estado cambió en el servidor mientras tanto
             fetchCalendario();
         }
     };
@@ -270,6 +266,9 @@ const CalendarioTurnos = ({ isStaff, onEditar }) => {
                     onCerrar={cerrarModalHistorial}
                 />
             )}
+
+            {/* ✅ COMPONENTE DE ALERTAS */}
+            <AlertComponent />
         </div>
     );
 };

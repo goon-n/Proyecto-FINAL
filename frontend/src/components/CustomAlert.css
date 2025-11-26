@@ -1,4 +1,4 @@
-/* src/styles/CustomAlert.css */
+/* src/components/CustomAlert.css */
 .alert-overlay {
   position: fixed;
   top: 0;
@@ -58,6 +58,17 @@
   line-height: 1.5;
 }
 
+/* ✅ NUEVO: Contenedor de botones */
+.alert-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.alert-buttons.two-buttons {
+  justify-content: space-between;
+}
+
 .alert-button {
   color: white;
   border: none;
@@ -67,9 +78,23 @@
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s ease;
+  flex: 1;
+  max-width: 180px;
 }
 
-.alert-button:hover {
+/* ✅ NUEVO: Botón de cancelar (gris) */
+.alert-button-cancel {
+  background-color: #6c757d;
+}
+
+.alert-button-cancel:hover {
+  background-color: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ✅ Botón de confirmar (color según tipo) */
+.alert-button-confirm:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   filter: brightness(0.9);
