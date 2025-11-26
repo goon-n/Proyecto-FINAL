@@ -244,15 +244,22 @@ def listar_usuarios(request):
         return Response(usuarios_data)
     
     # POST - Crear nuevo usuario
+    # POST - Crear nuevo usuario
     elif request.method == 'POST':
-        # Verificar permisos (solo admin puede crear usuarios)
-        if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+    # Verificar permisos (admin y entrenador pueden crear usuarios)
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
             return Response({'error': 'No tienes permisos para crear usuarios'}, status=403)
         
         username = request.data.get('username')
         password = request.data.get('password')
         email = request.data.get('email', '')
         rol = request.data.get('rol', 'socio')
+        
+        # ✅ RESTRICCIÓN: Entrenadores solo pueden crear socios
+        if request.user.perfil.rol == 'entrenador' and rol != 'socio':
+            return Response({
+                'error': 'Los entrenadores solo pueden crear socios'
+            }, status=403)
         
         # Validaciones
         if not username or not password:
@@ -280,7 +287,6 @@ def listar_usuarios(request):
         from django.contrib.auth.models import Group
         grupo = Group.objects.get(name=rol)
         user.groups.add(grupo)
-
         
         return Response({
             'message': 'Usuario creado correctamente',
