@@ -43,8 +43,7 @@ const LandingPage = () => {
           price: "18.000",
           frequency: "2 veces por semana",
           features: [
-            "Acceso sala de musculación", 
-            "Vestuarios y duchas",
+            "Acceso sala de musculación",
             "Asesoramiento básico"
           ],
           popular: false,
@@ -58,7 +57,6 @@ const LandingPage = () => {
           features: [
             "Acceso sala de musculación", 
             "Seguimiento mensual",
-            "Vestuarios y duchas"
           ],
           popular: false,
           icon: TrendingUp

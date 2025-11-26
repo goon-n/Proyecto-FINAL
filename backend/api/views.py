@@ -67,6 +67,9 @@ def obtener_usuario_actual(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
+
+    from django.contrib.auth.models import Group
+
     username = request.data.get('username')
     password = request.data.get('password')
     email = request.data.get('email')
@@ -209,11 +212,10 @@ def listar_usuarios(request):
         if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
             return Response({'error': 'No tienes permisos'}, status=403)
         
-        from cuotas_mensuales.models import CuotaMensual  # ✅ Importar
+        from cuotas_mensuales.models import CuotaMensual
         
         usuarios = User.objects.filter(perfil__is_active=True).select_related('perfil')
         
-        # ✅ Construir respuesta con información de cuotas
         usuarios_data = []
         for usuario in usuarios:
             user_dict = {
@@ -222,10 +224,9 @@ def listar_usuarios(request):
                 'email': usuario.email,
                 'date_joined': usuario.date_joined,
                 'perfil__rol': usuario.perfil.rol,
-                'tiene_cuota_activa': False  # Por defecto False
+                'tiene_cuota_activa': False
             }
             
-            # ✅ Si es socio, verificar si tiene cuota activa
             if usuario.perfil.rol == 'socio':
                 cuota_activa = CuotaMensual.objects.filter(
                     socio=usuario,
@@ -236,6 +237,55 @@ def listar_usuarios(request):
             usuarios_data.append(user_dict)
         
         return Response(usuarios_data)
+    
+    # POST - Crear nuevo usuario
+    elif request.method == 'POST':
+        # Verificar permisos (solo admin puede crear usuarios)
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+            return Response({'error': 'No tienes permisos para crear usuarios'}, status=403)
+        
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email', '')
+        rol = request.data.get('rol', 'socio')
+        
+        # Validaciones
+        if not username or not password:
+            return Response({'error': 'Username y password son requeridos'}, status=400)
+        
+        if User.objects.filter(username=username).exists():
+            return Response({'error': 'El usuario ya existe'}, status=400)
+        
+        if email and User.objects.filter(email=email).exists():
+            return Response({'error': 'El email ya está registrado'}, status=400)
+        
+        if rol not in ['admin', 'entrenador', 'socio']:
+            return Response({'error': 'Rol no válido'}, status=400)
+        
+        # Crear usuario
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email
+        )
+        
+        # Crear perfil
+        Perfil.objects.create(user=user, rol=rol)
+        
+        from django.contrib.auth.models import Group
+        grupo = Group.objects.get(name=rol)
+        user.groups.add(grupo)
+
+        
+        return Response({
+            'message': 'Usuario creado correctamente',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'rol': rol
+            }
+        }, status=201)
     
 
 @api_view(['GET'])
@@ -416,6 +466,10 @@ def register_with_payment(request):
             perfil = Perfil.objects.create(user=user, rol='socio')
             print(f"✅ Perfil creado con rol: {perfil.rol}")
             
+            from django.contrib.auth.models import Group
+            grupo_socio = Group.objects.get(name='socio')
+            user.groups.add(grupo_socio)    
+
             # 5.3 - Crear cuota mensual
             fecha_inicio = timezone.now().date()
             fecha_vencimiento = fecha_inicio + timedelta(days=30)
