@@ -130,6 +130,7 @@ export const authService = {
         password: userData.password,
         email: userData.email,
         nombre: userData.nombre,
+        apellido: userData.apellido,
         telefono: userData.telefono,
         plan_name: userData.plan_name,
         plan_price: userData.plan_price,

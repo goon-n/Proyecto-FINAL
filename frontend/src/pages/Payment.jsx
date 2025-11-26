@@ -52,6 +52,7 @@ export default function Payment() {
         password: user.password,
         email: user.email,
         nombre: user.nombre,
+        apellido: user.apellido,
         telefono: user.telefono,
         plan_name: plan.name,
         plan_price: parseFloat(plan.price.replace(/\./g, '')),  // "32.000" → 32000

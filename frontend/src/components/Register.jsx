@@ -19,6 +19,7 @@ export default function Register() {
   const [selectedPlan, setSelectedPlan] = useState(planFromNavigation || null);
   const [formData, setFormData] = useState({
     nombre: "",
+    apellido: "",
     username: "",
     email: "",
     password: "",
@@ -71,6 +72,7 @@ export default function Register() {
           username: formData.username,
           email: formData.email,
           nombre: formData.nombre,
+          apellido: formData.apellido,
           telefono: formData.telefono,
           password: formData.password
         }, 
@@ -234,16 +236,34 @@ export default function Register() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre" className="text-gray-300 font-medium">Nombre Completo</Label>
+                    <Label htmlFor="nombre" className="text-gray-300 font-medium">Nombre</Label>
                     <Input
                       id="nombre"
                       type="text"
-                      placeholder="Juan Pérez"
+                      placeholder="Juan"
                       value={formData.nombre}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
                           setFormData({ ...formData, nombre: value });
+                        }
+                      }}
+                      required
+                      className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#00FF41] focus:ring-[#00FF41]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="apellido" className="text-gray-300 font-medium">Apellido</Label>
+                    <Input
+                      id="apellido"
+                      type="text"
+                      placeholder="Pérez"
+                      value={formData.apellido}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                          setFormData({ ...formData, apellido: value });
                         }
                       }}
                       required

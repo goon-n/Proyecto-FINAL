@@ -253,6 +253,8 @@ def listar_usuarios(request):
         username = request.data.get('username')
         password = request.data.get('password')
         email = request.data.get('email', '')
+        nombre = request.data.get('nombre', '')
+        apellido = request.data.get('apellido', '')
         rol = request.data.get('rol', 'socio')
         
         # ✅ RESTRICCIÓN: Entrenadores solo pueden crear socios
@@ -278,7 +280,9 @@ def listar_usuarios(request):
         user = User.objects.create_user(
             username=username,
             password=password,
-            email=email
+            email=email,
+            first_name=nombre,
+            last_name=apellido
         )
         
         # Crear perfil
@@ -294,6 +298,8 @@ def listar_usuarios(request):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'nombre': nombre,
+                'apellido': apellido,
                 'rol': rol
             }
         }, status=201)
@@ -410,6 +416,7 @@ def register_with_payment(request):
     password = request.data.get('password')
     email = request.data.get('email', '')
     nombre = request.data.get('nombre', '')
+    apellido = request.data.get('apellido', '')
     telefono = request.data.get('telefono', '')
     plan_name = request.data.get('plan_name')
     plan_price = request.data.get('plan_price')
@@ -420,6 +427,7 @@ def register_with_payment(request):
     print(f"   Username: {username}")
     print(f"   Email: {email}")
     print(f"   Nombre: {nombre}")
+    print(f"   Apellido: {apellido}")
     print(f"   Plan: {plan_name}")
     print(f"   Precio: {plan_price}")
     print(f"{'='*60}\n")
@@ -469,7 +477,8 @@ def register_with_payment(request):
                 username=username, 
                 password=password, 
                 email=email,
-                first_name=nombre
+                first_name=nombre,
+                last_name=apellido
             )
             print(f"✅ Usuario creado: {user.username} (ID: {user.id})")
             

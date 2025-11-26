@@ -20,6 +20,8 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador, soloStaff, soloS
     username: "",
     password: "",
     email: "",
+    nombre: "",
+    apellido: "",
     rol: rolPorDefecto
   });
 
@@ -66,6 +68,8 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador, soloStaff, soloS
         username: "",
         password: "",
         email: "",
+        nombre: "",
+        apellido: "",
         rol: rolPorDefecto
       });
       setMostrarFormulario(false);
@@ -107,6 +111,40 @@ export const AgregarUsuario = ({ onUsuarioCreado, esEntrenador, soloStaff, soloS
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="nombre">Nombre</Label>
+                <Input
+                  id="nombre"
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                      handleChange(e);
+                    }
+                  }}
+                  placeholder="Juan"
+                  disabled={guardando}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="apellido">Apellido</Label>
+                <Input
+                  id="apellido"
+                  name="apellido"
+                  value={formData.apellido}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                      handleChange(e);
+                    }
+                  }}
+                  placeholder="Pérez"
+                  disabled={guardando}
+                />
+              </div>
+
               <div>
                 <Label htmlFor="username">Usuario *</Label>
                 <Input

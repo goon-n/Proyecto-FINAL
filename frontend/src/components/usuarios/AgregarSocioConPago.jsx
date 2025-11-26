@@ -30,6 +30,7 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
     password: "",
     email: "",
     nombre: "",
+    apellido: "",
     telefono: "",
     plan_id: "",
     monto_pago: "",
@@ -122,7 +123,12 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
     }
 
     if (!formData.nombre) {
-      toast.error("El nombre completo es obligatorio");
+      toast.error("El nombre es obligatorio");
+      return;
+    }
+
+    if (!formData.apellido) {
+      toast.error("El apellido es obligatorio");
       return;
     }
 
@@ -156,7 +162,9 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
       const usuarioData = {
         username: formData.username,
         password: formData.password,
-        email: formData.email
+        email: formData.email,
+        nombre: formData.nombre,
+        apellido: formData.apellido
       };
       
       console.log("📤 Creando usuario:", usuarioData);
@@ -176,13 +184,14 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
       console.log("✅ Cuota creada:", cuotaResponse);
       
       const mensajeTarjeta = datosTarjeta ? ` - Tarjeta **** ${datosTarjeta.ultimos4}` : '';
-      toast.success(`✅ Socio ${formData.nombre} creado con membresía ${planSeleccionado?.nombre}${mensajeTarjeta}`);
+      toast.success(`✅ Socio ${formData.nombre} ${formData.apellido} creado con membresía ${planSeleccionado?.nombre}${mensajeTarjeta}`);
       
       setFormData({
         username: "",
         password: "",
         email: "",
         nombre: "",
+        apellido: "",
         telefono: "",
         plan_id: planes[0]?.id || "",
         monto_pago: planes[0]?.precio || "",
@@ -339,7 +348,7 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="nombre">Nombre Completo *</Label>
+                    <Label htmlFor="nombre">Nombre *</Label>
                     <Input
                       id="nombre"
                       name="nombre"
@@ -351,7 +360,26 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
                           handleChange(e);
                         }
                       }}
-                      placeholder="Juan Pérez"
+                      placeholder="Juan"
+                      required
+                      disabled={guardando}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="apellido">Apellido *</Label>
+                    <Input
+                      id="apellido"
+                      name="apellido"
+                      value={formData.apellido}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Solo permitir letras, espacios y acentos
+                        if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                          handleChange(e);
+                        }
+                      }}
+                      placeholder="Pérez"
                       required
                       disabled={guardando}
                     />
