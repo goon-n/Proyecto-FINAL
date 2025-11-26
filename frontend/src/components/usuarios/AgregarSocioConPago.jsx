@@ -427,25 +427,6 @@ export const AgregarSocioConPago = ({ onSocioCreado }) => {
                     )}
                   </div>
 
-                  <div>
-                    <Label htmlFor="monto_pago">Monto a Pagar *</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="monto_pago"
-                        name="monto_pago"
-                        type="number"
-                        value={formData.monto_pago}
-                        onChange={handleChange}
-                        placeholder="0.00"
-                        required
-                        disabled={guardando}
-                        className="pl-9"
-                        step="0.01"
-                        min="0"
-                      />
-                    </div>
-                  </div>
 
                   <div>
                     <Label htmlFor="metodo_pago">Método de Pago *</Label>

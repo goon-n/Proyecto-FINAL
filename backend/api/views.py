@@ -8,14 +8,15 @@ from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from .models import Socio, Perfil, Clase, Proveedor, Accesorios, Compra, ItemCompra
+from .models import Socio, Perfil, Clase, Proveedor, Accesorios, Compra, ItemCompra, ReporteAccesorio
 from .serializers import (
     CompraSerializer, ItemCompraSerializer, SocioSerializer,
-    ClaseSerializer, CustomUserSerializer, ProveedorSerializer, AccesoriosSerializer
+    ClaseSerializer, CustomUserSerializer, ProveedorSerializer, AccesoriosSerializer, ReporteAccesorioSerializer, ReporteAccesorioCreateSerializer
 )
 from django.utils import timezone
 from django.db.models import Q, Sum, Count, Avg
 from django.db import transaction
+import hashlib
 
 
 
@@ -40,6 +41,8 @@ def login_view(request):
         }
         return Response(data, status=200)
     return Response({"error": "Usuario o contraseña incorrecta"}, status=401)
+
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -206,81 +209,34 @@ def listar_usuarios(request):
         if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
             return Response({'error': 'No tienes permisos'}, status=403)
         
-        usuarios = User.objects.filter(perfil__is_active=True).values(
-            'id', 'username', 'email', 'date_joined', 'perfil__rol'
-        )
-        return Response(list(usuarios))
+        from cuotas_mensuales.models import CuotaMensual  # ✅ Importar
+        
+        usuarios = User.objects.filter(perfil__is_active=True).select_related('perfil')
+        
+        # ✅ Construir respuesta con información de cuotas
+        usuarios_data = []
+        for usuario in usuarios:
+            user_dict = {
+                'id': usuario.id,
+                'username': usuario.username,
+                'email': usuario.email,
+                'date_joined': usuario.date_joined,
+                'perfil__rol': usuario.perfil.rol,
+                'tiene_cuota_activa': False  # Por defecto False
+            }
+            
+            # ✅ Si es socio, verificar si tiene cuota activa
+            if usuario.perfil.rol == 'socio':
+                cuota_activa = CuotaMensual.objects.filter(
+                    socio=usuario,
+                    estado='activa'
+                ).exists()
+                user_dict['tiene_cuota_activa'] = cuota_activa
+            
+            usuarios_data.append(user_dict)
+        
+        return Response(usuarios_data)
     
-    # POST - Crear usuario
-    elif request.method == 'POST':
-        if not hasattr(request.user, 'perfil'):
-            return Response({'error': 'No tienes permisos'}, status=403)
-        
-        user_rol = request.user.perfil.rol
-        if user_rol not in ['admin', 'entrenador']:
-            return Response({'error': 'Solo admins y entrenadores pueden crear usuarios'}, status=403)
-        
-        username = request.data.get('username')
-        password = request.data.get('password')
-        email = request.data.get('email', '')
-        rol = request.data.get('rol', 'socio')
-        
-        if not username:
-            return Response({'error': 'El nombre de usuario es obligatorio'}, status=400)
-        
-        if not password:
-            return Response({'error': 'La contraseña es obligatoria'}, status=400)
-        
-        if User.objects.filter(username=username).exists():
-            return Response({'error': 'El usuario ya existe'}, status=400)
-        
-        if user_rol == 'entrenador' and rol != 'socio':
-            return Response({'error': 'Los entrenadores solo pueden crear socios'}, status=403)
-        
-        if rol not in ['admin', 'entrenador', 'socio']:
-            return Response({'error': 'Rol no válido'}, status=400)
-        
-        try:
-            from django.contrib.auth.models import Group  # ✅ Importar Group
-            
-            # Crear usuario
-            user = User.objects.create_user(username=username, password=password, email=email)
-            
-            # Asignar is_staff=True si es admin o entrenador
-            if rol in ['admin', 'entrenador']:
-                user.is_staff = True
-                user.save()
-            
-            print(f"✅ Usuario creado: {user.id} - {user.username} - is_staff: {user.is_staff}")
-            
-            # Crear perfil con is_active=True explícitamente
-            perfil = Perfil.objects.create(user=user, rol=rol, is_active=True)
-            print(f"✅ Perfil creado: {perfil.id} - rol: {perfil.rol} - activo: {perfil.is_active}")
-            
-            # ✅ ASIGNAR AL GRUPO DE DJANGO
-            try:
-                grupo = Group.objects.get(name=rol)
-                user.groups.add(grupo)
-                print(f"✅ Usuario asignado al grupo: {rol}")
-            except Group.DoesNotExist:
-                print(f"⚠️ ADVERTENCIA: El grupo '{rol}' no existe en Django")
-            
-            return Response({
-                'message': 'Usuario creado correctamente',
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'rol': rol
-                }
-            }, status=201)
-            
-        except Exception as e:
-            print(f"❌ ERROR al crear usuario: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return Response({'error': f'Error al crear usuario: {str(e)}'}, status=400)
-
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -801,6 +757,39 @@ def eliminar_compra_con_stock(request, compra_id):
     return Response({'detail': 'Compra eliminada y stock actualizado'}, status=200)
 
 
+# ========== FILTRAR ACCESORIOS POR PROVEEDOR ==========
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def accesorios_por_proveedor(request, proveedor_id):
+    """
+    Obtener todos los accesorios de un proveedor específico (activos e inactivos)
+    """
+    try:
+        proveedor = get_object_or_404(Proveedor, id=proveedor_id)
+        
+        # ✅ MODIFICADO: Traer TODOS los accesorios, no solo los activos
+        accesorios = Accesorios.objects.filter(
+            proveedor=proveedor
+        ).order_by('-activo', 'nombre')  # Primero activos, luego inactivos
+        
+        serializer = AccesoriosSerializer(accesorios, many=True)
+        
+        return Response({
+            'proveedor': {
+                'id': proveedor.id,
+                'nombre': proveedor.nombre
+            },
+            'accesorios': serializer.data,
+            'total': accesorios.count()
+        }, status=200)
+    except Exception as e:
+        return Response(
+            {'error': f'Error al obtener accesorios: {str(e)}'},
+            status=500
+        )
+
+
 @api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def mi_perfil(request):
@@ -857,3 +846,228 @@ def mi_perfil(request):
                 'rol': user.perfil.rol if hasattr(user, 'perfil') else 'socio'
             }
         }, status=200)
+    
+
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def desactivar_usuario(request, user_id):
+    if request.user.id == user_id:
+        return Response({'error': 'No podés desactivar tu propio usuario'}, status=400)
+    
+    user = get_object_or_404(User, id=user_id)
+    perfil = user.perfil
+    
+    # ✅ VALIDACIÓN: Verificar si es socio con cuota activa
+    if perfil.rol == 'socio':
+        from cuotas_mensuales.models import CuotaMensual
+        
+        # Buscar si tiene cuotas activas
+        cuota_activa = CuotaMensual.objects.filter(
+            socio=user,
+            estado='activa'
+        ).first()
+        
+        if cuota_activa:
+            return Response({
+                'error': 'No se puede desactivar este socio',
+                'detail': f'El socio tiene una cuota activa del plan "{cuota_activa.plan_nombre}" que vence el {cuota_activa.fecha_vencimiento.strftime("%d/%m/%Y")}. Debe cancelar o esperar a que venza la cuota antes de desactivar el usuario.'
+            }, status=400)
+    
+    # Si no tiene cuotas activas o no es socio, proceder con la desactivación
+    perfil.is_active = False
+    perfil.deactivated_at = timezone.now()
+    perfil.save()
+    user.is_active = False
+    user.save()
+    
+    return Response({
+        'detail': f'Usuario {user.username} desactivado correctamente'
+    }, status=200)
+    
+    
+
+# ========== REPORTES DE ACCESORIOS ==========
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def reportes_accesorios(request):
+    """
+    GET: Listar todos los reportes (con filtros)
+    POST: Crear un nuevo reporte (solo entrenadores y admins)
+    """
+    
+    if request.method == 'GET':
+        # Verificar permisos (admin y entrenador pueden ver)
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
+            return Response({'error': 'No tienes permisos'}, status=403)
+        
+        reportes = ReporteAccesorio.objects.all().select_related(
+            'accesorio', 
+            'reportado_por', 
+            'confirmado_por'
+        )
+        
+        # Filtros opcionales
+        estado = request.query_params.get('estado')
+        if estado:
+            reportes = reportes.filter(estado=estado)
+        
+        accesorio_id = request.query_params.get('accesorio')
+        if accesorio_id:
+            reportes = reportes.filter(accesorio_id=accesorio_id)
+        
+        serializer = ReporteAccesorioSerializer(reportes, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        # Solo entrenadores y admins pueden crear reportes
+        if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['entrenador', 'admin']:
+            return Response(
+                {'error': 'Solo entrenadores y admins pueden crear reportes'},
+                status=403
+            )
+        
+        serializer = ReporteAccesorioCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            # Verificar que el accesorio existe y está activo
+            accesorio = serializer.validated_data['accesorio']
+            if not accesorio.activo:
+                return Response(
+                    {'error': 'No se puede reportar un accesorio inactivo'},
+                    status=400
+                )
+            
+            # Guardar con el usuario que reporta
+            reporte = serializer.save(reportado_por=request.user)
+            
+            # Retornar el reporte completo
+            response_serializer = ReporteAccesorioSerializer(reporte)
+            return Response(response_serializer.data, status=201)
+        
+        return Response(serializer.errors, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def confirmar_reporte(request, reporte_id):
+    """
+    Confirmar un reporte y descontar del stock (solo admin)
+    """
+    # Solo admin puede confirmar
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response(
+            {'error': 'Solo administradores pueden confirmar reportes'},
+            status=403
+        )
+    
+    reporte = get_object_or_404(ReporteAccesorio, id=reporte_id)
+    
+    # Verificar que está pendiente
+    if reporte.estado != 'pendiente':
+        return Response(
+            {'error': f'Este reporte ya fue {reporte.estado}'},
+            status=400
+        )
+    
+    # Obtener notas opcionales
+    notas = request.data.get('notas_confirmacion', '')
+    
+    try:
+        with transaction.atomic():
+            # Actualizar el reporte
+            reporte.estado = 'confirmado'
+            reporte.confirmado_por = request.user
+            reporte.fecha_confirmacion = timezone.now()
+            reporte.notas_confirmacion = notas
+            reporte.save()
+            
+            # Descontar del stock
+            accesorio = reporte.accesorio
+            if accesorio.stock >= reporte.cantidad:
+                accesorio.stock -= reporte.cantidad
+            else:
+                # Si no hay suficiente stock, dejar en 0
+                accesorio.stock = 0
+            
+            accesorio.save()
+            
+            serializer = ReporteAccesorioSerializer(reporte)
+            return Response({
+                'detail': f'Reporte confirmado. Stock actualizado: {accesorio.stock}',
+                'reporte': serializer.data
+            }, status=200)
+    
+    except Exception as e:
+        return Response(
+            {'error': f'Error al confirmar reporte: {str(e)}'},
+            status=500
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def rechazar_reporte(request, reporte_id):
+    """
+    Rechazar un reporte (solo admin)
+    """
+    # Solo admin puede rechazar
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol != 'admin':
+        return Response(
+            {'error': 'Solo administradores pueden rechazar reportes'},
+            status=403
+        )
+    
+    reporte = get_object_or_404(ReporteAccesorio, id=reporte_id)
+    
+    # Verificar que está pendiente
+    if reporte.estado != 'pendiente':
+        return Response(
+            {'error': f'Este reporte ya fue {reporte.estado}'},
+            status=400
+        )
+    
+    # Obtener notas opcionales
+    notas = request.data.get('notas_confirmacion', '')
+    
+    # Actualizar el reporte
+    reporte.estado = 'rechazado'
+    reporte.confirmado_por = request.user
+    reporte.fecha_confirmacion = timezone.now()
+    reporte.notas_confirmacion = notas
+    reporte.save()
+    
+    serializer = ReporteAccesorioSerializer(reporte)
+    return Response({
+        'detail': 'Reporte rechazado',
+        'reporte': serializer.data
+    }, status=200)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def estadisticas_reportes(request):
+    """
+    Estadísticas de reportes para el dashboard
+    """
+    if not hasattr(request.user, 'perfil') or request.user.perfil.rol not in ['admin', 'entrenador']:
+        return Response({'error': 'No tienes permisos'}, status=403)
+    
+    from django.db.models import Count
+    
+    total_reportes = ReporteAccesorio.objects.count()
+    pendientes = ReporteAccesorio.objects.filter(estado='pendiente').count()
+    confirmados = ReporteAccesorio.objects.filter(estado='confirmado').count()
+    rechazados = ReporteAccesorio.objects.filter(estado='rechazado').count()
+    
+    # Reportes por motivo
+    por_motivo = ReporteAccesorio.objects.values('motivo').annotate(
+        total=Count('id')
+    ).order_by('-total')
+    
+    return Response({
+        'total_reportes': total_reportes,
+        'pendientes': pendientes,
+        'confirmados': confirmados,
+        'rechazados': rechazados,
+        'por_motivo': list(por_motivo)
+    })

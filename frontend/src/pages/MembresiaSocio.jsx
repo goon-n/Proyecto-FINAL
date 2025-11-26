@@ -255,13 +255,13 @@ const MembresiaSocio = () => {
             <AlertDescription>
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <span>❌ Tu membresía ha vencido. Renueva para seguir disfrutando del gimnasio.</span>
-                <Button
-                  size="sm"
-                  onClick={() => setMostrarModalRenovacion(true)}
-                  variant="secondary"
-                >
-                  Renovar ahora
-                </Button>
+               <Button
+                size="sm"
+                onClick={() => setMostrarModalRenovacion(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+              >
+                Renovar ahora
+              </Button>
               </div>
             </AlertDescription>
           </Alert>

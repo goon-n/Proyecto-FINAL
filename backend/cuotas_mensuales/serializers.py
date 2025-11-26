@@ -164,3 +164,43 @@ class SolicitudRenovacionSerializer(serializers.Serializer):
     )
     
     tarjeta_ultimos_4 = serializers.CharField(max_length=4, required=True, allow_blank=False)
+    
+    def update(self, instance, validated_data):
+        """
+        Actualiza la cuota mensual (renovación)
+        """
+        from datetime import timedelta
+        from django.utils import timezone
+        
+        # Obtener el plan (puede ser nuevo o el actual)
+        plan_id = validated_data.get('plan_id', instance.plan.id)
+        plan = Plan.objects.get(id=plan_id)
+        
+        # Actualizar fecha de vencimiento
+        instance.fecha_vencimiento = timezone.now().date() + timedelta(days=30)
+        instance.fecha_inicio = timezone.now().date()
+        instance.estado = 'activa'
+        
+        # ✅ REINICIAR CLASES SEGÚN EL PLAN
+        if plan.tipo_limite == 'libre':
+            instance.clases_totales = 999
+            instance.clases_restantes = 999
+        elif plan.tipo_limite == 'semanal':
+            instance.clases_totales = plan.cantidad_limite * 4
+            instance.clases_restantes = plan.cantidad_limite * 4
+        elif plan.tipo_limite == 'diario':
+            instance.clases_totales = plan.cantidad_limite * 30
+            instance.clases_restantes = plan.cantidad_limite * 30
+        
+        # Si cambió de plan, actualizar la referencia
+        if plan_id != instance.plan.id:
+            instance.plan = plan
+            instance.plan_nombre = plan.nombre
+            instance.plan_precio = plan.precio
+        
+        # Actualizar tarjeta
+        if 'tarjeta_ultimos_4' in validated_data:
+            instance.tarjeta_ultimos_4 = validated_data['tarjeta_ultimos_4']
+        
+        instance.save()
+        return instance

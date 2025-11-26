@@ -1,69 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dumbbell, Calendar, Users, TrendingUp, CheckCircle, Zap, Trophy, Heart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import api from '@/api/api';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // DATOS DE LOS PLANES - Solo 3 planes base
-  const plans = [
-    {
-      id: 1,
-      name: "2x Semanal",
-      price: "18.000",
-      frequency: "2 veces por semana",
-      features: [
-        "Acceso sala de musculación", 
-        "Vestuarios y duchas",
-        "Asesoramiento básico"
-      ],
-      popular: false,
-      icon: Dumbbell
-    },
-    {
-      id: 2,
-      name: "3x Semanal",
-      price: "24.000",
-      frequency: "3 veces por semana",
-      features: [
-        "Acceso sala de musculación", 
-        "Seguimiento mensual",
-        "Vestuarios y duchas"
-      ],
-      popular: false,
-      icon: TrendingUp
-    },
-    {
-      id: 3,
-      name: "Pase Libre",
-      price: "32.000",
-      frequency: "Todos los días",
-      features: [
-        "Acceso ilimitado", 
-        "Seguimiento semanal",
-        "Prioridad en turnos"
-      ],
-      popular: true,
-      icon: Trophy
+  // 🆕 CARGAR PLANES DESDE LA API
+  useEffect(() => {
+    cargarPlanes();
+  }, []);
+
+  const cargarPlanes = async () => {
+    setLoading(true);
+    try {
+      const data = await api.listarPlanes(); // Usa tu método existente
+      
+      // Mapear los datos de la API al formato que espera tu componente
+      const planesFormateados = data.map(plan => ({
+        id: plan.id,
+        name: plan.nombre,
+        price: parseFloat(plan.precio).toLocaleString('es-AR'), // Formatear precio
+        frequency: plan.frecuencia,
+        features: plan.features || [],
+        popular: plan.es_popular,
+        icon: obtenerIcono(plan.nombre) // Función helper para asignar íconos
+      }));
+      
+      setPlans(planesFormateados);
+    } catch (error) {
+      console.error("Error al cargar planes:", error);
+      // Si falla, usar planes por defecto (opcional)
+      setPlans([
+        {
+          id: 1,
+          name: "2x Semanal",
+          price: "18.000",
+          frequency: "2 veces por semana",
+          features: [
+            "Acceso sala de musculación", 
+            "Vestuarios y duchas",
+            "Asesoramiento básico"
+          ],
+          popular: false,
+          icon: Dumbbell
+        },
+        {
+          id: 2,
+          name: "3x Semanal",
+          price: "24.000",
+          frequency: "3 veces por semana",
+          features: [
+            "Acceso sala de musculación", 
+            "Seguimiento mensual",
+            "Vestuarios y duchas"
+          ],
+          popular: false,
+          icon: TrendingUp
+        },
+        {
+          id: 3,
+          name: "Pase Libre",
+          price: "32.000",
+          frequency: "Todos los días",
+          features: [
+            "Acceso ilimitado", 
+            "Seguimiento semanal",
+            "Prioridad en turnos"
+          ],
+          popular: true,
+          icon: Trophy
+        }
+      ]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Helper: Asignar íconos según el nombre del plan
+  const obtenerIcono = (nombrePlan) => {
+    if (nombrePlan.toLowerCase().includes('libre')) return Trophy;
+    if (nombrePlan.toLowerCase().includes('3x')) return TrendingUp;
+    return Dumbbell;
+  };
 
   const handleSelectPlan = (plan) => {
-  // 🔧 Crear una copia del plan SIN el ícono
-  const planData = {
-    id: plan.id,
-    name: plan.name,
-    price: plan.price,
-    frequency: plan.frequency,
-    features: plan.features,
-    popular: plan.popular
+    // Crear una copia del plan SIN el ícono
+    const planData = {
+      id: plan.id,
+      name: plan.name,
+      price: plan.price,
+      frequency: plan.frequency,
+      features: plan.features,
+      popular: plan.popular
+    };
+    
+    navigate('/register', { state: { selectedPlan: planData } });
   };
-  
-  navigate('/register', { state: { selectedPlan: planData } });
-};
+
+  // Mostrar loader mientras carga
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#00FF41] mx-auto mb-4"></div>
+          <p className="text-gray-400">Cargando planes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 

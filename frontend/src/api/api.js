@@ -77,7 +77,7 @@ const api = {
   },
 
   // ----- Cuotas Mensuales -----
-  // Planes
+   // Planes
   listarPlanes: async () => {
     const response = await apiClient.get('/cuotas/planes/');
     return response.data;
@@ -90,6 +90,19 @@ const api = {
 
   obtenerPlanPopular: async () => {
     const response = await apiClient.get('/cuotas/planes/plan_popular/');
+    return response.data;
+  },
+
+  // 🆕 NUEVAS FUNCIONES PARA EDITAR PRECIOS
+  actualizarPrecioPlan: async (planId, nuevoPrecio) => {
+    const response = await apiClient.patch(`/cuotas/planes/${planId}/`, { 
+      precio: nuevoPrecio 
+    });
+    return response.data;
+  },
+
+  actualizarPlan: async (planId, data) => {
+    const response = await apiClient.patch(`/cuotas/planes/${planId}/`, data);
     return response.data;
   },
 
@@ -189,6 +202,10 @@ const api = {
     return response.data;
   },
 
+  obtenerAccesoriosProveedor: async (proveedorId) => {
+    const response = await apiClient.get(`/general/accesorios-proveedor/${proveedorId}/`);
+    return response.data;
+  },
   // ----- Accesorios -----
   listarAccesorios: async () => {
     const response = await apiClient.get('/general/accesorios/');

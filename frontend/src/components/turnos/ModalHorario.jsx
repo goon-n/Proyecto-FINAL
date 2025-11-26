@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import moment from 'moment';
 import { Clock, Users, X, UserPlus } from 'lucide-react';
 import ModalReservarParaSocio from './ModalReservarParaSocio';
+import { useCustomAlert } from '../../hooks/useCustomAlert';
+import api from '../../api/api';
 
 const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, onCerrar }) => {
     const { cupos_disponibles, cupos_reservados, cupos_confirmados, total_cupos, turnos } = data;
@@ -13,7 +15,8 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
     const [mostrarModalReservarParaSocio, setMostrarModalReservarParaSocio] = useState(false);
     const [turnoIdSeleccionado, setTurnoIdSeleccionado] = useState(null);
     
-    // ✅ NUEVO: Calcular si puede cancelar (más de 1 hora antes)
+    const { showSuccess, showError, showConfirm, AlertComponent } = useCustomAlert();
+    
     const horaCompleta = `${fecha}T${hora}`;
     const horaTurno = moment(horaCompleta);
     const ahora = moment();
@@ -30,7 +33,82 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
     const handleReservaExitosa = () => {
         setMostrarModalReservarParaSocio(false);
         if (onAccion) {
-            onAccion(null, 'refresh'); // Trigger refresh del calendario
+            onAccion(null, 'refresh');
+        }
+    };
+
+    // ✅ FUNCIÓN PARA RESERVAR (mensajes originales)
+    const handleReservar = async (turnoId) => {
+        
+        try {
+            const response = await api.reservarTurno(turnoId);
+
+            const clasesRestantes = response.clases_restantes !== undefined ? response.clases_restantes : '?';
+            
+            // ✅ MOSTRAR ALERTA Y ESPERAR ANTES DE CERRAR
+            await showSuccess(
+                `Turno confirmado con éxito. Puedes cancelarlo hasta 1 hora antes. Te quedan ${clasesRestantes} clases este mes.`
+            );
+        
+            
+            if (onAccion) onAccion(null, 'refresh');
+            onCerrar();
+        } catch (error) {
+            console.error('❌ Error al reservar:', error);
+            const mensajeError = error.response?.data?.detail || 'Error al reservar el turno. Inténtalo nuevamente.';
+            showError(mensajeError);
+        }
+    };
+
+    // ✅ FUNCIÓN PARA CONFIRMAR (mensajes originales)
+    const handleConfirmar = async (turnoId) => {
+        try {
+            const response = await api.confirmarTurno(turnoId);
+            const clasesRestantes = response.clases_restantes !== undefined ? response.clases_restantes : '?';
+            
+            // ✅ MOSTRAR ALERTA Y ESPERAR ANTES DE CERRAR
+            await showSuccess(`Turno confirmado con éxito. Puedes cancelarlo hasta 1 hora antes. Te quedan ${clasesRestantes} clases este mes.`);
+            
+            if (onAccion) onAccion(null, 'refresh');
+            onCerrar();
+        } catch (error) {
+            showError('Error al confirmar el turno');
+        }
+    };
+
+    const handleCancelar = async (turnoId) => {
+        const confirmed = await showConfirm({
+            message: '¿Estás seguro de que deseas cancelar este turno?'
+        });
+
+        if (confirmed) {
+            try {
+                const response = await api.cancelarTurno(turnoId);
+                showSuccess(response.detail || 'Turno cancelado con éxito.');
+                if (onAccion) onAccion(null, 'refresh');
+                onCerrar();
+            } catch (error) {
+                const mensajeError = error.response?.data?.detail || 'Error al cancelar el turno.';
+                showError(mensajeError);
+            }
+        }
+    };
+
+    const handleCancelarStaff = async (turnoId) => {
+        const confirmed = await showConfirm({
+            type: 'warning',
+            message: '¿Estás seguro de que deseas cancelar este turno del socio?'
+        });
+
+        if (confirmed) {
+            try {
+                const response = await api.cancelarTurnoParaSocio(turnoId);
+                showSuccess(response.detail || 'Turno cancelado exitosamente.');
+                if (onAccion) onAccion(null, 'refresh');
+                onCerrar();
+            } catch (error) {
+                showError('Error al cancelar el turno');
+            }
         }
     };
 
@@ -60,25 +138,23 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                 {/* Body */}
                 <div className="p-6 space-y-6">
                     {/* Resumen de cupos */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-green-50 p-4 rounded-xl flex items-center gap-3">
-                            <Users className="text-green-600" size={32} />
-                            <div>
-                                <div className="text-3xl font-bold text-green-900">{cupos_disponibles}</div>
-                                <div className="text-xs text-green-700 uppercase font-medium">Disponibles</div>
+                    <div className="flex justify-center">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-2xl w-full">
+                            <div className="bg-green-50 p-4 rounded-xl flex items-center gap-3">
+                                <Users className="text-green-600" size={32} />
+                                <div>
+                                    <div className="text-3xl font-bold text-green-900">{cupos_disponibles}</div>
+                                    <div className="text-xs text-green-700 uppercase font-medium">Disponibles</div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="bg-yellow-50 p-4 rounded-xl">
-                            <div className="text-3xl font-bold text-yellow-900">{cupos_reservados}</div>
-                            <div className="text-xs text-yellow-700 uppercase font-medium">Reservados</div>
-                        </div>
-                        <div className="bg-purple-50 p-4 rounded-xl">
-                            <div className="text-3xl font-bold text-purple-900">{cupos_confirmados}</div>
-                            <div className="text-xs text-purple-700 uppercase font-medium">Confirmados</div>
-                        </div>
-                        <div className="bg-blue-50 p-4 rounded-xl">
-                            <div className="text-3xl font-bold text-blue-900">{total_cupos}</div>
-                            <div className="text-xs text-blue-700 uppercase font-medium">Total Cupos</div>
+                            <div className="bg-purple-50 p-4 rounded-xl">
+                                <div className="text-3xl font-bold text-purple-900">{cupos_confirmados}</div>
+                                <div className="text-xs text-purple-700 uppercase font-medium">Confirmados</div>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-xl">
+                                <div className="text-3xl font-bold text-blue-900">{total_cupos}</div>
+                                <div className="text-xs text-blue-700 uppercase font-medium">Total Cupos</div>
+                            </div>
                         </div>
                     </div>
 
@@ -100,7 +176,6 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-white">
                                                 {turno.estado}
                                             </span>
-                                            {/* ✅ NUEVO: Mostrar si puede cancelar */}
                                             {turno.estado === 'CONFIRMADO' && !puedeCancelar && (
                                                 <p className="text-xs text-red-600 mt-2">
                                                     ⚠️ Ya no puedes cancelar (menos de 1 hora)
@@ -116,23 +191,22 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                                             {turno.estado === 'RESERVADO' && (
                                                 <>
                                                     <button
-                                                        onClick={() => onAccion(turno.id, 'confirmar')}
+                                                        onClick={() => handleConfirmar(turno.id)}
                                                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
                                                     >
                                                         Confirmar
                                                     </button>
                                                     <button
-                                                        onClick={() => onAccion(turno.id, 'cancelar')}
+                                                        onClick={() => handleCancelar(turno.id)}
                                                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
                                                     >
                                                         Cancelar
                                                     </button>
                                                 </>
                                             )}
-                                            {/* ✅ NUEVO: Solo mostrar botón si puede cancelar */}
                                             {turno.estado === 'CONFIRMADO' && puedeCancelar && (
                                                 <button
-                                                    onClick={() => onAccion(turno.id, 'cancelar')}
+                                                    onClick={() => handleCancelar(turno.id)}
                                                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
                                                 >
                                                     Cancelar Turno
@@ -145,13 +219,18 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                         </div>
                     )}
 
-                    {/* Botón para reservar (solo socios) */}
+                    {/* ✅ Botón para reservar (solo socios) CON DEBUG */}
                     {cupos_disponibles > 0 && misTurnos.length === 0 && user && !isStaff && (
                         <button
-                            onClick={() => {
-                                const turnoDisponible = turnos.find(t => t.estado === 'DISPONIBLE' && !t.socio);
+                            onClick={() => {                           
+                                // ✅ Buscar cualquier turno sin socio asignado
+                                const turnoDisponible = turnos.find(t => !t.socio && !t.socio_id);
+                                
                                 if (turnoDisponible) {
-                                    onAccion(turnoDisponible.id, 'reservar');
+                                    handleReservar(turnoDisponible.id);
+                                } else {
+                                    console.error('❌ No se encontró turno disponible');
+                                    showError('No se encontró un turno disponible. Intenta recargando la página.');
                                 }
                             }}
                             className="w-full py-4 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 font-bold text-lg transition-colors"
@@ -160,7 +239,7 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                         </button>
                     )}
 
-                    {/* ✅ NUEVO: Botón para staff - Reservar para un socio */}
+                    {/* Botón para staff - Reservar para un socio */}
                     {cupos_disponibles > 0 && isStaff && (
                         <button
                             onClick={handleAbrirReservarParaSocio}
@@ -198,23 +277,14 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                                             )}
                                         </div>
                                         <div className="flex gap-2">
-                                            {/* Botón de cancelar para staff */}
                                             {turno.socio && turno.estado === 'CONFIRMADO' && (
                                                 <button
-                                                    onClick={() => onAccion(turno.id, 'cancelar_staff')}
+                                                    onClick={() => handleCancelarStaff(turno.id)}
                                                     className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
                                                 >
                                                     Cancelar
                                                 </button>
                                             )}
-                                            """{/* 
-                                            <button
-                                                onClick={() => onEditar(turno)}
-                                                className="px-3 py-1 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700"
-                                            >
-                                                Editar
-                                            </button>
-                                            */}
                                         </div>
                                     </div>
                                 ))}
@@ -237,7 +307,7 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                 </div>
             </div>
 
-            {/* ✅ NUEVO: Modal para seleccionar socio */}
+            {/* Modal para seleccionar socio */}
             {mostrarModalReservarParaSocio && (
                 <ModalReservarParaSocio
                     fecha={fechaFormateada}
@@ -247,6 +317,9 @@ const ModalHorario = ({ fecha, hora, data, user, isStaff, onAccion, onEditar, on
                     onReservaExitosa={handleReservaExitosa}
                 />
             )}
+
+            {/* Componente de alertas */}
+            <AlertComponent />
         </div>
     );
 };

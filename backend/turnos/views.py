@@ -201,26 +201,27 @@ class TurnoViewSet(viewsets.ModelViewSet):
         else:
             fecha_fin = fecha_inicio + timedelta(days=30)
         
-        # Obtener turnos según permisos
+        # 🔹 IMPORTANTE: Obtener TODOS los turnos del rango para contar correctamente
+        turnos_todos = Turno.objects.filter(
+            hora_inicio__gte=fecha_inicio,
+            hora_inicio__lte=fecha_fin
+        )
+        
+        # Filtrar qué turnos mostrar según permisos
         if user.is_staff:
-            turnos = Turno.objects.filter(
-                hora_inicio__gte=fecha_inicio,
-                hora_inicio__lte=fecha_fin
-            )
+            turnos_mostrar = turnos_todos
         else:
             q_filter = Q(estado='DISPONIBLE', socio__isnull=True) | Q(estado='BLOQUEADO')
             if user.is_authenticated:
-                q_filter |= Q(socio=user, estado__in=['RESERVADO', 'CONFIRMADO'])
+                q_filter |= Q(socio=user, estado__in=['RESERVADO', 'CONFIRMADO', 'FINALIZADO'])
             
-            turnos = Turno.objects.filter(q_filter).filter(
-                hora_inicio__gte=fecha_inicio,
-                hora_inicio__lte=fecha_fin
-            )
+            turnos_mostrar = turnos_todos.filter(q_filter)
         
         # Agrupar por fecha y hora
         calendario_data = {}
-        for turno in turnos.order_by('hora_inicio'):
-            # ✅ Convertir a hora local para agrupar correctamente
+        
+        # 🔹 PASO 1: Contar el TOTAL de cupos por fecha/hora (usando TODOS los turnos)
+        for turno in turnos_todos.order_by('hora_inicio'):
             turno_local = timezone.localtime(turno.hora_inicio)
             fecha_key = turno_local.strftime('%Y-%m-%d')
             hora_key = turno_local.strftime('%H:00')
@@ -239,9 +240,10 @@ class TurnoViewSet(viewsets.ModelViewSet):
                     'turnos': []
                 }
             
-            # Contar cupos
+            # 🔹 CORREGIDO: Contar el total real de cupos
             calendario_data[fecha_key][hora_key]['total_cupos'] += 1
             
+            # Contar estados (solo de los que se van a mostrar al usuario)
             if turno.estado == 'DISPONIBLE':
                 calendario_data[fecha_key][hora_key]['cupos_disponibles'] += 1
             elif turno.estado == 'RESERVADO':
@@ -250,6 +252,12 @@ class TurnoViewSet(viewsets.ModelViewSet):
                 calendario_data[fecha_key][hora_key]['cupos_confirmados'] += 1
             elif turno.estado == 'BLOQUEADO':
                 calendario_data[fecha_key][hora_key]['cupos_bloqueados'] += 1
+        
+        # 🔹 PASO 2: Agregar la info detallada solo de los turnos que el usuario puede ver
+        for turno in turnos_mostrar.order_by('hora_inicio'):
+            turno_local = timezone.localtime(turno.hora_inicio)
+            fecha_key = turno_local.strftime('%Y-%m-%d')
+            hora_key = turno_local.strftime('%H:00')
             
             # Agregar info del turno
             turno_info = {

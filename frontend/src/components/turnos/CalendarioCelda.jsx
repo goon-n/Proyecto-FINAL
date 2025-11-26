@@ -7,6 +7,7 @@ const CalendarioCelda = ({ fecha, hora, horarioData, user, onAbrirModal }) => {
     
     const getCeldaInfo = () => {
         const diaActual = moment(fecha);
+        const isAdmin = user?.rol === 'admin' || user?.rol === 'entrenador';
         
         // Bloquear domingos
         if (diaActual.day() === 0) {
@@ -17,45 +18,117 @@ const CalendarioCelda = ({ fecha, hora, horarioData, user, onAbrirModal }) => {
             };
         }
 
-        //detectar si el dia completo finalizo
+        // 🔹 NUEVO: Bloquear sábados de 12:00 a 16:00
+        if (diaActual.day() === 6) {
+            const horaNum = parseInt(hora.split(':')[0]);
+            if (horaNum >= 12 && horaNum < 17) {
+                return {
+                    clase: 'bg-gray-100 text-gray-400',
+                    clickeable: false,
+                    contenido: <span className="text-sm">Cerrado</span>
+                };
+            }
+        }
 
+        // Detectar si el dia completo finalizó
         const finDelDia = moment(`${fecha} 23:59`, 'YYYY-MM-DD HH:mm');
         const diaFinalizado = finDelDia.isBefore(moment());
+        
         if (diaFinalizado && horarioData) {
-            // Día finalizado - mostrar como historial
+            // 🔹 ADMINS: Siempre ven "Ver asistencia" en días finalizados
+            if (isAdmin) {
+                return {
+                    clase: 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:shadow-lg',
+                    clickeable: true,
+                    esHistorial: true,
+                    contenido: (
+                        <div className="text-center">
+                            <div className="text-sm font-semibold">👁️
+                            </div>
+                            <div className="text-xs">Ver asistencia </div>
+                        </div>
+                    )
+                };
+            }
+
+            // 🔹 SOCIOS: Solo ven "Ver asistencia" si tienen turno FINALIZADO
+            const turnos = horarioData.turnos || [];
+            const usuarioAsistio = turnos.some(
+                t => t.es_mio && t.estado === 'FINALIZADO'
+            );
+
+            if (usuarioAsistio) {
+                return {
+                    clase: 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:shadow-lg',
+                    clickeable: true,
+                    esHistorial: true,
+                    contenido: (
+                        <div className="text-center">
+                            <div className="text-sm font-semibold">👁️</div>
+                            <div className="text-xs">Ver asistencia</div>
+                        </div>
+                    )
+                };
+            }
+
+            // 🔹 SOCIOS que NO asistieron: Mostrar "Finalizado"
             return {
-                clase: 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:shadow-lg',
-                clickeable: true,
-                esHistorial: true,
-                contenido: (
-                    <div className="text-center">
-                        <div className="text-sm font-semibold">📋</div>
-                        <div className="text-xs">Ver asistencia</div>
-                    </div>
-                )
+                clase: 'bg-red-100 text-red-500',
+                clickeable: false,
+                contenido: <span className="text-sm">Finalizado</span>
             };
         }
 
         // Si la hora del turno ya pasó, mostrar opción para ver asistencia del turno
         const horaCompleta = moment(`${fecha} ${hora}`, 'YYYY-MM-DD HH:mm');
         if (horaCompleta.isBefore(moment()) && horarioData) {
+            // 🔹 ADMINS: Siempre ven "Ver asistencia" en horas pasadas
+            if (isAdmin) {
+                return {
+                    clase: 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:shadow-lg',
+                    clickeable: true,
+                    esHistorial: true,
+                    contenido: (
+                        <div className="text-center">
+                            <div className="text-sm font-semibold">👁️</div>
+                            <div className="text-xs">Ver asistencia</div>
+                        </div>
+                    )
+                };
+            }
+
+            // 🔹 SOCIOS: Solo ven "Ver asistencia" si tienen turno FINALIZADO
+            const turnos = horarioData.turnos || [];
+            const usuarioAsistio = turnos.some(
+                t => t.es_mio && t.estado === 'FINALIZADO'
+            );
+
+            if (usuarioAsistio) {
+                return {
+                    clase: 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:shadow-lg',
+                    clickeable: true,
+                    esHistorial: true,
+                    contenido: (
+                        <div className="text-center">
+                            <div className="text-sm font-semibold">👁️</div>
+                            <div className="text-xs">Ver asistencia</div>
+                        </div>
+                    )
+                };
+            }
+
+            // 🔹 SOCIOS que NO asistieron: Mostrar "Finalizado"
             return {
-                clase: 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:shadow-lg',
-                clickeable: true,
-                esHistorial: true,
-                contenido: (
-                    <div className="text-center">
-                        <div className="text-sm font-semibold">📋</div>
-                        <div className="text-xs">Ver asistencia</div>
-                    </div>
-                )
+                clase: 'bg-red-100 text-red-500',
+                clickeable: false,
+                contenido: <span className="text-sm">Finalizado</span>
             };
         }
 
-        // Bloquear horas pasadas si no hay datos de horario (sin posibilidad de ver asistencia)
+        // Bloquear horas pasadas si no hay datos de horario
         if (horaCompleta.isBefore(moment())) {
             return {
-                clase: 'bg-gray-50 text-gray-400',
+                clase: 'bg-red-100 text-red-500',
                 clickeable: false,
                 contenido: <span className="text-sm">Finalizado</span>
             };
@@ -70,7 +143,7 @@ const CalendarioCelda = ({ fecha, hora, horarioData, user, onAbrirModal }) => {
             };
         }
 
-        // Verificar si está bloqueado (sábado 13-17)
+        // Verificar si está bloqueado
         if (horarioData.cupos_bloqueados && horarioData.cupos_bloqueados > 0) {
             return {
                 clase: 'bg-gray-300 text-gray-600',
@@ -79,14 +152,12 @@ const CalendarioCelda = ({ fecha, hora, horarioData, user, onAbrirModal }) => {
             };
         }
 
-        // USAR VALORES POR DEFECTO si no existen
         const cupos_disponibles = horarioData.cupos_disponibles || 0;
         const total_cupos = horarioData.total_cupos || 10;
         const turnos = horarioData.turnos || [];
-
         const misTurnos = turnos.filter(t => t.es_mio);
 
-        // Si tengo un turno confirmado
+        // Si tengo un turno confirmado (activo, aún no finalizado)
         if (misTurnos.some(t => t.estado === 'CONFIRMADO')) {
             return {
                 clase: 'bg-purple-200 text-purple-900 font-bold hover:bg-purple-300 hover:shadow-lg',
@@ -95,7 +166,7 @@ const CalendarioCelda = ({ fecha, hora, horarioData, user, onAbrirModal }) => {
             };
         }
         
-        // Si tengo un turno reservado
+        // Si tengo un turno reservado (si usas este estado)
         if (misTurnos.some(t => t.estado === 'RESERVADO')) {
             return {
                 clase: 'bg-indigo-200 text-indigo-900 font-bold hover:bg-indigo-300 hover:shadow-lg animate-pulse',

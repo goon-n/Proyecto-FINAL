@@ -22,7 +22,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Edit,
-  X
+  X,
+  XCircle
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -51,6 +52,10 @@ const Perfil = () => {
     password_confirmar: ""
   });
   const [changingPassword, setChangingPassword] = useState(false);
+  
+  // 🆕 Estados para alerts de contraseña
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
     cargarPerfil();
@@ -116,19 +121,23 @@ const Perfil = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
 
+    // 🆕 Limpiar mensajes previos
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
     // Validaciones
     if (!passwordData.password_actual || !passwordData.password_nueva || !passwordData.password_confirmar) {
-      toast.error("Todos los campos son obligatorios");
+      setPasswordError("Todos los campos son obligatorios");
       return;
     }
 
     if (passwordData.password_nueva !== passwordData.password_confirmar) {
-      toast.error("Las contraseñas nuevas no coinciden");
+      setPasswordError("Las contraseñas nuevas no coinciden");
       return;
     }
 
     if (passwordData.password_nueva.length < 6) {
-      toast.error("La contraseña debe tener al menos 6 caracteres");
+      setPasswordError("La contraseña debe tener al menos 6 caracteres");
       return;
     }
 
@@ -139,17 +148,39 @@ const Perfil = () => {
         password_nueva: passwordData.password_nueva
       });
 
+      // 🆕 Mostrar mensaje de éxito
+      setPasswordSuccess(true);
+      
       // Limpiar formulario
       setPasswordData({
         password_actual: "",
         password_nueva: "",
         password_confirmar: ""
       });
-      setShowPasswordForm(false);
+      
       toast.success("Contraseña actualizada correctamente");
+
+      // 🆕 Ocultar el formulario después de 2 segundos
+      setTimeout(() => {
+        setShowPasswordForm(false);
+        setPasswordSuccess(false);
+      }, 2000);
+
     } catch (error) {
       console.error("Error al cambiar contraseña:", error);
-      toast.error(error.response?.data?.error || "Error al cambiar la contraseña");
+      
+      // 🆕 Mostrar error específico según respuesta del servidor
+      const errorMessage = error.response?.data?.error || "Error al cambiar la contraseña";
+      
+      if (errorMessage.toLowerCase().includes("incorrecta") || 
+          errorMessage.toLowerCase().includes("no corresponde") ||
+          errorMessage.toLowerCase().includes("actual")) {
+        setPasswordError("La contraseña actual no es correcta");
+      } else {
+        setPasswordError(errorMessage);
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setChangingPassword(false);
     }
@@ -406,12 +437,35 @@ const Perfil = () => {
               </div>
             ) : (
               <form onSubmit={handleChangePassword} className="space-y-4">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Tu contraseña debe tener al menos 6 caracteres
-                  </AlertDescription>
-                </Alert>
+                {/* 🆕 Alert de información general */}
+                {!passwordError && !passwordSuccess && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Tu contraseña debe tener al menos 6 caracteres
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* 🆕 Alert de ERROR - Contraseña incorrecta */}
+                {passwordError && (
+                  <Alert variant="destructive" className="animate-shake">
+                    <XCircle className="h-4 w-4" />
+                    <AlertDescription className="font-semibold">
+                      {passwordError}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* 🆕 Alert de ÉXITO - Contraseña cambiada */}
+                {passwordSuccess && (
+                  <Alert className="bg-green-50 border-green-200 text-green-800">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="font-semibold text-green-800">
+                      ✅ Contraseña actualizada correctamente
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="password_actual">Contraseña Actual</Label>
@@ -419,15 +473,17 @@ const Perfil = () => {
                     id="password_actual"
                     type="password"
                     value={passwordData.password_actual}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setPasswordData({
                         ...passwordData,
                         password_actual: e.target.value
-                      })
-                    }
+                      });
+                      // Limpiar error al escribir
+                      if (passwordError) setPasswordError(null);
+                    }}
                     placeholder="Tu contraseña actual"
                     required
-                    disabled={changingPassword}
+                    disabled={changingPassword || passwordSuccess}
                   />
                 </div>
 
@@ -437,16 +493,17 @@ const Perfil = () => {
                     id="password_nueva"
                     type="password"
                     value={passwordData.password_nueva}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setPasswordData({
                         ...passwordData,
                         password_nueva: e.target.value
-                      })
-                    }
+                      });
+                      if (passwordError) setPasswordError(null);
+                    }}
                     placeholder="Nueva contraseña"
                     required
                     minLength={6}
-                    disabled={changingPassword}
+                    disabled={changingPassword || passwordSuccess}
                   />
                 </div>
 
@@ -458,23 +515,24 @@ const Perfil = () => {
                     id="password_confirmar"
                     type="password"
                     value={passwordData.password_confirmar}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setPasswordData({
                         ...passwordData,
                         password_confirmar: e.target.value
-                      })
-                    }
+                      });
+                      if (passwordError) setPasswordError(null);
+                    }}
                     placeholder="Confirmar nueva contraseña"
                     required
                     minLength={6}
-                    disabled={changingPassword}
+                    disabled={changingPassword || passwordSuccess}
                   />
                 </div>
 
                 <div className="flex gap-2 pt-2">
                   <Button
                     type="submit"
-                    disabled={changingPassword}
+                    disabled={changingPassword || passwordSuccess}
                     className="flex-1"
                   >
                     {changingPassword ? (
@@ -498,6 +556,8 @@ const Perfil = () => {
                         password_nueva: "",
                         password_confirmar: ""
                       });
+                      setPasswordError(null);
+                      setPasswordSuccess(false);
                     }}
                     variant="outline"
                     disabled={changingPassword}

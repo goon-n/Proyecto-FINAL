@@ -1,7 +1,7 @@
 // src/components/Compras/CompraAdd.jsx
 
 import React, { useEffect, useState } from "react";
-import { createCompra, getProveedores, getAccesorios } from "../../services/compra.service";
+import { createCompra, getProveedores } from "../../services/compra.service";
 import toast from "react-hot-toast";
 import api from "../../api/api";
 import { Search } from "lucide-react";
@@ -16,6 +16,7 @@ export default function CompraAdd({ onAdd }) {
   const [usuarioAutenticado, setUsuarioAutenticado] = useState(null);
   const [cajaAbierta, setCajaAbierta] = useState(null);
   const [cargandoCaja, setCargandoCaja] = useState(true);
+  const [cargandoAccesorios, setCargandoAccesorios] = useState(false);
   
   const [busquedaProducto, setBusquedaProducto] = useState({});
 
@@ -24,13 +25,22 @@ export default function CompraAdd({ onAdd }) {
     verificarCajaAbierta();
   }, []);
 
-  // ✅ CORREGIDO: Usar api.js
+  useEffect(() => {
+    if (proveedor) {
+      cargarAccesoriosProveedor(proveedor);
+      setItems([]);
+      setBusquedaProducto({});
+    } else {
+      setAccesorios([]);
+    }
+  }, [proveedor]);
+
   const verificarCajaAbierta = async () => {
     try {
       setCargandoCaja(true);
       const caja = await api.cajaActual();
       setCajaAbierta(caja);
-      console.log("✅ Caja abierta detectada:", caja); // Debug
+      console.log("✅ Caja abierta detectada:", caja);
     } catch (error) {
       console.error("Error al verificar caja:", error);
       if (error.response?.status === 404) {
@@ -42,20 +52,14 @@ export default function CompraAdd({ onAdd }) {
     }
   };
 
-  // ✅ CORREGIDO: Usar api.js
   const cargarDatos = async () => {
     try {
       const usuarioRes = await api.obtenerUsuarioActual();
       setUsuarioAutenticado(usuarioRes);
-      console.log("✅ Usuario autenticado:", usuarioRes); // Debug
+      console.log("✅ Usuario autenticado:", usuarioRes);
       
-      const [proveedoresRes, accesoriosRes] = await Promise.all([
-        getProveedores(),
-        getAccesorios()
-      ]);
-      
+      const proveedoresRes = await getProveedores();
       setProveedores(proveedoresRes.data);
-      setAccesorios(accesoriosRes.data);
     } catch (error) {
       console.error("Error al cargar datos:", error);
       if (error.response?.status === 401) {
@@ -67,7 +71,39 @@ export default function CompraAdd({ onAdd }) {
     }
   };
 
+  const cargarAccesoriosProveedor = async (proveedorId) => {
+    if (!proveedorId) {
+      setAccesorios([]);
+      return;
+    }
+    
+    try {
+      setCargandoAccesorios(true);
+      const response = await api.obtenerAccesoriosProveedor(proveedorId);
+      setAccesorios(response.accesorios || []);
+      console.log(`✅ Cargados ${response.total} accesorios del proveedor`);
+      
+      if (response.total === 0) {
+        toast.info("⚠️ Este proveedor no tiene accesorios disponibles");
+      }
+    } catch (error) {
+      console.error("Error al cargar accesorios:", error);
+      toast.error("Error al cargar accesorios del proveedor");
+      setAccesorios([]);
+    } finally {
+      setCargandoAccesorios(false);
+    }
+  };
+
   const addItem = () => {
+    if (!proveedor) {
+      toast.error("Primero seleccione un proveedor");
+      return;
+    }
+    if (accesorios.length === 0) {
+      toast.error("Este proveedor no tiene accesorios disponibles");
+      return;
+    }
     const nuevoItem = { accesorio: "", cantidad: 1, precio_unitario: 0 };
     setItems([...items, nuevoItem]);
     setBusquedaProducto(prev => ({...prev, [items.length]: ""}));
@@ -140,6 +176,7 @@ export default function CompraAdd({ onAdd }) {
       setNotas("");
       setTipoPago("efectivo");
       setBusquedaProducto({});
+      setAccesorios([]);
       toast.success("✅ Compra registrada y movimiento de caja creado");
       if (onAdd) onAdd();
     } catch (error) {
@@ -161,7 +198,6 @@ export default function CompraAdd({ onAdd }) {
 
   return (
     <form onSubmit={handleSubmit} className="p-6 mb-8 bg-white rounded-lg shadow-md space-y-6">
-      {/* Header con estado de autenticación */}
       <div className="border-b pb-4">
         <h3 className="text-xl font-bold text-gray-900 mb-3">Registrar Nueva Compra</h3>
         
@@ -178,7 +214,6 @@ export default function CompraAdd({ onAdd }) {
         )}
       </div>
 
-      {/* Estado de Caja */}
       {cargandoCaja ? (
         <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
           <p className="text-gray-600 text-sm">🔄 Verificando estado de caja...</p>
@@ -203,9 +238,7 @@ export default function CompraAdd({ onAdd }) {
             <span className="text-2xl">⚠️</span>
             <div className="flex-1">
               <p className="font-bold text-red-800 text-sm">No hay caja abierta</p>
-              <p className="text-red-700 text-sm mt-1">
-                Debe abrir una caja antes de registrar compras.
-              </p>
+              <p className="text-red-700 text-sm mt-1">Debe abrir una caja antes de registrar compras.</p>
               <div className="mt-3">
                 <a
                   href={usuarioAutenticado?.rol === 'entrenador' ? '/entrenador/caja' : '/admin/caja'}
@@ -219,9 +252,7 @@ export default function CompraAdd({ onAdd }) {
         </div>
       )}
 
-      {/* Formulario */}
       <fieldset disabled={!cajaAbierta} className={!cajaAbierta ? 'opacity-50' : ''}>
-        {/* Proveedor */}
         <div>
           <label className="block mb-2 font-semibold text-gray-700">Proveedor *</label>
           <select 
@@ -235,9 +266,14 @@ export default function CompraAdd({ onAdd }) {
               <option key={p.id} value={p.id}>{p.nombre}</option>
             ))}
           </select>
+          
+          {proveedor && (
+            <p className="text-sm text-blue-600 mt-1">
+              ℹ️ Solo podrás agregar accesorios de este proveedor
+            </p>
+          )}
         </div>
 
-        {/* Tipo de Pago */}
         <div>
           <label className="block mb-2 font-semibold text-gray-700">Tipo de Pago *</label>
           <select 
@@ -250,7 +286,6 @@ export default function CompraAdd({ onAdd }) {
           </select>
         </div>
 
-        {/* Notas */}
         <div>
           <label className="block mb-2 font-semibold text-gray-700">Notas (opcional)</label>
           <textarea 
@@ -262,23 +297,48 @@ export default function CompraAdd({ onAdd }) {
           />
         </div>
 
-        {/* Items con búsqueda */}
         <div>
           <div className="flex justify-start items-center gap-4 mb-3">
             <h4 className="font-semibold text-gray-700">Productos a comprar</h4>
             <button 
               type="button" 
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium" 
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed" 
               onClick={addItem}
+              disabled={!proveedor || accesorios.length === 0}
             >
               + Agregar Producto
             </button>
+            
+            {!proveedor && (
+              <span className="text-sm text-orange-600">
+                ⚠️ Primero seleccione un proveedor
+              </span>
+            )}
           </div>
 
           {items.length === 0 ? (
             <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <p className="text-gray-600">No hay productos agregados</p>
-              <p className="text-sm text-gray-500 mt-1">Haga clic en "Agregar Producto"</p>
+              {!proveedor ? (
+                <>
+                  <p className="text-gray-600">Seleccione un proveedor primero</p>
+                  <p className="text-sm text-gray-500 mt-1">Los productos se cargarán automáticamente</p>
+                </>
+              ) : cargandoAccesorios ? (
+                <>
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                  <p className="text-gray-600">Cargando accesorios del proveedor...</p>
+                </>
+              ) : accesorios.length === 0 ? (
+                <>
+                  <p className="text-orange-600 font-semibold">⚠️ Este proveedor no tiene accesorios disponibles</p>
+                  <p className="text-sm text-gray-500 mt-1">Agregue accesorios a este proveedor primero</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-600">No hay productos agregados</p>
+                  <p className="text-sm text-gray-500 mt-1">Haga clic en "Agregar Producto"</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -306,16 +366,24 @@ export default function CompraAdd({ onAdd }) {
                         value={item.accesorio} 
                         onChange={e => handleItemChange(idx, "accesorio", e.target.value)} 
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                        disabled={cargandoAccesorios}
                       >
                         <option value="">Seleccionar...</option>
                         {accesoriosFiltrados.length > 0 ? (
                           accesoriosFiltrados.map(a => (
-                            <option key={a.id} value={a.id}>
+                            <option 
+                              key={a.id} 
+                              value={a.id}
+                              className={!a.activo ? 'text-orange-600 font-semibold' : ''}
+                            >
                               {a.nombre} (Stock: {a.stock || 0})
+                              {!a.activo ? ' ⚠️ INACTIVO' : ''}
                             </option>
                           ))
                         ) : (
-                          <option value="" disabled>No se encontraron productos</option>
+                          <option value="" disabled>
+                            {cargandoAccesorios ? "Cargando..." : "No hay productos disponibles"}
+                          </option>
                         )}
                       </select>
                       
@@ -371,7 +439,6 @@ export default function CompraAdd({ onAdd }) {
           )}
         </div>
 
-        {/* Total */}
         {items.length > 0 && (
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
             <div className="flex justify-between items-center">
@@ -388,7 +455,6 @@ export default function CompraAdd({ onAdd }) {
           </div>
         )}
 
-        {/* Botones */}
         <div className="flex justify-end gap-3 pt-4 border-t">
           <button 
             type="button"
@@ -398,6 +464,7 @@ export default function CompraAdd({ onAdd }) {
               setNotas("");
               setTipoPago("efectivo");
               setBusquedaProducto({});
+              setAccesorios([]);
             }}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
           >

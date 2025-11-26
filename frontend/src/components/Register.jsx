@@ -1,4 +1,4 @@
-// src/pages/Register.jsx - SIN CARTEL VERDE DE CAJA ABIERTA
+// src/pages/Register.jsx - CON ESTILO LANDING
 
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, CreditCard, AlertCircle, Edit, Clock, RefreshCw } from "lucide-react";
+
 import api from "../api/api";
 
 export default function Register() {
@@ -25,11 +26,9 @@ export default function Register() {
   });
   const [error, setError] = useState(null);
   
-  // ✅ Estados para verificación de caja
   const [cajaAbierta, setCajaAbierta] = useState(null);
   const [verificandoCaja, setVerificandoCaja] = useState(true);
 
-  // ✅ Verificar estado de caja al cargar
   useEffect(() => {
     verificarEstadoCaja();
   }, []);
@@ -59,7 +58,6 @@ export default function Register() {
       return;
     }
     
-    // ✅ BLOQUEAR SI LA CAJA ESTÁ CERRADA - NO NAVEGAR
     if (!cajaAbierta) {
       setError("El gimnasio está cerrado. No se pueden procesar registros en este momento.");
       return;
@@ -67,7 +65,6 @@ export default function Register() {
     
     setError(null);
     
-    // ✅ Solo navega si TODO está OK
     navigate("/payment", { 
       state: { 
         user: {
@@ -87,241 +84,277 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-white from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6 relative">
+    <div 
+      className="min-h-screen bg-black text-white flex items-center justify-center p-6 relative overflow-hidden"
+      style={{
+        backgroundImage: `url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Overlay oscuro */}
+      <div className="absolute inset-0 bg-black/85"></div>
+
       <Button
         variant="ghost"
-        className="absolute top-4 left-4"
+        className="absolute top-4 left-4 z-20 text-[#00FF41] hover:text-[#00DD35] hover:bg-[#00FF41]/10 border border-[#00FF41]/30 hover:border-[#00FF41]"
         onClick={handleBackToPlans}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Volver al inicio
       </Button>
 
-      <Card className="w-full max-w-2xl">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-3xl font-bold text-center">
-            Crear Cuenta
-          </CardTitle>
-          <CardDescription className="text-center">
-            Completá tus datos para registrarte
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          {/* ✅ SOLO MOSTRAR ALERTS CUANDO HAY PROBLEMA */}
-          {verificandoCaja ? (
-            <div className="bg-gray-100 border border-gray-300 p-4 rounded-lg mb-6 flex items-center gap-3">
-              <div className="animate-spin">⏳</div>
-              <span className="text-gray-700">Verificando disponibilidad del gimnasio...</span>
+      <div className="relative z-10 w-full max-w-2xl">
+        {/* Logo ADN FITNESS */}
+        <div className="flex justify-center mb-6">
+          <div className="w-24 h-24 rounded-full bg-black flex items-center justify-center border-4 border-[#00FF41] shadow-lg shadow-[#00FF41]/30 hover:scale-105 transition-all duration-300">
+            <div className="text-center">
+              <div className="text-2xl font-black text-[#00FF41] tracking-wider" style={{ fontFamily: 'Impact, sans-serif' }}>
+                ADN
+              </div>
+              <div className="text-sm font-bold text-[#00FF41] -mt-1" style={{ fontFamily: 'Impact, sans-serif' }}>
+                FITNESS
+              </div>
+              <div className="text-[10px] text-[#00FF41] font-light tracking-widest">
+                SALTA
+              </div>
             </div>
-          ) : !cajaAbierta ? (
-            <div className="bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-400 p-6 rounded-lg mb-6 shadow-lg">
-              <div className="flex items-start gap-4">
-                <div className="bg-red-200 p-3 rounded-lg flex-shrink-0">
-                  <Clock className="w-6 h-6 text-red-700" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-red-900 mb-2">🚫 Gimnasio Cerrado</h3>
-                  <p className="text-red-800 mb-3">
-                    No podemos procesar registros en este momento porque el gimnasio está cerrado.
-                  </p>
-                  <div className="bg-white border border-red-300 rounded-lg p-3 mb-3">
-                    <p className="font-semibold text-red-900 mb-1">⏰ Horario de Atención:</p>
-                    <p className="text-lg font-bold text-red-700">Lunes a Domingo: 08:00 - 23:00 hs</p>
+          </div>
+        </div>
+
+        <Card className="bg-gray-900/80 backdrop-blur-md border-2 border-[#00FF41]/30 shadow-2xl shadow-[#00FF41]/10">
+          <CardHeader className="space-y-1 text-center pb-6">
+            <CardTitle className="text-3xl font-black text-white">
+              CREAR CUENTA
+            </CardTitle>
+            <CardDescription className="text-gray-400 text-base">
+              Completá tus datos para registrarte
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            {verificandoCaja ? (
+              <div className="bg-gray-800/60 border border-gray-600 p-4 rounded-lg mb-6 flex items-center gap-3 backdrop-blur-sm">
+                <div className="animate-spin">⏳</div>
+                <span className="text-gray-300">Verificando disponibilidad del gimnasio...</span>
+              </div>
+            ) : !cajaAbierta ? (
+              <div className="bg-gradient-to-r from-red-900/40 to-red-800/40 border-2 border-red-500/50 p-6 rounded-lg mb-6 shadow-lg backdrop-blur-sm">
+                <div className="flex items-start gap-4">
+                  <div className="bg-red-500/20 p-3 rounded-lg flex-shrink-0">
+                    <Clock className="w-6 h-6 text-red-400" />
                   </div>
-                  <p className="text-sm text-red-700 mb-3">
-                    Por favor, volvé durante nuestro horario de atención para completar tu registro.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={verificarEstadoCaja}
-                      className="border-red-300 text-red-700 hover:bg-red-50"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Verificar nuevamente
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleBackToPlans}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      Volver al inicio
-                    </Button>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-red-300 mb-2">🚫 Gimnasio Cerrado</h3>
+                    <p className="text-red-200 mb-3">
+                      No podemos procesar registros en este momento porque el gimnasio está cerrado.
+                    </p>
+                    <div className="bg-black/40 border border-red-500/30 rounded-lg p-3 mb-3 backdrop-blur-sm">
+                      <p className="font-semibold text-red-300 mb-1">⏰ Horario de Atención:</p>
+                      <p className="text-lg font-bold text-red-400">Lunes a Domingo: 08:00 - 23:00 hs</p>
+                    </div>
+                    <p className="text-sm text-red-300 mb-3">
+                      Por favor, volvé durante nuestro horario de atención para completar tu registro.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={verificarEstadoCaja}
+                        className="border-red-500/50 text-red-300 hover:bg-red-500/20 bg-transparent"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Verificar nuevamente
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleBackToPlans}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Volver al inicio
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ) : null}
-          {/* ✅ SI CAJA ABIERTA: NO MOSTRAR NADA (null) */}
+            ) : null}
 
-          {selectedPlan ? (
-            <div className="bg-primary/10 border border-primary/30 p-4 rounded-lg mb-6 relative">
-              <p className="text-sm text-muted-foreground mb-1">
-                Plan seleccionado:
-              </p>
-              <p className="text-xl font-bold text-primary">
-                {selectedPlan.name}
-              </p>
-              <p className="text-2xl font-black">
-                ${selectedPlan.price}/mes
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute top-2 right-2"
-                onClick={handleBackToPlans}
-              >
-                <Edit className="w-4 h-4 mr-1" />
-                Cambiar
-              </Button>
-            </div>
-          ) : (
-            <div className="bg-destructive/15 border border-destructive/30 p-4 rounded-lg mb-6 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-destructive mb-1">
-                  No hay plan seleccionado
+            {selectedPlan ? (
+              <div className="bg-[#00FF41]/10 border border-[#00FF41]/30 p-4 rounded-lg mb-6 relative backdrop-blur-sm">
+                <p className="text-sm text-gray-400 mb-1">
+                  Plan seleccionado:
                 </p>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Primero debes elegir un plan de suscripción.
+                <p className="text-xl font-bold text-[#00FF41]">
+                  {selectedPlan.name}
+                </p>
+                <p className="text-2xl font-black text-white">
+                  ${selectedPlan.price}/mes
                 </p>
                 <Button
-                  variant="default"
+                  variant="ghost"
                   size="sm"
+                  className="absolute top-2 right-2 text-gray-400 hover:text-[#00FF41] hover:bg-[#00FF41]/10"
                   onClick={handleBackToPlans}
                 >
-                  Ir a seleccionar plan
+                  <Edit className="w-4 h-4 mr-1" />
+                  Cambiar
                 </Button>
               </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-destructive/15 text-destructive border border-destructive/30 p-3 rounded-md text-sm mb-4 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              {error}
-            </div>
-          )}
-
-          {/* ✅ DESHABILITAR FORMULARIO SI CAJA CERRADA */}
-          <fieldset disabled={!cajaAbierta || !selectedPlan} className={!cajaAbierta ? 'opacity-50' : ''}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre Completo</Label>
-                  <Input
-                    id="nombre"
-                    type="text"
-                    placeholder="Juan Pérez"
-                    value={formData.nombre}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Solo permitir letras, espacios y acentos
-                      if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
-                        setFormData({ ...formData, nombre: value });
-                      }
-                    }}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="username">Usuario</Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="juanperez"
-                    value={formData.username}
-                    onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="juan@ejemplo.com"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="telefono">Teléfono</Label>
-                  <Input
-                    id="telefono"
-                    type="tel"
-                    placeholder="387 123-4567"
-                    value={formData.telefono}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Solo permitir números, espacios y guiones, máximo 15 caracteres
-                      if (/^[\d\s\-]*$/.test(value) && value.length <= 15) {
-                        setFormData({ ...formData, telefono: value });
-                      }
-                    }}
-                    maxLength={15}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="password">Contraseña</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    required
-                    minLength={6}
-                  />
+            ) : (
+              <div className="bg-red-900/20 border border-red-500/30 p-4 rounded-lg mb-6 flex items-start gap-3 backdrop-blur-sm">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-red-300 mb-1">
+                    No hay plan seleccionado
+                  </p>
+                  <p className="text-sm text-red-200 mb-3">
+                    Primero debes elegir un plan de suscripción.
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleBackToPlans}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Ir a seleccionar plan
+                  </Button>
                 </div>
               </div>
+            )}
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={!selectedPlan || !cajaAbierta}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Continuar al Pago
-              </Button>
-
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    ¿Ya tenés cuenta?
-                  </span>
-                </div>
+            {error && (
+              <div className="bg-red-900/30 text-red-300 border border-red-500/50 p-3 rounded-lg text-sm mb-4 flex items-center gap-2 backdrop-blur-sm">
+                <AlertCircle className="w-4 h-4" />
+                {error}
               </div>
+            )}
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate("/login")}
-              >
-                Iniciar Sesión
-              </Button>
-            </form>
-          </fieldset>
-        </CardContent>
-      </Card>
+            <fieldset disabled={!cajaAbierta || !selectedPlan} className={!cajaAbierta ? 'opacity-50' : ''}>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nombre" className="text-gray-300 font-medium">Nombre Completo</Label>
+                    <Input
+                      id="nombre"
+                      type="text"
+                      placeholder="Juan Pérez"
+                      value={formData.nombre}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]*$/.test(value)) {
+                          setFormData({ ...formData, nombre: value });
+                        }
+                      }}
+                      required
+                      className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#00FF41] focus:ring-[#00FF41]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-gray-300 font-medium">Usuario</Label>
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="juanperez"
+                      value={formData.username}
+                      onChange={(e) =>
+                        setFormData({ ...formData, username: e.target.value })
+                      }
+                      required
+                      className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#00FF41] focus:ring-[#00FF41]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-gray-300 font-medium">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="juan@ejemplo.com"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      required
+                      className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#00FF41] focus:ring-[#00FF41]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="telefono" className="text-gray-300 font-medium">Teléfono</Label>
+                    <Input
+                      id="telefono"
+                      type="tel"
+                      placeholder="387 123-4567"
+                      value={formData.telefono}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^[\d\s\-]*$/.test(value) && value.length <= 15) {
+                          setFormData({ ...formData, telefono: value });
+                        }
+                      }}
+                      maxLength={15}
+                      required
+                      className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#00FF41] focus:ring-[#00FF41]"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="password" className="text-gray-300 font-medium">Contraseña</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      required
+                      minLength={6}
+                      className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#00FF41] focus:ring-[#00FF41]"
+                    />
+                  </div>
+                </div>
+                
+                <Button                 
+                  type="submit"
+                  className="w-full h-11 bg-[#00FF41] hover:bg-[#00DD35] text-black font-bold shadow-lg shadow-[#00FF41]/30 transition-all duration-300"
+                  disabled={!selectedPlan || !cajaAbierta}
+                >
+                  <CreditCard className="mr-2 h-4 w-7" />
+                  Continuar al Pago
+                </Button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-gray-700" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-gray-900 px-2 text-gray-400">
+                      ¿Ya tenés cuenta?
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full bg-transparent border-2 border-[#00FF41]/50 text-[#00FF41] hover:bg-[#00FF41] hover:text-black font-semibold transition-all duration-300"
+                  onClick={() => navigate("/login")}
+                >
+                  Iniciar Sesión
+                </Button>
+              </form>
+            </fieldset>
+          </CardContent>
+        </Card>
+
+        {/* Footer info */}
+        <div className="text-center mt-6 text-gray-500 text-xs">
+          <p>© 2025 ADN Fitness Salta. Sistema de gestión.</p>
+        </div>
+      </div>
     </div>
   );
 }
