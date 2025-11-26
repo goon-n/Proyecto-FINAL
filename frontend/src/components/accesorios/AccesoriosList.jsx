@@ -17,7 +17,7 @@ import { Search, Edit, Package } from "lucide-react";
 import { DialogDesactivar } from "./DialogDesactivar";
 import toast from "react-hot-toast";
 
-export default function AccesoriosList({ reload, onEditar }) {
+export default function AccesoriosList({ reload, onEditar, paginaActual = 1, itemsPerPage = 10, onCambiarPagina }) {
   const [accesorios, setAccesorios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -75,6 +75,45 @@ export default function AccesoriosList({ reload, onEditar }) {
     if (vistaActual === "inactivos") return coincideTexto && !accesorio.activo;
     return coincideTexto;
   });
+
+  // Paginación
+  const getTotalPages = () => Math.max(1, Math.ceil(accesoriosFiltrados.length / itemsPerPage));
+  const totalPages = getTotalPages();
+  
+  const accesoriosPaginados = accesoriosFiltrados.slice(
+    (paginaActual - 1) * itemsPerPage,
+    paginaActual * itemsPerPage
+  );
+
+  const renderPaginationControls = () => {
+    if (totalPages <= 1) return null;
+    
+    return (
+      <div className="flex items-center justify-between mt-4 pt-4 border-t">
+        <div className="text-sm text-muted-foreground">
+          Página {paginaActual} de {totalPages} • Total: {accesoriosFiltrados.length} accesorio{accesoriosFiltrados.length !== 1 ? 's' : ''}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => onCambiarPagina(p => Math.max(1, p - 1))} 
+            disabled={paginaActual <= 1}
+          >
+            Anterior
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => onCambiarPagina(p => Math.min(totalPages, p + 1))} 
+            disabled={paginaActual >= totalPages}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -160,7 +199,7 @@ export default function AccesoriosList({ reload, onEditar }) {
                   </TableCell>
                 </TableRow>
               ) : (
-                accesoriosFiltrados.map((accesorio) => (
+                accesoriosPaginados.map((accesorio) => (
                   <TableRow 
                     key={accesorio.id}
                     className={!accesorio.activo ? "opacity-60 bg-gray-50" : ""}
@@ -209,11 +248,7 @@ export default function AccesoriosList({ reload, onEditar }) {
           </Table>
         </div>
 
-        {accesoriosFiltrados.length > 0 && (
-          <div className="mt-4 text-sm text-muted-foreground">
-            Mostrando {accesoriosFiltrados.length} de {accesorios.length} accesorios
-          </div>
-        )}
+        {renderPaginationControls()}
       </CardContent>
     </Card>
   );

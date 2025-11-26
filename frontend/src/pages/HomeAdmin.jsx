@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { SeccionTurnos } from "../components/shared/SeccionTurnos";
 import GraficoPlanesPopulares from "../components/caja/GraficoPlanesPopulares";
+import ModalCerrarSesion from "@/components/shared/ModalCerrarSesion";
 import { 
   LogOut, 
   Users, 
@@ -28,6 +29,7 @@ import api from "../api/api";
 const HomeAdmin = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [modalLogoutAbierto, setModalLogoutAbierto] = useState(false);
   
   const [stats, setStats] = useState({
     totalUsuarios: 0,
@@ -106,7 +108,7 @@ const HomeAdmin = () => {
             </div>
             <div className="flex items-center gap-3">
                <Button 
-                onClick={logout} 
+                onClick={() => setModalLogoutAbierto(true)} 
                 variant="destructive" 
                 size="sm"
                 className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-200 shadow-none"
@@ -357,6 +359,13 @@ const HomeAdmin = () => {
         <GraficoPlanesPopulares />
 
       </main>
+
+      {/* Modal de confirmación de cierre de sesión */}
+      <ModalCerrarSesion
+        open={modalLogoutAbierto}
+        onClose={() => setModalLogoutAbierto(false)}
+        onConfirm={logout}
+      />
     </div>
   );
 };

@@ -29,6 +29,10 @@ const GestionProveedores = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [proveedorEditar, setProveedorEditar] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  
+  // Paginación
+  const itemsPerPage = 10;
+  const [paginaActual, setPaginaActual] = useState(1);
 
   // ========== HANDLERS ==========
 
@@ -135,6 +139,52 @@ const GestionProveedores = () => {
 
   const esDesactivados = vistaActual === "desactivados";
 
+  // Helpers de paginación
+  const getTotalPages = () => Math.max(1, Math.ceil(proveedoresAMostrar.length / itemsPerPage));
+  const totalPages = getTotalPages();
+  
+  // Resetear página cuando cambia la vista o búsqueda
+  const proveedoresPaginados = proveedoresAMostrar.slice(
+    (paginaActual - 1) * itemsPerPage,
+    paginaActual * itemsPerPage
+  );
+
+  // Resetear página al cambiar vista
+  const handleCambiarVista = (nuevaVista) => {
+    setVistaActual(nuevaVista);
+    setPaginaActual(1);
+  };
+
+  const renderPaginationControls = () => {
+    if (totalPages <= 1) return null;
+    
+    return (
+      <div className="flex items-center justify-between mt-4 pt-4 border-t">
+        <div className="text-sm text-muted-foreground">
+          Página {paginaActual} de {totalPages} • Total: {proveedoresAMostrar.length} proveedor{proveedoresAMostrar.length !== 1 ? 'es' : ''}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setPaginaActual(p => Math.max(1, p - 1))} 
+            disabled={paginaActual <= 1}
+          >
+            Anterior
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setPaginaActual(p => Math.min(totalPages, p + 1))} 
+            disabled={paginaActual >= totalPages}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -155,7 +205,7 @@ const GestionProveedores = () => {
           <CardContent className="pt-6">
             <FiltrosProveedores
               vistaActual={vistaActual}
-              onCambiarVista={setVistaActual}
+              onCambiarVista={handleCambiarVista}
               cantidadActivos={proveedoresActivos.length}
               cantidadDesactivados={proveedoresDesactivados.length}
               busqueda={busqueda}
@@ -163,13 +213,15 @@ const GestionProveedores = () => {
             />
 
             <TablaProveedores
-              proveedores={proveedoresAMostrar}
+              proveedores={proveedoresPaginados}
               esDesactivados={esDesactivados}
               onEditar={abrirModalEditar}
               onDesactivar={handleDesactivar}
               onActivar={handleActivar}
               busqueda={busqueda}
             />
+            
+            {renderPaginationControls()}
           </CardContent>
         </Card>
       </div>

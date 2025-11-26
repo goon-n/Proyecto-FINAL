@@ -26,6 +26,10 @@ const GestionAccesorios = () => {
   const [vistaActual, setVistaActual] = useState("lista");
   const [accesorioEditar, setAccesorioEditar] = useState(null);
   const [reload, setReload] = useState(0);
+  
+  // Paginación
+  const itemsPerPage = 10;
+  const [paginaActual, setPaginaActual] = useState(1);
 
   // Hook para obtener datos de accesorios
   const { accesorios, accesoriosActivos, loading: loadingStats, refetch } = useAccesorios();
@@ -94,6 +98,9 @@ const GestionAccesorios = () => {
           <AccesoriosList
             reload={reload}
             onEditar={abrirFormularioEditar}
+            paginaActual={paginaActual}
+            itemsPerPage={itemsPerPage}
+            onCambiarPagina={setPaginaActual}
           />
         );
     }

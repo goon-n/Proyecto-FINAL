@@ -31,6 +31,10 @@ export default function GestionCompras() {
   const [compraSeleccionada, setCompraSeleccionada] = useState(null);
   const [estadisticas, setEstadisticas] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  
+  // Paginación
+  const itemsPerPage = 10;
+  const [paginaActual, setPaginaActual] = useState(1);
 
   useEffect(() => {
     cargarEstadisticas();
@@ -222,6 +226,9 @@ export default function GestionCompras() {
           <CompraList
             reload={reload}
             onView={verDetalle}
+            paginaActual={paginaActual}
+            itemsPerPage={itemsPerPage}
+            onCambiarPagina={setPaginaActual}
           />
         );
     }

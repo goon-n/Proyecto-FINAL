@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -15,11 +15,13 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ModalCerrarSesion from "@/components/shared/ModalCerrarSesion";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [modalLogoutAbierto, setModalLogoutAbierto] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -177,7 +179,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </p>
           </div>
           <Button
-            onClick={handleLogout}
+            onClick={() => setModalLogoutAbierto(true)}
             variant="ghost"
             className="w-full justify-start gap-3 text-white hover:bg-red-400"
           >
@@ -186,6 +188,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           </Button>
         </div>
       </aside>
+
+      {/* Modal de confirmación de cierre de sesión */}
+      <ModalCerrarSesion
+        open={modalLogoutAbierto}
+        onClose={() => setModalLogoutAbierto(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 };
