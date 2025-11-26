@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SeccionTurnos } from "../components/shared/SeccionTurnos";
 import GraficoPlanesPopulares from "../components/caja/GraficoPlanesPopulares";
+import ModalCerrarSesion from "@/components/shared/ModalCerrarSesion";
 import { 
   LogOut, 
   Users, 
@@ -25,6 +26,7 @@ import api from "../api/api";
 const HomeEntrenador = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [modalLogoutAbierto, setModalLogoutAbierto] = useState(false);
   
   const [stats, setStats] = useState({
     totalUsuarios: 0,
@@ -95,7 +97,7 @@ const HomeEntrenador = () => {
               </p>
             </div>
             <Button 
-              onClick={logout} 
+              onClick={() => setModalLogoutAbierto(true)} 
               variant="outline" 
               className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 transition-colors"
             >
@@ -283,6 +285,13 @@ const HomeEntrenador = () => {
         <GraficoPlanesPopulares />
 
       </main>
+
+      {/* Modal de confirmación de cierre de sesión */}
+      <ModalCerrarSesion
+        open={modalLogoutAbierto}
+        onClose={() => setModalLogoutAbierto(false)}
+        onConfirm={logout}
+      />
     </div>
   );
 };
