@@ -154,9 +154,9 @@ const TablaMembresias = ({ cuotasFiltradas, loading, onAbrirModal, onRecargar })
                   <TableHead>Estado</TableHead>
                   <TableHead>Vencimiento</TableHead>
                   <TableHead>Días Restantes</TableHead>
-                  <TableHead>Clases</TableHead>
-                  <TableHead className="text-right">Precio</TableHead>
-                  <TableHead className="text-center">Acciones</TableHead>
+                  <TableHead className="w-[100px]">Clases</TableHead>
+                  <TableHead className="text-center w-[120px]">Precio</TableHead>
+                  <TableHead className="text-center w-[120px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -199,7 +199,7 @@ const TablaMembresias = ({ cuotasFiltradas, loading, onAbrirModal, onRecargar })
                         }
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[100px]">
                       {cuota.plan_info?.tipo_limite === 'libre' ? (
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                           <span className="text-lg">∞</span> Ilimitadas
@@ -217,8 +217,12 @@ const TablaMembresias = ({ cuotasFiltradas, loading, onAbrirModal, onRecargar })
                           }
 
                           return (
-                            <div className="flex flex-col gap-1">
-                              <Badge variant="outline" className={badgeClass}>
+                            <div className="flex flex-col gap-0.5 items-center w-full">
+                              <Badge 
+                                variant="outline" 
+                                className={`w-full justify-center ${badgeClass}`}
+                                style={{ padding: '3px 8px', display: 'inline-block' }}
+                              >
                                 {displayRestantes}/{displayTotal}
                               </Badge>
 
@@ -226,7 +230,7 @@ const TablaMembresias = ({ cuotasFiltradas, loading, onAbrirModal, onRecargar })
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-6 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                  className="h-6 w-full text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-2"
                                   onClick={() => handleDescontarClase(cuota)}
                                   disabled={displayRestantes === 0 || displayRestantes === '0'}
                                 >
@@ -238,10 +242,12 @@ const TablaMembresias = ({ cuotasFiltradas, loading, onAbrirModal, onRecargar })
                         })()
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {formatearPrecio(cuota.plan_precio || cuota.plan_info?.precio)}
+                    <TableCell className="text-center w-[120px]">
+                      <span className="font-semibold text-base">
+                        {formatearPrecio(cuota.plan_precio || cuota.plan_info?.precio)}
+                      </span>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center w-[120px]">
                       {puedeRenovar(cuota) ? (
                         <Button
                           size="sm"
