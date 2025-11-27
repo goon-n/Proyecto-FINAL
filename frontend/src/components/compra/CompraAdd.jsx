@@ -5,10 +5,21 @@ import { createCompra, getProveedores } from "../../services/compra.service";
 import toast from "react-hot-toast";
 import api from "../../api/api";
 import { Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 export default function CompraAdd({ onAdd }) {
   const [proveedores, setProveedores] = useState([]);
   const [accesorios, setAccesorios] = useState([]);
+  const [mostrarAlertaStock, setMostrarAlertaStock] = useState(false);
+  const [erroresStockMensaje, setErroresStockMensaje] = useState([]);
   const [proveedor, setProveedor] = useState("");
   const [items, setItems] = useState([]);
   const [notas, setNotas] = useState("");
@@ -156,6 +167,35 @@ export default function CompraAdd({ onAdd }) {
       return;
     }
     
+    // ✅ VALIDACIÓN DE STOCK MÁXIMO
+    const STOCK_MAXIMO = 200;
+    const erroresStock = [];
+    
+    for (const item of items) {
+      const accesorioSeleccionado = accesorios.find(a => a.id === parseInt(item.accesorio));
+      if (accesorioSeleccionado) {
+        const stockActual = accesorioSeleccionado.stock || 0;
+        const cantidadCompra = parseInt(item.cantidad);
+        const stockFinal = stockActual + cantidadCompra;
+        
+        if (stockFinal > STOCK_MAXIMO) {
+          erroresStock.push({
+            nombre: accesorioSeleccionado.nombre,
+            stockActual,
+            cantidadCompra,
+            stockFinal,
+            exceso: stockFinal - STOCK_MAXIMO
+          });
+        }
+      }
+    }
+    
+    if (erroresStock.length > 0) {
+      setErroresStockMensaje(erroresStock);
+      setMostrarAlertaStock(true);
+      return;
+    }
+    
     try {
       const compraData = { 
         proveedor: parseInt(proveedor), 
@@ -240,12 +280,10 @@ export default function CompraAdd({ onAdd }) {
               <p className="font-bold text-red-800 text-sm">No hay caja abierta</p>
               <p className="text-red-700 text-sm mt-1">Debe abrir una caja antes de registrar compras.</p>
               <div className="mt-3">
-                <a
+                
                   href={usuarioAutenticado?.rol === 'entrenador' ? '/entrenador/caja' : '/admin/caja'}
-                  className="inline-block bg-red-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-700 transition-colors"
-                >
+                  className="inline-block bg-red-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-700 transition-colors"                
                   Ir a Gestión de Caja
-                </a>
               </div>
             </div>
           </div>
@@ -480,6 +518,47 @@ export default function CompraAdd({ onAdd }) {
           </button>
         </div>
       </fieldset>
+      {/* Modal de alerta de stock */}
+      <AlertDialog open={mostrarAlertaStock} onOpenChange={setMostrarAlertaStock}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 text-xl flex items-center gap-2">
+              ⚠️ No se puede completar la compra
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left">
+              <div className="mt-4 space-y-4">
+                <p className="font-semibold text-gray-700">
+                  Los siguientes productos superarían el stock máximo de 200 unidades:
+                </p>
+                
+                {erroresStockMensaje.map((error, index) => (
+                  <div key={index} className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                    <p className="font-bold text-red-800 mb-2">{error.nombre}</p>
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <p>• Stock actual: <span className="font-semibold">{error.stockActual}</span> unidades</p>
+                      <p>• Cantidad a comprar: <span className="font-semibold">{error.cantidadCompra}</span> unidades</p>
+                      <p>• Stock resultante: <span className="font-semibold text-red-600">{error.stockFinal}</span> unidades</p>
+                      <p className="text-red-600 font-semibold">⚠️ Excede en {error.exceso} unidades el máximo permitido</p>
+                    </div>
+                  </div>
+                ))}
+                
+                <p className="text-sm text-gray-600 italic mt-4">
+                  Por favor, reduce la cantidad a comprar para continuar.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => setMostrarAlertaStock(false)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }
