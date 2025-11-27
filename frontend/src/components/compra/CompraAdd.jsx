@@ -398,7 +398,8 @@ export default function CompraAdd({ onAdd }) {
                       <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad *</label>
                       <input 
                         type="number" 
-                        min={1} 
+                        min={1}
+                        max={20}
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                         value={item.cantidad} 
                         onChange={e => handleItemChange(idx, "cantidad", e.target.value)} 

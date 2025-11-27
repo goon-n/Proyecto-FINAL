@@ -16,8 +16,10 @@ import {
 import { Search, Edit, Package } from "lucide-react";
 import { DialogDesactivar } from "./DialogDesactivar";
 import toast from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AccesoriosList({ reload, onEditar, paginaActual = 1, itemsPerPage = 10, onCambiarPagina }) {
+  const { user } = useAuth();
   const [accesorios, setAccesorios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -226,13 +228,15 @@ export default function AccesoriosList({ reload, onEditar, paginaActual = 1, ite
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onEditar(accesorio)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        {user?.rol === 'admin' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEditar(accesorio)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
                         
                         <DialogDesactivar
                           accesorio={accesorio}

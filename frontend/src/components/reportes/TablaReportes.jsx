@@ -58,6 +58,7 @@ const TablaReportes = ({
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Accesorio</TableHead>
+              <TableHead>Proveedor</TableHead>
               <TableHead>Cantidad</TableHead>
               <TableHead>Motivo</TableHead>
               <TableHead>Descripción</TableHead>
@@ -70,7 +71,7 @@ const TablaReportes = ({
           <TableBody>
             {reportes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={esAdmin ? 9 : 8} className="text-center py-8">
+                <TableCell colSpan={esAdmin ? 10 : 9} className="text-center py-8">
                   No hay reportes para mostrar
                 </TableCell>
               </TableRow>
@@ -84,6 +85,11 @@ const TablaReportes = ({
                   <TableRow key={reporte.id}>
                     <TableCell className="font-medium">#{reporte.id}</TableCell>
                     <TableCell>{reporte.accesorio_nombre}</TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-600">
+                        {reporte.proveedor_nombre || 'N/A'}
+                      </span>
+                    </TableCell>
                     <TableCell>{reporte.cantidad}</TableCell>
                     <TableCell>
                       <Badge className={motivoBadge.className}>

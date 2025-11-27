@@ -35,10 +35,11 @@ export const generarPDFReportes = (reportes, filtros = {}) => {
   const tableData = reportes.map(reporte => [
     `#${reporte.id}`,
     reporte.accesorio_nombre,
+    reporte.proveedor_nombre || 'N/A',
     reporte.cantidad.toString(),
     getMotivoTexto(reporte.motivo),
-    reporte.descripcion.length > 35 
-      ? reporte.descripcion.substring(0, 35) + '...' 
+    reporte.descripcion.length > 30 
+      ? reporte.descripcion.substring(0, 30) + '...' 
       : reporte.descripcion,
     reporte.reportado_por_username,
     new Date(reporte.fecha_reporte).toLocaleDateString('es-AR'),
@@ -48,7 +49,7 @@ export const generarPDFReportes = (reportes, filtros = {}) => {
   
   autoTable(doc, {
     startY: yPos + 5,
-    head: [['ID', 'Accesorio', 'Cant.', 'Motivo', 'Descripción', 'Reportado por', 'Fecha', 'Estado', 'Conf. por']],
+    head: [['ID', 'Accesorio', 'Proveedor', 'Cant.', 'Motivo', 'Descripción', 'Reportado por', 'Fecha', 'Estado', 'Conf. por']],
     body: tableData,
     styles: { 
       fontSize: 7,
@@ -70,18 +71,19 @@ export const generarPDFReportes = (reportes, filtros = {}) => {
       fillColor: [245, 247, 250]
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },   // ID
-      1: { cellWidth: 32, halign: 'left' },     // Accesorio
-      2: { cellWidth: 12, halign: 'center' },   // Cantidad
-      3: { cellWidth: 22, halign: 'center' },   // Motivo
-      4: { cellWidth: 40, halign: 'left' },     // Descripción
-      5: { cellWidth: 20, halign: 'center' },   // Reportado por
-      6: { cellWidth: 20, halign: 'center' },   // Fecha
-      7: { cellWidth: 22, halign: 'center' },   // Estado
-      8: { cellWidth: 20, halign: 'center' }    // Confirmado por
+      0: { cellWidth: 10, halign: 'center' },   // ID
+      1: { cellWidth: 28, halign: 'left' },     // Accesorio
+      2: { cellWidth: 24, halign: 'left' },     // Proveedor
+      3: { cellWidth: 10, halign: 'center' },   // Cantidad
+      4: { cellWidth: 20, halign: 'center' },   // Motivo
+      5: { cellWidth: 35, halign: 'left' },     // Descripción
+      6: { cellWidth: 18, halign: 'center' },   // Reportado por
+      7: { cellWidth: 18, halign: 'center' },   // Fecha
+      8: { cellWidth: 20, halign: 'center' },   // Estado
+      9: { cellWidth: 17, halign: 'center' }    // Confirmado por
     },
     didParseCell: function(data) {
-      if (data.column.index === 7 && data.section === 'body') {
+      if (data.column.index === 8 && data.section === 'body') {
         const estado = reportes[data.row.index]?.estado;
         if (estado === 'confirmado') {
           data.cell.styles.textColor = [34, 197, 94]; // Verde

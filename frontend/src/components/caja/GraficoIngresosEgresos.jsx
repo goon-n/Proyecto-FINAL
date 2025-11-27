@@ -20,7 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function GraficoIngresosEgresos({ cajaId }) {
   const [movimientos, setMovimientos] = useState([]);
   const [todasLasCajas, setTodasLasCajas] = useState([]);
-  const [vista, setVista] = useState('dia'); // dia, semana, mes, año
+  const [vista, setVista] = useState('dia'); // dia, mes, año
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
 
@@ -67,19 +67,6 @@ export default function GraficoIngresosEgresos({ cajaId }) {
       fechas.forEach(f => {
         ingresos.push(movimientosFiltrados.filter(m => m.tipo === 'ingreso' && m.fecha.startsWith(f)).reduce((acc, m) => acc + Number(m.monto), 0));
         egresos.push(movimientosFiltrados.filter(m => m.tipo === 'egreso' && m.fecha.startsWith(f)).reduce((acc, m) => acc + Number(m.monto), 0));
-      });
-    } else if (vista === 'semana') {
-      const getSemana = (f) => {
-        const d = new Date(f + 'T00:00:00');
-        const inicio = new Date(d.getFullYear(), 0, 1);
-        const dias = Math.floor((d - inicio) / 86400000);
-        return `${d.getFullYear()}-S${Math.ceil((dias + inicio.getDay() + 1) / 7)}`;
-      };
-      const semanas = [...new Set(movimientosFiltrados.map(m => getSemana(m.fecha.substr(0,10))))].sort();
-      labels = semanas;
-      semanas.forEach(s => {
-        ingresos.push(movimientosFiltrados.filter(m => m.tipo === 'ingreso' && getSemana(m.fecha.substr(0,10)) === s).reduce((acc, m) => acc + Number(m.monto), 0));
-        egresos.push(movimientosFiltrados.filter(m => m.tipo === 'egreso' && getSemana(m.fecha.substr(0,10)) === s).reduce((acc, m) => acc + Number(m.monto), 0));
       });
     } else if (vista === 'mes') {
       const meses = [...new Set(movimientosFiltrados.map(m => m.fecha.substr(0,7)))].sort();
@@ -170,13 +157,11 @@ export default function GraficoIngresosEgresos({ cajaId }) {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold">
               {vista === 'dia' && '📅 Vista Diaria'}
-              {vista === 'semana' && '📆 Vista Semanal'}
               {vista === 'mes' && '📊 Vista Mensual'}
               {vista === 'año' && '📈 Vista Anual'}
             </h3>
             <div className="flex gap-2">
               <Button size="sm" variant={vista === 'dia' ? 'default' : 'outline'} onClick={() => setVista('dia')}>Día</Button>
-              <Button size="sm" variant={vista === 'semana' ? 'default' : 'outline'} onClick={() => setVista('semana')}>Semana</Button>
               <Button size="sm" variant={vista === 'mes' ? 'default' : 'outline'} onClick={() => setVista('mes')}>Mes</Button>
               <Button size="sm" variant={vista === 'año' ? 'default' : 'outline'} onClick={() => setVista('año')}>Año</Button>
             </div>

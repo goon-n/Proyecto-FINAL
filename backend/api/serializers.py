@@ -79,6 +79,7 @@ class CompraSerializer(serializers.ModelSerializer):
 
 class ReporteAccesorioSerializer(serializers.ModelSerializer):
     accesorio_nombre = serializers.CharField(source='accesorio.nombre', read_only=True)
+    proveedor_nombre = serializers.CharField(source='accesorio.proveedor.nombre', read_only=True)
     reportado_por_username = serializers.CharField(source='reportado_por.username', read_only=True)
     confirmado_por_username = serializers.CharField(source='confirmado_por.username', read_only=True, allow_null=True)
     motivo_display = serializers.CharField(source='get_motivo_display', read_only=True)
@@ -90,6 +91,7 @@ class ReporteAccesorioSerializer(serializers.ModelSerializer):
             'id',
             'accesorio',
             'accesorio_nombre',
+            'proveedor_nombre',
             'cantidad',
             'motivo',
             'motivo_display',
