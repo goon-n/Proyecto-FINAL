@@ -12,11 +12,13 @@ import MovimientoCajaAdd from "./MovimientoCajaAdd";
 import GraficoIngresosEgresos from "./GraficoIngresosEgresos";
 import MovimientoCajaHistorial from "./MovimientoCajaHistorial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ModalCierreCaja from "./ModalCierreCaja";
 
 export default function CajaEdit({ id, onGuardado }) {
   const [caja, setCaja] = useState(null);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [modalCierreOpen, setModalCierreOpen] = useState(false);
   const [recargarMovs, setRecargarMovs] = useState(0);
   const [movs, setMovs] = useState([]);
   const [errorMovs, setErrorMovs] = useState(false);
@@ -61,6 +63,39 @@ export default function CajaEdit({ id, onGuardado }) {
     setCaja(prev => ({ ...prev, [name]: value }));
   };
 
+  const confirmarCierreCaja = async () => {
+    setModalCierreOpen(false);
+    setGuardando(true);
+    
+    try {
+      await updateCaja(id, {
+        estado: caja.estado,
+        monto_inicial: Number(caja.monto_inicial),
+        closing_counted_amount: caja.closing_counted_amount ? Number(caja.closing_counted_amount) : null,
+        notas: caja.notas
+      });
+      
+      const cajaActualizada = await getCaja(id);
+      setCaja(cajaActualizada.data);
+      
+      toast.success("✅ Caja cerrada correctamente");
+      
+      if (onGuardado) {
+        setTimeout(onGuardado, 1500);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Error al cerrar la caja");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cancelarCierreCaja = () => {
+    setModalCierreOpen(false);
+    setCaja(prev => ({ ...prev, estado: 'ABIERTA' }));
+    toast.info("Cierre de caja cancelado");
+  };
+
   const handleSubmit = async e => {
     e.preventDefault();
     
@@ -70,35 +105,9 @@ export default function CajaEdit({ id, onGuardado }) {
     }
 
     if (caja.estado === 'CERRADA') {
-      const efectivo = Number(caja.efectivo_esperado || 0);
-      const transferencia = Number(caja.transferencia_esperada || 0);
-      const tarjeta = Number(caja.tarjeta_esperada || 0);  // 🔧 AGREGADO
-      const totalGeneral = efectivo + transferencia + tarjeta;  // 🔧 MODIFICADO
-      const montoContado = Number(caja.closing_counted_amount);
-      const diferenciaEfectivo = montoContado - efectivo;
-      
-      const confirmar = window.confirm(
-        `╔═══════════════════════════════════╗\n` +
-        `   RESUMEN DE CIERRE DE CAJA\n` +
-        `╚═══════════════════════════════════╝\n\n` +
-        `💵 EFECTIVO:\n` +
-        `   Esperado: $${efectivo.toFixed(2)}\n` +
-        `   Contado:  $${montoContado.toFixed(2)}\n` +
-        `   Diferencia: $${diferenciaEfectivo.toFixed(2)} ${Math.abs(diferenciaEfectivo) < 0.01 ? '✅' : '⚠️'}\n\n` +
-        `🏦 TRANSFERENCIAS: $${transferencia.toFixed(2)}\n\n` +
-        `💳 TARJETAS: $${tarjeta.toFixed(2)}\n\n` +  // 🔧 AGREGADO
-        `┌─────────────────────────────────┐\n` +
-        `💰 TOTAL GENERAL: $${totalGeneral.toFixed(2)}\n` +
-        `└─────────────────────────────────┘\n\n` +
-        `${Math.abs(diferenciaEfectivo) > 0.01 ? '⚠️ HAY DIFERENCIA EN EFECTIVO' : '✅ EFECTIVO CORRECTO'}\n\n` +
-        `¿Confirmar cierre de caja?`
-      );
-      
-      if (!confirmar) {
-        setCaja(prev => ({ ...prev, estado: 'ABIERTA' }));
-        toast.info("Cierre de caja cancelado");
-        return;
-      }
+      // Mostrar modal de confirmación
+      setModalCierreOpen(true);
+      return;
     }
 
     setGuardando(true);
@@ -259,6 +268,15 @@ export default function CajaEdit({ id, onGuardado }) {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Cierre de Caja */}
+      <ModalCierreCaja
+        open={modalCierreOpen}
+        onOpenChange={setModalCierreOpen}
+        caja={caja}
+        onConfirmar={confirmarCierreCaja}
+        onCancelar={cancelarCierreCaja}
+      />
     </div>
   );
 }
