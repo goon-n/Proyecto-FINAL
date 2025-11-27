@@ -43,7 +43,7 @@ apiClient.interceptors.response.use(
           // No hay refresh token, redirigir al login
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          window.location.href = '/';
           return Promise.reject(error);
         }
 
@@ -62,7 +62,7 @@ apiClient.interceptors.response.use(
         // Si falla el refresh, cerrar sesión
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        window.location.href = '/';
         return Promise.reject(refreshError);
       }
     }

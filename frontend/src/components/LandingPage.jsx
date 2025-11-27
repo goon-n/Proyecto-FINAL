@@ -208,7 +208,7 @@ const LandingPage = () => {
                   plan.popular 
                     ? 'border-[#00FF41] shadow-lg shadow-[#00FF41]/20' 
                     : 'border-gray-700'
-                } transition-all duration-300 hover:scale-105 hover:-translate-y-2 hover:border-[#00FF41] hover:shadow-xl hover:shadow-[#00FF41]/30 cursor-pointer relative overflow-hidden`}
+                } transition-all duration-300 hover:scale-105 hover:-translate-y-2 hover:border-[#00FF41] hover:shadow-xl hover:shadow-[#00FF41]/30 cursor-pointer relative overflow-hidden flex flex-col`}
               >
                 {plan.popular && (
                   <div className="absolute top-0 left-0 right-0 bg-[#00FF41] text-black text-xs font-bold py-1 text-center flex items-center justify-center gap-1">
@@ -243,7 +243,7 @@ const LandingPage = () => {
                   </ul>
                 </CardContent>
                 
-                <CardFooter className="pt-3">
+                <CardFooter className="pt-3 mt-auto">
                   <Button 
                     className={`w-full font-bold text-sm ${
                       plan.popular

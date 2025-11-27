@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+
 
 class Proveedor(models.Model):
     nombre = models.CharField(max_length=100)
@@ -26,14 +28,22 @@ class Accesorios(models.Model):
         on_delete=models.CASCADE,
         related_name='accesorios',
     )
-    stock = models.IntegerField(default=0)
+    stock = models.IntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0, message="El stock no puede ser negativo"),
+            MaxValueValidator(300, message="El stock no puede superar las 300 unidades")
+        ]
+    )  # ← MODIFICAR ESTA LÍNEA
     activo = models.BooleanField(default=True)
     fecha_compra = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
     class Meta:
         ordering = ['-activo', 'nombre']
         verbose_name = 'Accesorio'
         verbose_name_plural = 'Accesorios'
+    
     def __str__(self):
         return f"{self.nombre} - {self.proveedor.nombre}"
 

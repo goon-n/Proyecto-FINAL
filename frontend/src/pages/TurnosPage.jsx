@@ -127,7 +127,6 @@ const TurnosPage = ({ userRole }) => {
                     className="cursor-pointer hover:text-primary transition-colors" 
                     onClick={volverALista}
                 >
-                    Turnos
                 </span>
                 {vistaActual === "agregar" && " / Crear Cupo"}
                 {vistaActual === "editar" && " / Editar Turno"}

@@ -31,7 +31,7 @@ function PrivateRoute({ children, rolesPermitidos }) {
   }
   
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   
   if (rolesPermitidos && !rolesPermitidos.includes(user.rol)) {

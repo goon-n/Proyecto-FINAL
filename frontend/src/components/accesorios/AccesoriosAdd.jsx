@@ -82,6 +82,11 @@ export default function AccesoriosAdd({ onAdd, onCancel }) {
       return;
     }
 
+    if (formData.stock > 200) {
+      toast.error("El stock no puede ser mayor a 200");
+      return;
+    }
+
     // Validación: verificar si ya existe el accesorio con el mismo proveedor
     const nombreBuscar = formData.nombre.trim().toLowerCase();
     const proveedorId = parseInt(formData.proveedor);
@@ -214,6 +219,7 @@ export default function AccesoriosAdd({ onAdd, onCancel }) {
                 name="stock"
                 type="number"
                 min="0"
+                max="200"
                 value={formData.stock}
                 onChange={handleInputChange}
                 placeholder="0"

@@ -97,6 +97,11 @@ export default function AccesoriosEdit({ accesorio, onUpdate, onCancel }) {
       return;
     }
 
+    if (formData.stock > 200) {
+      toast.error("El stock no puede ser mayor a 200 unidades");
+      return;
+    }
+
     setGuardando(true);
     try {
       const dataToSend = {
@@ -192,6 +197,7 @@ export default function AccesoriosEdit({ accesorio, onUpdate, onCancel }) {
                 name="stock"
                 type="number"
                 min="0"
+                max="200"
                 value={formData.stock}
                 onChange={handleInputChange}
                 placeholder="0"
